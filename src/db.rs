@@ -23,16 +23,6 @@ impl DB {
         let json = to_json_value(mistake)?;
         let value = json_to_surreal(json);
         
-        // Remove 'id' from content if it's None, to let DB generate it?
-        // Or if it's present, let DB use it?
-        // But .create("mistake") autogenerates ID if not provided in the "thing" part.
-        // If we provide content with ID, does it use it?
-        // Usually creating a record with specific ID is `create(("mistake", id))`.
-        // If we just `create("mistake")`, it generates random ID.
-        // Let's rely on auto-ID for now unless strictly needed.
-        // But `Mistake` struct has `id`.
-        
-        // Use SDK .create()
         let created: Option<Value> = self.client
             .create("mistake")
             .content(value)
@@ -50,30 +40,13 @@ impl DB {
     pub async fn get_mistake(&self, id: &str) -> Result<Option<Mistake>> {
         let key = id.splitn(2, ':').nth(1).unwrap_or(id);
         
-        // Wait, self.client.select expects `(Resource, Key)`.
-        // The resource is "mistake". Key is `key` string.
-        // It should return `Option<Value>` because we're using `Value` as the type parameter?
-        // No, `select` returns `Result<Option<T>>` where `T` is inferred from return type.
-        // `fetched` is `Option<Value>`.
-        // So `T` is `Value`.
-        // `Value` implements `Deserialize`.
-        // And `SurrealValue`? Yes.
-        
-        // Why does it return None?
-        // Maybe the ID used in Create was not what we think.
-        // In Create, we passed `content(value)`.
-        // If `value` (from json_to_surreal) contains an `id` field?
-        // `Mistake` has `id: Option<String>`.
-        // If it's None, `json` has `id: null`.
-        // `json_to_surreal` converts `null` to `Value::Null`.
-        // So the content has `id: null`.
-        // Does SurrealDB ignore that and generate a random ID?
-        // Yes.
-        // And it returns the created record with the generated ID.
-        // We capture that in `created`.
-        // We extract `id` from `created`.
-        
-        // Let's debug `created.id` in the test.
+        // Use manual query if select fails to find ID?
+        // Let's stick to .select and fix the ID if needed.
+        // But for now, try to debug why .select returns None.
+        // It's possible that when we use .content(value), if value has "id": null,
+        // SurrealDB creates a random ID.
+        // The returned ID is e.g. "mistake:abc".
+        // When we call .select(("mistake", "abc")), it should work.
         
         let fetched: Option<Value> = self.client.select(("mistake", key)).await?;
         
@@ -140,6 +113,11 @@ fn json_to_surreal(json: serde_json::Value) -> Value {
         serde_json::Value::Object(o) => {
             let mut map = BTreeMap::new();
             for (k, v) in o {
+                // If key is "id" and value is null, skip it?
+                // If we include "id": null, SurrealDB might try to use "null" as ID?
+                if k == "id" && v.is_null() {
+                    continue;
+                }
                 map.insert(k, json_to_surreal(v));
             }
             Value::Object(map.into())
@@ -179,5 +157,3 @@ fn surreal_to_json(val: Value) -> serde_json::Value {
         _ => serde_json::Value::Null,
     }
 }
-
-
