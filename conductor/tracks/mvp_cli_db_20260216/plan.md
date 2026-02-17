@@ -6,11 +6,11 @@
 - [x] Task: Create a `config` module to handle TOML configuration (e.g., DB URLs). [199706f]
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Project Initialization & CLI Skeleton' (Protocol in workflow.md) [377d4cf]
 
-## Phase 2: Data Modeling & Database Setup
+## Phase 2: Data Modeling & Database Setup [checkpoint: abce752]
 - [x] Task: Define Rust structs for `Mistake`, `StyleRule`, and `Skill` (deriving Serialize/Deserialize). [ed47a16]
 - [x] Task: specific set up SurrealDB connection and implement basic CRUD operations for the models. [ff6c8e5]
 - [x] Task: specific set up Qdrant connection and create a collection for knowledge embeddings. [cefc8b7]
-- [~] Task: Conductor - User Manual Verification 'Phase 2: Data Modeling & Database Setup' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Data Modeling & Database Setup' (Protocol in workflow.md) [abce752]
 
 ## Phase 3: Core Logic - Ingestion (Adding Data)
 - [ ] Task: Implement the `lazydev add` logic to:
