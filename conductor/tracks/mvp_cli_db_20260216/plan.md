@@ -7,8 +7,8 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Project Initialization & CLI Skeleton' (Protocol in workflow.md) [377d4cf]
 
 ## Phase 2: Data Modeling & Database Setup
-- [ ] Task: Define Rust structs for `Mistake`, `StyleRule`, and `Skill` (deriving Serialize/Deserialize).
-- [ ] Task: specific set up SurrealDB connection and implement basic CRUD operations for the models.
+- [x] Task: Define Rust structs for `Mistake`, `StyleRule`, and `Skill` (deriving Serialize/Deserialize). [ed47a16]
+- [x] Task: specific set up SurrealDB connection and implement basic CRUD operations for the models. [42afd40]
 - [ ] Task: specific set up Qdrant connection and create a collection for knowledge embeddings.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Data Modeling & Database Setup' (Protocol in workflow.md)
 
