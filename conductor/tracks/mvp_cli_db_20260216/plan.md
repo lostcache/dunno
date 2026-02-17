@@ -2,7 +2,7 @@
 
 ## Phase 1: Project Initialization & CLI Skeleton
 - [x] Task: Initialize Rust project and configure dependencies (clap, serde, tokio, etc.). [a0a7e30]
-- [ ] Task: Implement the `clap` CLI structure with `add` and `context` subcommands.
+- [x] Task: Implement the `clap` CLI structure with `add` and `context` subcommands. [fbccbba]
 - [ ] Task: Create a `config` module to handle TOML configuration (e.g., DB URLs).
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Project Initialization & CLI Skeleton' (Protocol in workflow.md)
 
