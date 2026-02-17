@@ -13,7 +13,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Data Modeling & Database Setup' (Protocol in workflow.md) [abce752]
 
 ## Phase 3: Core Logic - Ingestion (Adding Data)
-- [ ] Task: Implement the `lazydev add` logic to:
+- [x] Task: Implement the `lazydev add` logic to: [bc7b423]
     1.  Generate an embedding for the content (using a placeholder or simple local model).
     2.  Store the structured data in SurrealDB.
     3.  Store the embedding + ID in Qdrant.
