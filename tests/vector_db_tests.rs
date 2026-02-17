@@ -1,5 +1,4 @@
 use lazydev::vector_db::VectorDB;
-use qdrant_client::qdrant::PointStruct;
 
 #[tokio::test]
 async fn test_qdrant_setup() {
@@ -9,7 +8,7 @@ async fn test_qdrant_setup() {
     
     // We'll skip connection test if no Qdrant is available, but we can verify the struct exists.
     let url = "http://localhost:6333";
-    let db = VectorDB::new(url).await;
+    let _db = VectorDB::new(url).await;
     
     // If we can't connect, it might be OK for unit test environment without Qdrant.
     // But we should define the API.

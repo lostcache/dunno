@@ -21,7 +21,7 @@ impl DB {
     // Mistake operations
     pub async fn create_mistake(&self, mistake: &Mistake) -> Result<Mistake> {
         let json = to_json_value(mistake)?;
-        let mut value = json_to_surreal(json);
+        let value = json_to_surreal(json);
         
         // Remove 'id' from content if it's None, to let DB generate it?
         // Or if it's present, let DB use it?
