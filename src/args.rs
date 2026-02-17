@@ -20,7 +20,7 @@ pub enum Commands {
         kind: String,
 
         /// Content of the knowledge
-        #[arg(short, long)]
+        #[arg(short = 'C', long)]
         content: String,
     },
     /// Get context based on query
