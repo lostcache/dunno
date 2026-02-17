@@ -8,9 +8,9 @@
 
 ## Phase 2: Data Modeling & Database Setup
 - [x] Task: Define Rust structs for `Mistake`, `StyleRule`, and `Skill` (deriving Serialize/Deserialize). [ed47a16]
-- [x] Task: specific set up SurrealDB connection and implement basic CRUD operations for the models. [42afd40]
+- [x] Task: specific set up SurrealDB connection and implement basic CRUD operations for the models. [ff6c8e5]
 - [x] Task: specific set up Qdrant connection and create a collection for knowledge embeddings. [cefc8b7]
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Data Modeling & Database Setup' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 2: Data Modeling & Database Setup' (Protocol in workflow.md)
 
 ## Phase 3: Core Logic - Ingestion (Adding Data)
 - [ ] Task: Implement the `lazydev add` logic to:
