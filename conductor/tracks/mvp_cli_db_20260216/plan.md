@@ -17,7 +17,7 @@
     1.  Generate an embedding for the content (using a placeholder or simple local model).
     2.  Store the structured data in SurrealDB.
     3.  Store the embedding + ID in Qdrant.
-- [ ] Task: Write unit tests for the ingestion logic (mocking DBs if possible).
+- [x] Task: Write unit tests for the ingestion logic (mocking DBs if possible). [d31d15a]
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Core Logic - Ingestion' (Protocol in workflow.md) [d31d15a]
 
 ## Phase 4: Core Logic - Retrieval (Context)
