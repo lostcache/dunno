@@ -1,7 +1,7 @@
 # Track Plan: MVP - CLI & Database Integration
 
 ## Phase 1: Project Initialization & CLI Skeleton
-- [ ] Task: Initialize Rust project and configure dependencies (clap, serde, tokio, etc.).
+- [x] Task: Initialize Rust project and configure dependencies (clap, serde, tokio, etc.). [a0a7e30]
 - [ ] Task: Implement the `clap` CLI structure with `add` and `context` subcommands.
 - [ ] Task: Create a `config` module to handle TOML configuration (e.g., DB URLs).
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Project Initialization & CLI Skeleton' (Protocol in workflow.md)
