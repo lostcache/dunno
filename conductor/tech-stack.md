@@ -12,6 +12,7 @@
 
 ## Data Handling
 - **Serialization: serde (serde_json):** The standard framework for serializing and deserializing Rust data structures efficiently, especially for JSON output.
+- **Configuration: toml:** For parsing TOML configuration files.
 
 ## Development Tools
 - **Cargo:** The standard build system and package manager for Rust.
