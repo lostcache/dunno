@@ -18,7 +18,7 @@
     2.  Store the structured data in SurrealDB.
     3.  Store the embedding + ID in Qdrant.
 - [ ] Task: Write unit tests for the ingestion logic (mocking DBs if possible).
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Core Logic - Ingestion' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 3: Core Logic - Ingestion' (Protocol in workflow.md)
 
 ## Phase 4: Core Logic - Retrieval (Context)
 - [ ] Task: Implement the `lazydev context` logic to:
