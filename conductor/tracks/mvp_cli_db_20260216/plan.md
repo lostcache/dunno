@@ -4,7 +4,7 @@
 - [x] Task: Initialize Rust project and configure dependencies (clap, serde, tokio, etc.). [a0a7e30]
 - [x] Task: Implement the `clap` CLI structure with `add` and `context` subcommands. [fbccbba]
 - [x] Task: Create a `config` module to handle TOML configuration (e.g., DB URLs). [199706f]
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Project Initialization & CLI Skeleton' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 1: Project Initialization & CLI Skeleton' (Protocol in workflow.md)
 
 ## Phase 2: Data Modeling & Database Setup
 - [ ] Task: Define Rust structs for `Mistake`, `StyleRule`, and `Skill` (deriving Serialize/Deserialize).

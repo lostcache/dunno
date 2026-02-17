@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Implement the MVP with CLI (clap), Database Models (SurrealDB/Qdrant), and Core Functionality (Add/Query Knowledge).
+## [~] Track: Implement the MVP with CLI (clap), Database Models (SurrealDB/Qdrant), and Core Functionality (Add/Query Knowledge).
 *Link: [./conductor/tracks/mvp_cli_db_20260216/](./conductor/tracks/mvp_cli_db_20260216/)*
