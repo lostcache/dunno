@@ -8,10 +8,10 @@ pub async fn add_knowledge(
     kind: String,
     content: String,
     db: &DB,
-    vector_db: &VectorDB
+    _vector_db: &VectorDB
 ) -> Result<()> {
     // 1. Generate embedding (Placeholder)
-    let embedding = generate_embedding(&content);
+    let _embedding = generate_embedding(&content);
     
     // 2. Store in SurrealDB based on kind
     let id = match kind.as_str() {
