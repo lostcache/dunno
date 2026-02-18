@@ -15,15 +15,18 @@ this get's rid of having to manage markdown files within the git repo and keep i
 - **Human Developers:** A secondary audience, using the tool for reference and onboarding to project standards.
 
 ## Data Storage & Architecture
-- **Knowledge Base:** The system will utilize a combination of a Graph Database and a Vector Database.
-- **Why:** This hybrid approach ensures efficient and semantically relevant querying of "mistakes to avoid," "code style guides," and "relevant skills."
+- **Knowledge Base:** The system will use a graph-first architecture centered on SurrealDB, with optional vector support for future semantic expansion.
+- **Why:** Agents need deterministic, auditable retrieval for task execution, which is best supported by explicit hierarchy and relation edges.
+- **Hierarchy:** `Project -> Module -> Task` with project-level todo queue and task-linked guidance.
 
 ## Core Functionality
 - **Retrieval Interface:** The primary interaction model is a natural language query via the CLI.
-    - Command: `lazydev {query}`
-    - Output: The tool will output all relevant details (mistakes, style rules, skills) needed for the context.
+    - Command: `lazydev task context --task-id <id>`
+    - Output: JSON containing task-local and inherited project-global context (mistakes, style rules, skills, updates).
 - **Knowledge Management (MVP):**
-    - Adding/Updating Data: A simple CLI interface will be used for the MVP to manually add new knowledge entries.
+    - Adding/Updating Data: CLI supports creating projects/modules/tasks, linking guidance, and appending task updates.
+    - Todo Queue: CLI supports project-level todo create/list/claim/complete so agents can pick the next task.
+    - Runtime Learning: Agents can dynamically append mistakes they made (code/logical), including module-specific mistakes, for future retrieval.
 
 ## Compatibility
 - **Initial Targets:**

@@ -7,6 +7,11 @@
 ## Error Handling
 - **Structured Errors:** All errors or missing information scenarios must return a standard JSON response (e.g., `{"error": "No data found"}`). This ensures consistent parsing by consuming tools.
 
+## Agent-First Contracts
+- **Deterministic JSON:** Context, todo, and update operations must return stable JSON envelopes so agents can automate decisions reliably.
+- **Scope-Aware Context:** Task context must include task-local guidance and inherited project-global guidance in distinct fields.
+- **Append-Only Learning:** Agent runtime updates (task notes, mistakes) must be append-only to preserve auditability.
+
 ## Naming Conventions
 - **Kebab-Case:** All CLI commands and flags must use kebab-case (e.g., `lazydev get-context --mistakes`). This aligns with standard CLI practices.
 

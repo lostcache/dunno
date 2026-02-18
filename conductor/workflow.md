@@ -8,6 +8,8 @@
 4. **High Code Coverage:** Aim for >80% code coverage for all modules
 5. **User Experience First:** Every decision should prioritize user experience
 6. **Non-Interactive & CI-Aware:** Prefer non-interactive commands. Use `CI=true` for watch-mode tools (tests, linters) to ensure single execution.
+7. **Branch Per Feature:** Create a new branch for each feature before implementation.
+8. **Frequent, Focused Commits:** Commit often in small, reviewable increments for each meaningful checkpoint.
 
 ## Task Workflow
 
@@ -16,6 +18,8 @@ All tasks follow a strict lifecycle:
 ### Standard Task Workflow
 
 1. **Select Task:** Choose the next available task from `plan.md` in sequential order
+
+1.1 **Create Feature Branch:** Before editing code, create/switch to a dedicated feature branch (e.g., `feat/<scope>-<short-name>`).
 
 2. **Mark In Progress:** Before beginning work, edit `plan.md` and change the task from `[ ]` to `[~]`
 
@@ -46,6 +50,7 @@ All tasks follow a strict lifecycle:
 
 8. **Commit Code Changes:**
    - Stage all code changes related to the task.
+   - Prefer multiple focused commits when a task has separable checkpoints (e.g., schema, DB methods, CLI wiring, tests).
    - Propose a clear, concise commit message e.g, `feat(ui): Create basic HTML structure for calculator`.
    - Perform the commit.
 

@@ -21,10 +21,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Core Logic - Ingestion' (Protocol in workflow.md) [d31d15a]
 
 ## Phase 4: Core Logic - Retrieval (Context)
-- [ ] Task: Implement the `lazydev context` logic to:
-    1.  Generate an embedding for the user's query.
-    2.  Query Qdrant for nearest neighbors.
-    3.  Fetch full details from SurrealDB using the IDs from Qdrant.
+- [~] Task: Implement the `lazydev context` logic to:
+    1.  Parse user query into graph seeds (category/tag/token heuristics).
+    2.  Traverse SurrealDB graph edges (bounded hop search).
+    3.  Fetch connected knowledge nodes (`mistake`, `style_rule`, `skill`).
     4.  Format the output as JSON.
 - [ ] Task: Write integration tests for the full flow (Add -> Context).
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Core Logic - Retrieval' (Protocol in workflow.md)
@@ -34,3 +34,13 @@
 - [ ] Task: Add helpful help messages to the CLI.
 - [ ] Task: Verify the single-binary build process.
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Polish & Error Handling' (Protocol in workflow.md)
+
+## Phase 6: Agent-Centric Knowledge Graph (Project/Module/Task/Todo)
+- [ ] Task: Define and implement graph entities for `Project`, `Module`, `Task`, `TodoItem`, and append-only `TaskUpdate`.
+- [ ] Task: Implement hierarchy edges (`project -> module -> task`) and todo edges (`project -> has_todo -> todo_item`, optional `todo_item -> maps_to -> task`).
+- [ ] Task: Implement project-global guidance links for style and mistakes (`global_should_follow`, `global_must_avoid`).
+- [ ] Task: Implement dynamic agent mistake logging (code/logical) with project/module/task scoping and append-only persistence.
+- [ ] Task: Implement task-context retrieval by `task_id` including inherited project-global guidance and runtime learnings.
+- [ ] Task: Add CLI commands for hierarchy management, todo operations, global guidance linking, and mistake logging/listing.
+- [ ] Task: Write integration tests for full agent workflow (todo select -> task context -> append updates/mistakes -> subsequent retrieval).
+- [ ] Task: Conductor - User Manual Verification 'Phase 6: Agent-Centric Knowledge Graph' (Protocol in workflow.md)
