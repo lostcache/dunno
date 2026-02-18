@@ -1,18 +1,19 @@
 use anyhow::Result;
-use crate::models::{Mistake, StyleRule, Skill};
 use crate::db::DB;
+use crate::models::{Mistake, Skill, StyleRule};
 use crate::vector_db::VectorDB;
 
+/// Adds a new knowledge record and links it into the graph.
 pub async fn add_knowledge(
     category: String,
     kind: String,
     content: String,
     db: &DB,
-    _vector_db: &VectorDB
+    _vector_db: &VectorDB,
 ) -> Result<()> {
     // 1. Generate embedding (Placeholder)
     let _embedding = generate_embedding(&content);
-    
+
     // 2. Store in SurrealDB based on kind
     let id = match kind.as_str() {
         "mistake" => {
@@ -42,17 +43,18 @@ pub async fn add_knowledge(
             };
             let created = db.create_skill(&skill).await?;
             created.id
-        },
+        }
         _ => return Err(anyhow::anyhow!("Unknown knowledge type: {}", kind)),
     };
-    
-    // 3. Store in Qdrant
+
+    // 3. Link into the graph via category tags.
+    let tag = db.create_or_get_category_tag(&category).await?;
     if let Some(record_id) = id {
-        // TODO: Store embedding + record_id in Qdrant
-        // vector_db.upsert(embedding, record_id).await?;
-        println!("Would store embedding for ID: {}", record_id);
+        if let Some(tag_id) = tag.id {
+            db.create_edge(&record_id, &tag_id, "has_tag").await?;
+        }
     }
-    
+
     Ok(())
 }
 

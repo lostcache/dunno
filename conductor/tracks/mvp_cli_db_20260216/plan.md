@@ -26,7 +26,7 @@
     2.  Traverse SurrealDB graph edges (bounded hop search).
     3.  Fetch connected knowledge nodes (`mistake`, `style_rule`, `skill`).
     4.  Format the output as JSON.
-- [ ] Task: Write integration tests for the full flow (Add -> Context).
+- [~] Task: Write integration tests for the full flow (Add -> Context).
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Core Logic - Retrieval' (Protocol in workflow.md)
 
 ## Phase 5: Polish & Error Handling
