@@ -36,11 +36,10 @@
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Polish & Error Handling' (Protocol in workflow.md)
 
 ## Phase 6: Agent-Centric Knowledge Graph (Project/Module/Task/Todo)
-- [ ] Task: Define and implement graph entities for `Project`, `Module`, `Task`, `TodoItem`, and append-only `TaskUpdate`.
-- [ ] Task: Implement hierarchy edges (`project -> module -> task`) and todo edges (`project -> has_todo -> todo_item`, optional `todo_item -> maps_to -> task`).
-- [ ] Task: Implement project-global guidance links for style and mistakes (`global_should_follow`, `global_must_avoid`).
-- [ ] Task: Implement dynamic agent mistake logging (code/logical) with project/module/task scoping and append-only persistence.
-- [ ] Task: Implement task-context retrieval by `task_id` including inherited project-global guidance and runtime learnings.
-- [ ] Task: Add CLI commands for hierarchy management, todo operations, global guidance linking, and mistake logging/listing.
-- [ ] Task: Write integration tests for full agent workflow (todo select -> task context -> append updates/mistakes -> subsequent retrieval).
+- [x] Task: Define and implement graph entities for `Project`, `Module`, `Task`, `TodoItem`. [c6fe6a3]
+- [x] Task: Implement hierarchy edges (`project -> module -> task`) and todo edges (`project -> has_todo -> todo_item`). [c6fe6a3]
+- [ ] Task: Implement append-only `TaskUpdate` and dynamic agent mistake logging (code/logical).
+- [x] Task: Implement task-context retrieval by `task_id` including inherited project-global guidance and runtime learnings. [c6fe6a3]
+- [x] Task: Add CLI commands for hierarchy management, todo operations, global guidance linking, and mistake logging/listing. [c6fe6a3]
+- [x] Task: Write integration tests for full agent workflow (todo select -> task context -> append updates/mistakes -> subsequent retrieval). [c6fe6a3]
 - [ ] Task: Conductor - User Manual Verification 'Phase 6: Agent-Centric Knowledge Graph' (Protocol in workflow.md)
