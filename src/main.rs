@@ -1,3 +1,4 @@
+use clap::error::ErrorKind;
 use clap::Parser;
 use lazydev::args::{Args, Commands};
 use lazydev::config::Config;
@@ -12,6 +13,10 @@ async fn main() {
     let args = match Args::try_parse() {
         Ok(args) => args,
         Err(err) => {
+            if matches!(err.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion) {
+                print!("{}", err);
+                return;
+            }
             print_error_json("cli_parse_error", err.to_string());
             std::process::exit(2);
         }

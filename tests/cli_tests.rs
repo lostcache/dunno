@@ -64,3 +64,52 @@ fn parse_errors_are_structured_json() {
         "Expected non-empty parse error message"
     );
 }
+
+#[test]
+fn help_output_contains_actionable_guidance() {
+    let root_help = Command::new(env!("CARGO_BIN_EXE_lazydev"))
+        .arg("--help")
+        .output()
+        .expect("Failed to execute lazydev --help");
+    assert!(
+        root_help.status.success(),
+        "Expected help command to succeed"
+    );
+
+    let root_stdout = String::from_utf8(root_help.stdout).expect("Invalid UTF-8 in root help");
+    assert!(
+        root_stdout.contains("stores coding knowledge in a local graph+vector setup"),
+        "Expected descriptive root help text"
+    );
+    assert!(
+        root_stdout.contains("add"),
+        "Expected add subcommand in root help"
+    );
+    assert!(
+        root_stdout.contains("context"),
+        "Expected context subcommand in root help"
+    );
+
+    let add_help = Command::new(env!("CARGO_BIN_EXE_lazydev"))
+        .args(["add", "--help"])
+        .output()
+        .expect("Failed to execute lazydev add --help");
+    assert!(
+        add_help.status.success(),
+        "Expected add help command to succeed"
+    );
+
+    let add_stdout = String::from_utf8(add_help.stdout).expect("Invalid UTF-8 in add help");
+    assert!(
+        add_stdout.contains("Examples:"),
+        "Expected examples section in add help"
+    );
+    assert!(
+        add_stdout.contains("--category"),
+        "Expected category option in add help"
+    );
+    assert!(
+        add_stdout.contains("--type"),
+        "Expected type option in add help"
+    );
+}
