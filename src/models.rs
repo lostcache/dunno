@@ -53,6 +53,8 @@ pub struct TaskUpdate {
     pub task_id: String,
     pub content: String,
     pub created_at_ms: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updated_at_ms: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -218,6 +220,7 @@ mod tests {
             task_id: "task:1".to_string(),
             content: "Implemented initial endpoint wiring".to_string(),
             created_at_ms: 1_739_000_000_000,
+            updated_at_ms: None,
         };
         let json = to_string(&update).expect("Failed to serialize TaskUpdate");
         assert!(json.contains("endpoint wiring"));

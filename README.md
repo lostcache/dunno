@@ -79,7 +79,9 @@ A JSON object containing both the global style rule (inherited) and the task-spe
 - `lazydev module create <PROJECT_ID> <NAME> <DESC>` / `list`
 - `lazydev task create <MODULE_ID> <NAME> <DESC>` / `list`
 - `lazydev task update <TASK_ID> [--name <NAME>] [--description <DESC>] [--status <not_started|started|finished>]`
-- `lazydev task append-update <TASK_ID> <CONTENT>` / `list-updates <TASK_ID>`
+- `lazydev task append-update <TASK_ID> <CONTENT>`
+- `lazydev task update-entry <UPDATE_ID> <CONTENT>`
+- `lazydev task list-updates <TASK_ID>`
 
 ### Work Queue
 - `lazydev todo create <PROJECT_ID> <CONTENT>`

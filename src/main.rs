@@ -136,9 +136,24 @@ async fn run(args: Args) -> anyhow::Result<()> {
                     task_id,
                     content,
                     created_at_ms,
+                    updated_at_ms: None,
                 };
                 let created = db.create_task_update(&update).await?;
                 println!("{}", json!(created));
+            }
+            TaskCommands::UpdateEntry { update_id, content } => {
+                let updated_at_ms = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map_err(|_| anyhow::anyhow!("System clock is before UNIX_EPOCH"))?
+                    .as_millis() as i64;
+                let edited = db
+                    .update_task_update(&update_id, content, updated_at_ms)
+                    .await?;
+                if let Some(update) = edited {
+                    println!("{}", json!(update));
+                } else {
+                    return Err(anyhow::anyhow!("Task update not found: {}", update_id));
+                }
             }
             TaskCommands::ListUpdates { task_id } => {
                 let updates = db.list_task_updates(&task_id).await?;

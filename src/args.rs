@@ -111,6 +111,10 @@ pub enum TaskCommands {
         task_id: String,
         content: String,
     },
+    UpdateEntry {
+        update_id: String,
+        content: String,
+    },
     ListUpdates {
         task_id: String,
     },

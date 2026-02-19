@@ -158,6 +158,35 @@ impl DB {
         Ok(out)
     }
 
+    pub async fn update_task_update(
+        &self,
+        update_id: &str,
+        content: String,
+        updated_at_ms: i64,
+    ) -> Result<Option<TaskUpdate>> {
+        let key = update_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(update_id);
+        let mut patch = serde_json::Map::new();
+        patch.insert("content".to_string(), serde_json::Value::String(content));
+        patch.insert(
+            "updated_at_ms".to_string(),
+            serde_json::Value::Number(updated_at_ms.into()),
+        );
+        let updated: Option<Value> = self
+            .client
+            .update(("task_update", key))
+            .merge(json_to_surreal(serde_json::Value::Object(patch)))
+            .await?;
+        if let Some(val) = updated {
+            let json = surreal_to_json(val);
+            Ok(Some(serde_json::from_value(json)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     // --- Todo Operations ---
 
     pub async fn create_todo(&self, todo: &TodoItem) -> Result<TodoItem> {
@@ -693,6 +722,7 @@ mod tests {
             task_id: task_id.clone(),
             content: "First update".to_string(),
             created_at_ms: 1,
+            updated_at_ms: None,
         })
         .await
         .expect("Failed to append first update");
@@ -701,6 +731,7 @@ mod tests {
             task_id: task_id.clone(),
             content: "Second update".to_string(),
             created_at_ms: 2,
+            updated_at_ms: None,
         })
         .await
         .expect("Failed to append second update");
@@ -712,5 +743,18 @@ mod tests {
         assert_eq!(updates.len(), 2);
         assert_eq!(updates[0].content, "First update");
         assert_eq!(updates[1].content, "Second update");
+
+        let first_update_id = updates[0]
+            .id
+            .as_ref()
+            .expect("First update should have id")
+            .clone();
+        let edited = db
+            .update_task_update(&first_update_id, "First update (edited)".to_string(), 3)
+            .await
+            .expect("Failed to edit task update")
+            .expect("Task update should exist");
+        assert_eq!(edited.content, "First update (edited)");
+        assert_eq!(edited.updated_at_ms, Some(3));
     }
 }

@@ -38,7 +38,7 @@
 ## Phase 6: Agent-Centric Knowledge Graph (Project/Module/Task/Todo)
 - [x] Task: Define and implement graph entities for `Project`, `Module`, `Task`, `TodoItem`. [c6fe6a3]
 - [x] Task: Implement hierarchy edges (`project -> module -> task`) and todo edges (`project -> has_todo -> todo_item`). [c6fe6a3]
-- [x] Task: Implement append-only `TaskUpdate` and dynamic agent mistake logging (code/logical). [f9557b1]
+- [x] Task: Implement `TaskUpdate` with append and edit support, plus dynamic agent mistake logging (code/logical). [f9557b1]
 - [x] Task: Implement task-context retrieval by `task_id` including inherited project-global guidance and runtime learnings. [c6fe6a3]
 - [x] Task: Add CLI commands for hierarchy management, todo operations, global guidance linking, and mistake logging/listing. [c6fe6a3]
 - [x] Task: Write integration tests for full agent workflow (todo select -> task context -> append updates/mistakes -> subsequent retrieval). [c6fe6a3]
