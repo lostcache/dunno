@@ -1,10 +1,11 @@
 use clap::error::ErrorKind;
 use clap::Parser;
-use lazydev::args::{Args, Commands};
+use lazydev::args::{Args, Commands, ModuleCommands, ProjectCommands, TaskCommands, TodoCommands};
 use lazydev::config::Config;
-use lazydev::context::get_context;
+use lazydev::context::get_task_context;
 use lazydev::db::DB;
 use lazydev::ingest::add_knowledge;
+use lazydev::models::{Module, Project, Task, TodoItem};
 use lazydev::vector_db::VectorDB;
 use serde_json::json;
 
@@ -41,12 +42,90 @@ async fn run(args: Args) -> anyhow::Result<()> {
             category,
             kind,
             content,
+            link_to,
         } => {
-            add_knowledge(category, kind, content, &db, &vector_db).await?;
+            add_knowledge(category, kind, content, link_to, &db, &vector_db).await?;
             println!("{}", json!({ "status": "ok" }));
         }
-        Commands::Context { query } => {
-            let results = get_context(query, &db, &vector_db).await?;
+        Commands::Project { command } => match command {
+            ProjectCommands::Create { name, description } => {
+                let project = Project {
+                    id: None,
+                    name,
+                    description,
+                };
+                let created = db.create_project(&project).await?;
+                println!("{}", json!(created));
+            }
+            ProjectCommands::List => {
+                let projects = db.list_projects().await?;
+                println!("{}", json!(projects));
+            }
+        },
+        Commands::Module { command } => match command {
+            ModuleCommands::Create {
+                project_id,
+                name,
+                description,
+            } => {
+                let module = Module {
+                    id: None,
+                    project_id,
+                    name,
+                    description,
+                };
+                let created = db.create_module(&module).await?;
+                println!("{}", json!(created));
+            }
+            ModuleCommands::List => {
+                let modules = db.list_modules().await?;
+                println!("{}", json!(modules));
+            }
+        },
+        Commands::Task { command } => match command {
+            TaskCommands::Create {
+                module_id,
+                name,
+                description,
+            } => {
+                let task = Task {
+                    id: None,
+                    module_id,
+                    name,
+                    description,
+                    status: "pending".to_string(),
+                };
+                let created = db.create_task(&task).await?;
+                println!("{}", json!(created));
+            }
+            TaskCommands::List => {
+                let tasks = db.list_tasks().await?;
+                println!("{}", json!(tasks));
+            }
+        },
+        Commands::Todo { command } => match command {
+            TodoCommands::Create {
+                project_id,
+                content,
+            } => {
+                let todo = TodoItem {
+                    id: None,
+                    project_id,
+                    task_id: None,
+                    content,
+                    status: "pending".to_string(),
+                };
+                let created = db.create_todo(&todo).await?;
+                println!("{}", json!(created));
+            }
+            TodoCommands::List { project_id: _ } => {
+                // TODO: Filter by project_id
+                let todos = db.list_todos().await?;
+                println!("{}", json!(todos));
+            }
+        },
+        Commands::Context { task_id } => {
+            let results = get_task_context(&task_id, &db, &vector_db).await?;
             println!("{}", json!({ "results": results }));
         }
     }

@@ -7,20 +7,22 @@
 - **clap (Command Line Argument Parser):** The de facto standard for building CLIs in Rust, ensuring robust and ergonomic argument parsing.
 
 ## Database & Persistence
-- **Graph Database: SurrealDB (Primary):** The core knowledge engine. Knowledge is stored as typed nodes (`project`, `module`, `task`, `todo_item`, `mistake`, `style_rule`, `skill`, `task_update`) and explicit relation edges for traversal-first retrieval.
-- **Vector Database: Qdrant (Optional/Future):** Kept for later semantic expansion, but not required for the graph-first MVP retrieval path.
+- **Graph Database: SurrealDB (Primary):** The sole knowledge engine for the MVP. Knowledge is strictly hierarchical: `Project -> Module -> Task`. Context nodes (`mistake`, `style_rule`, `skill`) are linked to these structural nodes.
+- **Vector Database:** Removed for MVP. Retrieval is purely deterministic based on graph structure.
 
 ## Retrieval Strategy
-- **Primary Retrieval:** Graph traversal in SurrealDB seeded by `task_id` (and optionally project/module filters), expanding across explicit edges with bounded hop depth.
-- **Inheritance Rules:** Retrieval includes task-local guidance plus inherited project-global guidance (`global_mistakes`, `global_style_rules`).
-- **Output Contract:** CLI responses are JSON-structured and deterministic for agent consumption and automation.
+- **Primary Retrieval:** Deterministic graph traversal starting from a `task_id`. The system traverses up to the parent `Module` and `Project` to aggregate all relevant context.
+- **Inheritance Rules:** Context is additive. A task inherits all constraints and guides from its containing module and project.
+- **Output Contract:** CLI responses are JSON-structured and deterministic.
 
 ## Graph Model (Agent-Centric)
 - **Hierarchy:** `project -> contains -> module -> contains -> task`
-- **Work Queue:** `project -> has_todo -> todo_item`, with optional `todo_item -> maps_to -> task`
-- **Guidance Links:** `task -> must_avoid -> mistake`, `task -> should_follow -> style_rule`, `task -> requires_skill -> skill`
-- **Global Baseline:** `project -> global_must_avoid -> mistake`, `project -> global_should_follow -> style_rule`
-- **Runtime Learning:** Agents can append mistakes dynamically (code/logical), scoped to project/module/task, then link them into context graph edges.
+- **Work Queue:** `project -> has_todo -> todo_item`, with `todo_item -> maps_to -> task`
+- **Context Links:** 
+    - `task -> has_context -> mistake/style_rule/skill`
+    - `module -> has_context -> mistake/style_rule/skill`
+    - `project -> has_context -> mistake/style_rule/skill`
+- **Runtime Learning:** Agents append new context nodes to the current task/module.
 
 ## Update Semantics
 - **Append-Only Task Updates:** Post-task learnings are persisted as `task_update` records and linked with `task -> has_note -> task_update`.

@@ -1,11 +1,48 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Project {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Module {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub project_id: String,
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Task {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub module_id: String,
+    pub name: String,
+    pub description: String,
+    pub status: String, // e.g., "pending", "in_progress", "done"
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TodoItem {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub project_id: String,
+    pub task_id: Option<String>, // Optional link to a specific task context
+    pub content: String,
+    pub status: String, // e.g., "pending", "claimed", "completed"
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Mistake {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     pub content: String,
-    pub category: String,
+    pub category: String, // Can be used for tagging, but primary link is via graph
     pub tags: Vec<String>,
 }
 

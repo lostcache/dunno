@@ -8,6 +8,7 @@ pub async fn add_knowledge(
     category: String,
     kind: String,
     content: String,
+    link_to: Option<String>,
     db: &DB,
     _vector_db: &VectorDB,
 ) -> Result<()> {
@@ -49,10 +50,17 @@ pub async fn add_knowledge(
 
     // 3. Link into the graph via category tags.
     let tag = db.create_or_get_category_tag(&category).await?;
-    if let Some(record_id) = id {
+    if let Some(record_id) = &id {
         if let Some(tag_id) = tag.id {
-            db.create_edge(&record_id, &tag_id, "has_tag").await?;
+            db.create_edge(record_id, &tag_id, "has_tag").await?;
         }
+    }
+
+    // 4. Link to specific container (Project/Module/Task) if requested.
+    if let (Some(target_id), Some(record_id)) = (link_to, &id) {
+        // Edge direction: Container -> Knowledge Item
+        // This allows get_edges_from(container_id) to find the item.
+        db.create_edge(&target_id, record_id, "has_context").await?;
     }
 
     Ok(())

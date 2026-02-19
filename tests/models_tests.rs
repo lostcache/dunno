@@ -1,4 +1,6 @@
-use lazydev::models::{CategoryTag, KnowledgeEdge, Mistake, Skill, StyleRule};
+use lazydev::models::{
+    CategoryTag, KnowledgeEdge, Mistake, Module, Project, Skill, StyleRule, Task, TodoItem,
+};
 use serde_json::to_string;
 
 #[test]
@@ -61,4 +63,53 @@ fn test_knowledge_edge_model() {
 
     let json = to_string(&edge).expect("Failed to serialize KnowledgeEdge");
     assert!(json.contains("\"relation\":\"has_tag\""));
+}
+
+#[test]
+fn test_project_model() {
+    let project = Project {
+        id: None,
+        name: "My Project".to_string(),
+        description: "A description".to_string(),
+    };
+    let json = to_string(&project).expect("Failed to serialize Project");
+    assert!(json.contains("My Project"));
+}
+
+#[test]
+fn test_module_model() {
+    let module = Module {
+        id: None,
+        project_id: "project:1".to_string(),
+        name: "Core".to_string(),
+        description: "Core module".to_string(),
+    };
+    let json = to_string(&module).expect("Failed to serialize Module");
+    assert!(json.contains("Core module"));
+}
+
+#[test]
+fn test_task_model() {
+    let task = Task {
+        id: None,
+        module_id: "module:1".to_string(),
+        name: "Implement Auth".to_string(),
+        description: "Add login".to_string(),
+        status: "pending".to_string(),
+    };
+    let json = to_string(&task).expect("Failed to serialize Task");
+    assert!(json.contains("Implement Auth"));
+}
+
+#[test]
+fn test_todo_model() {
+    let todo = TodoItem {
+        id: None,
+        project_id: "project:1".to_string(),
+        task_id: Some("task:1".to_string()),
+        content: "Fix bug".to_string(),
+        status: "pending".to_string(),
+    };
+    let json = to_string(&todo).expect("Failed to serialize TodoItem");
+    assert!(json.contains("Fix bug"));
 }

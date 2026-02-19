@@ -1,10 +1,12 @@
-use crate::models::{CategoryTag, KnowledgeEdge, Mistake, Skill, StyleRule};
+use crate::models::{
+    CategoryTag, KnowledgeEdge, Mistake, Module, Project, Skill, StyleRule, Task, TodoItem,
+};
 use anyhow::Result;
 use serde_json::to_value as to_json_value;
 use std::collections::BTreeMap;
-use surrealdb::Surreal;
-use surrealdb::engine::any::{Any, connect};
+use surrealdb::engine::any::{connect, Any};
 use surrealdb::types::Value;
+use surrealdb::Surreal;
 
 #[derive(Clone)]
 pub struct DB {
@@ -17,6 +19,130 @@ impl DB {
         let client = connect(url).await?;
         client.use_ns("lazydev").use_db("lazydev").await?;
         Ok(Self { client })
+    }
+
+    // --- Project Operations ---
+
+    pub async fn create_project(&self, project: &Project) -> Result<Project> {
+        let json = to_json_value(project)?;
+        let value = json_to_surreal(json);
+        let created: Option<Value> = self.client.create("project").content(value).await?;
+        if let Some(val) = created {
+            let json = surreal_to_json(val);
+            Ok(serde_json::from_value(json)?)
+        } else {
+            Err(anyhow::anyhow!("Failed to create project"))
+        }
+    }
+
+    pub async fn get_project(&self, id: &str) -> Result<Option<Project>> {
+        self.get_record("project", id).await
+    }
+
+    pub async fn list_projects(&self) -> Result<Vec<Project>> {
+        self.list_records("project").await
+    }
+
+    // --- Module Operations ---
+
+    pub async fn create_module(&self, module: &Module) -> Result<Module> {
+        let json = to_json_value(module)?;
+        let value = json_to_surreal(json);
+        let created: Option<Value> = self.client.create("module").content(value).await?;
+        if let Some(val) = created {
+            let json = surreal_to_json(val);
+            Ok(serde_json::from_value(json)?)
+        } else {
+            Err(anyhow::anyhow!("Failed to create module"))
+        }
+    }
+
+    pub async fn get_module(&self, id: &str) -> Result<Option<Module>> {
+        self.get_record("module", id).await
+    }
+
+    pub async fn list_modules(&self) -> Result<Vec<Module>> {
+        self.list_records("module").await
+    }
+
+    // --- Task Operations ---
+
+    pub async fn create_task(&self, task: &Task) -> Result<Task> {
+        let json = to_json_value(task)?;
+        let value = json_to_surreal(json);
+        let created: Option<Value> = self.client.create("task").content(value).await?;
+        if let Some(val) = created {
+            let json = surreal_to_json(val);
+            Ok(serde_json::from_value(json)?)
+        } else {
+            Err(anyhow::anyhow!("Failed to create task"))
+        }
+    }
+
+    pub async fn get_task(&self, id: &str) -> Result<Option<Task>> {
+        self.get_record("task", id).await
+    }
+
+    pub async fn list_tasks(&self) -> Result<Vec<Task>> {
+        self.list_records("task").await
+    }
+
+    // --- Todo Operations ---
+
+    pub async fn create_todo(&self, todo: &TodoItem) -> Result<TodoItem> {
+        let json = to_json_value(todo)?;
+        let value = json_to_surreal(json);
+        let created: Option<Value> = self.client.create("todo_item").content(value).await?;
+        if let Some(val) = created {
+            let json = surreal_to_json(val);
+            Ok(serde_json::from_value(json)?)
+        } else {
+            Err(anyhow::anyhow!("Failed to create todo item"))
+        }
+    }
+
+    pub async fn get_todo(&self, id: &str) -> Result<Option<TodoItem>> {
+        self.get_record("todo_item", id).await
+    }
+
+    pub async fn list_todos(&self) -> Result<Vec<TodoItem>> {
+        self.list_records("todo_item").await
+    }
+
+    // --- Generic Helpers ---
+
+    async fn get_record<T: serde::de::DeserializeOwned>(
+        &self,
+        table: &str,
+        id: &str,
+    ) -> Result<Option<T>> {
+        let key = id.split_once(':').map(|(_, key)| key).unwrap_or(id);
+        let fetched: Option<Value> = match self.client.select((table, key)).await {
+            Ok(value) => value,
+            Err(err) if is_missing_table_error(&err) => None,
+            Err(err) => return Err(err.into()),
+        };
+
+        if let Some(val) = fetched {
+            let json = surreal_to_json(val);
+            Ok(Some(serde_json::from_value(json)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn list_records<T: serde::de::DeserializeOwned>(&self, table: &str) -> Result<Vec<T>> {
+        let fetched: Vec<Value> = match self.client.select(table).await {
+            Ok(values) => values,
+            Err(err) if is_missing_table_error(&err) => Vec::new(),
+            Err(err) => return Err(err.into()),
+        };
+        let mut out = Vec::with_capacity(fetched.len());
+        for val in fetched {
+            let json = surreal_to_json(val);
+            out.push(serde_json::from_value(json)?);
+        }
+        Ok(out)
     }
 
     /// Creates a new mistake record.
@@ -241,6 +367,20 @@ impl DB {
         } else {
             Err(anyhow::anyhow!("Failed to create knowledge edge"))
         }
+    }
+
+    /// Returns all graph edges from a specific node.
+    pub async fn get_edges_from(&self, from_id: &str) -> Result<Vec<KnowledgeEdge>> {
+        let sql = "SELECT * FROM knowledge_edge WHERE from_id = $from";
+        let mut response = self.client.query(sql).bind(("from", from_id.to_string())).await?;
+        let values: Vec<Value> = response.take(0)?;
+        
+        let mut out = Vec::with_capacity(values.len());
+        for val in values {
+            let json = surreal_to_json(val);
+            out.push(serde_json::from_value(json)?);
+        }
+        Ok(out)
     }
 
     /// Returns all graph edges.
