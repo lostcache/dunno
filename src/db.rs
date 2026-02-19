@@ -18,6 +18,14 @@ impl DB {
     /// Creates a new SurrealDB client and selects the default namespace/database.
     pub async fn new(url: &str) -> Result<Self> {
         let client = connect(url).await?;
+        if !url.starts_with("mem:") {
+            client
+                .signin(surrealdb::opt::auth::Root {
+                    username: "root".to_string(),
+                    password: "root".to_string(),
+                })
+                .await?;
+        }
         client.use_ns("lazydev").use_db("lazydev").await?;
         Ok(Self { client })
     }
