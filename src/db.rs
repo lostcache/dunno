@@ -1,5 +1,6 @@
 use crate::models::{
-    CategoryTag, KnowledgeEdge, Mistake, Module, Project, Skill, StyleRule, Task, TodoItem,
+    CategoryTag, KnowledgeEdge, Mistake, Module, Project, Skill, StyleRule, Task, TaskStatus,
+    TaskUpdate, TodoItem,
 };
 use anyhow::Result;
 use serde_json::to_value as to_json_value;
@@ -85,6 +86,76 @@ impl DB {
 
     pub async fn list_tasks(&self) -> Result<Vec<Task>> {
         self.list_records("task").await
+    }
+
+    pub async fn update_task(
+        &self,
+        task_id: &str,
+        name: Option<String>,
+        description: Option<String>,
+        status: Option<TaskStatus>,
+    ) -> Result<Option<Task>> {
+        let key = task_id.split_once(':').map(|(_, key)| key).unwrap_or(task_id);
+
+        let mut patch = serde_json::Map::new();
+        if let Some(name) = name {
+            patch.insert("name".to_string(), serde_json::Value::String(name));
+        }
+        if let Some(description) = description {
+            patch.insert(
+                "description".to_string(),
+                serde_json::Value::String(description),
+            );
+        }
+        if let Some(status) = status {
+            patch.insert("status".to_string(), serde_json::to_value(status)?);
+        }
+
+        if patch.is_empty() {
+            return self.get_task(task_id).await;
+        }
+
+        let updated: Option<Value> = self
+            .client
+            .update(("task", key))
+            .merge(json_to_surreal(serde_json::Value::Object(patch)))
+            .await?;
+
+        if let Some(val) = updated {
+            let json = surreal_to_json(val);
+            Ok(Some(serde_json::from_value(json)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn create_task_update(&self, task_update: &TaskUpdate) -> Result<TaskUpdate> {
+        let json = to_json_value(task_update)?;
+        let value = json_to_surreal(json);
+        let created: Option<Value> = self.client.create("task_update").content(value).await?;
+        if let Some(val) = created {
+            let json = surreal_to_json(val);
+            Ok(serde_json::from_value(json)?)
+        } else {
+            Err(anyhow::anyhow!("Failed to create task update"))
+        }
+    }
+
+    pub async fn list_task_updates(&self, task_id: &str) -> Result<Vec<TaskUpdate>> {
+        let sql = "SELECT * FROM task_update WHERE task_id = $task_id ORDER BY created_at_ms ASC";
+        let mut response = self
+            .client
+            .query(sql)
+            .bind(("task_id", task_id.to_string()))
+            .await?;
+        let values: Vec<Value> = response.take(0)?;
+
+        let mut out = Vec::with_capacity(values.len());
+        for val in values {
+            let json = surreal_to_json(val);
+            out.push(serde_json::from_value(json)?);
+        }
+        Ok(out)
     }
 
     // --- Todo Operations ---
@@ -565,5 +636,81 @@ mod tests {
             .expect("Failed to create edge");
         let edges = db.list_edges().await.expect("Failed to list edges");
         assert!(edges.iter().any(|e| e.relation == "has_tag"));
+    }
+
+    #[tokio::test]
+    async fn test_task_update_and_append_log() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "Test".to_string(),
+                description: "Test project".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("Project id should exist");
+
+        let module = db
+            .create_module(&Module {
+                id: None,
+                project_id,
+                name: "Module".to_string(),
+                description: "Module desc".to_string(),
+            })
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("Module id should exist");
+
+        let task = db
+            .create_task(&Task {
+                id: None,
+                module_id,
+                name: "Task".to_string(),
+                description: "Initial".to_string(),
+                status: TaskStatus::NotStarted,
+            })
+            .await
+            .expect("Failed to create task");
+        let task_id = task.id.expect("Task id should exist");
+
+        let updated = db
+            .update_task(
+                &task_id,
+                None,
+                Some("Updated description".to_string()),
+                Some(TaskStatus::Started),
+            )
+            .await
+            .expect("Failed to update task")
+            .expect("Task should exist");
+        assert_eq!(updated.description, "Updated description");
+        assert_eq!(updated.status, TaskStatus::Started);
+
+        db.create_task_update(&TaskUpdate {
+            id: None,
+            task_id: task_id.clone(),
+            content: "First update".to_string(),
+            created_at_ms: 1,
+        })
+        .await
+        .expect("Failed to append first update");
+        db.create_task_update(&TaskUpdate {
+            id: None,
+            task_id: task_id.clone(),
+            content: "Second update".to_string(),
+            created_at_ms: 2,
+        })
+        .await
+        .expect("Failed to append second update");
+
+        let updates = db
+            .list_task_updates(&task_id)
+            .await
+            .expect("Failed to list updates");
+        assert_eq!(updates.len(), 2);
+        assert_eq!(updates[0].content, "First update");
+        assert_eq!(updates[1].content, "Second update");
     }
 }

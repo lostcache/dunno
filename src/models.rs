@@ -1,5 +1,24 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskStatus {
+    NotStarted,
+    Started,
+    Finished,
+}
+
+impl TaskStatus {
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "not_started" => Some(Self::NotStarted),
+            "started" => Some(Self::Started),
+            "finished" => Some(Self::Finished),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Project {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -24,7 +43,16 @@ pub struct Task {
     pub module_id: String,
     pub name: String,
     pub description: String,
-    pub status: String, // e.g., "pending", "in_progress", "done"
+    pub status: TaskStatus,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TaskUpdate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub task_id: String,
+    pub content: String,
+    pub created_at_ms: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -176,10 +204,23 @@ mod tests {
             module_id: "module:1".to_string(),
             name: "Implement Auth".to_string(),
             description: "Add login".to_string(),
-            status: "pending".to_string(),
+            status: TaskStatus::NotStarted,
         };
         let json = to_string(&task).expect("Failed to serialize Task");
         assert!(json.contains("Implement Auth"));
+        assert!(json.contains("\"status\":\"not_started\""));
+    }
+
+    #[test]
+    fn test_task_update_model() {
+        let update = TaskUpdate {
+            id: None,
+            task_id: "task:1".to_string(),
+            content: "Implemented initial endpoint wiring".to_string(),
+            created_at_ms: 1_739_000_000_000,
+        };
+        let json = to_string(&update).expect("Failed to serialize TaskUpdate");
+        assert!(json.contains("endpoint wiring"));
     }
 
     #[test]

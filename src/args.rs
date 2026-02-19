@@ -98,6 +98,22 @@ pub enum TaskCommands {
         name: String,
         description: String,
     },
+    Update {
+        task_id: String,
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(long)]
+        description: Option<String>,
+        #[arg(long, value_name = "STATUS", help = "One of: not_started, started, finished")]
+        status: Option<String>,
+    },
+    AppendUpdate {
+        task_id: String,
+        content: String,
+    },
+    ListUpdates {
+        task_id: String,
+    },
     List,
 }
 

@@ -78,6 +78,8 @@ A JSON object containing both the global style rule (inherited) and the task-spe
 - `lazydev project create <NAME> <DESC>` / `list`
 - `lazydev module create <PROJECT_ID> <NAME> <DESC>` / `list`
 - `lazydev task create <MODULE_ID> <NAME> <DESC>` / `list`
+- `lazydev task update <TASK_ID> [--name <NAME>] [--description <DESC>] [--status <not_started|started|finished>]`
+- `lazydev task append-update <TASK_ID> <CONTENT>` / `list-updates <TASK_ID>`
 
 ### Work Queue
 - `lazydev todo create <PROJECT_ID> <CONTENT>`
@@ -93,6 +95,12 @@ All commands return structured JSON for easy consumption by agents:
 
 ```json
 {"results": [...]}
+```
+
+Task statuses are strictly one of:
+
+```json
+["not_started", "started", "finished"]
 ```
 
 Errors are also returned as JSON:

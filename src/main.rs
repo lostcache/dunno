@@ -5,9 +5,10 @@ use lazydev::config::Config;
 use lazydev::context::get_task_context;
 use lazydev::db::DB;
 use lazydev::ingest::add_knowledge;
-use lazydev::models::{Module, Project, Task, TodoItem};
+use lazydev::models::{Module, Project, Task, TaskStatus, TaskUpdate, TodoItem};
 use lazydev::vector_db::VectorDB;
 use serde_json::json;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[tokio::main]
 async fn main() {
@@ -93,10 +94,55 @@ async fn run(args: Args) -> anyhow::Result<()> {
                     module_id,
                     name,
                     description,
-                    status: "pending".to_string(),
+                    status: TaskStatus::NotStarted,
                 };
                 let created = db.create_task(&task).await?;
                 println!("{}", json!(created));
+            }
+            TaskCommands::Update {
+                task_id,
+                name,
+                description,
+                status,
+            } => {
+                let parsed_status = match status {
+                    Some(value) => Some(TaskStatus::parse(&value).ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Invalid status '{}'. Expected one of: not_started, started, finished",
+                            value
+                        )
+                    })?),
+                    None => None,
+                };
+                let updated = db.update_task(&task_id, name, description, parsed_status).await?;
+                if let Some(task) = updated {
+                    println!("{}", json!(task));
+                } else {
+                    return Err(anyhow::anyhow!("Task not found: {}", task_id));
+                }
+            }
+            TaskCommands::AppendUpdate { task_id, content } => {
+                if db.get_task(&task_id).await?.is_none() {
+                    return Err(anyhow::anyhow!("Task not found: {}", task_id));
+                }
+
+                let created_at_ms = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map_err(|_| anyhow::anyhow!("System clock is before UNIX_EPOCH"))?
+                    .as_millis() as i64;
+
+                let update = TaskUpdate {
+                    id: None,
+                    task_id,
+                    content,
+                    created_at_ms,
+                };
+                let created = db.create_task_update(&update).await?;
+                println!("{}", json!(created));
+            }
+            TaskCommands::ListUpdates { task_id } => {
+                let updates = db.list_task_updates(&task_id).await?;
+                println!("{}", json!(updates));
             }
             TaskCommands::List => {
                 let tasks = db.list_tasks().await?;

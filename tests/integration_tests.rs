@@ -1,5 +1,5 @@
 use lazydev::db::DB;
-use lazydev::models::{Module, Project, Task};
+use lazydev::models::{Module, Project, Task, TaskStatus};
 use lazydev::vector_db::VectorDB;
 use lazydev::ingest::add_knowledge;
 use lazydev::context::get_task_context;
@@ -40,7 +40,7 @@ async fn test_hierarchy_context() -> anyhow::Result<()> {
         module_id: module_id.clone(),
         name: "Test Task".to_string(),
         description: "Task Desc".to_string(),
-        status: "pending".to_string(),
+        status: TaskStatus::NotStarted,
     }).await?;
     let task_id = task.id.unwrap();
 
