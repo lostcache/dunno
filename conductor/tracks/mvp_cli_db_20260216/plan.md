@@ -21,16 +21,16 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Core Logic - Ingestion' (Protocol in workflow.md) [d31d15a]
 
 ## Phase 4: Core Logic - Retrieval (Context)
-- [~] Task: Implement the `lazydev context` logic to:
+- [x] Task: Implement the `lazydev context` logic to: [bc0812f]
     1.  Parse user query into graph seeds (category/tag/token heuristics).
     2.  Traverse SurrealDB graph edges (bounded hop search).
     3.  Fetch connected knowledge nodes (`mistake`, `style_rule`, `skill`).
     4.  Format the output as JSON.
-- [~] Task: Write integration tests for the full flow (Add -> Context).
+- [x] Task: Write integration tests for the full flow (Add -> Context). [bc0812f]
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Core Logic - Retrieval' (Protocol in workflow.md)
 
 ## Phase 5: Polish & Error Handling
-- [ ] Task: Ensure all error paths return structured JSON (as per guidelines).
+- [x] Task: Ensure all error paths return structured JSON (as per guidelines). [a30c131]
 - [ ] Task: Add helpful help messages to the CLI.
 - [ ] Task: Verify the single-binary build process.
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Polish & Error Handling' (Protocol in workflow.md)
