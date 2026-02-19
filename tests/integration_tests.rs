@@ -1,9 +1,8 @@
 use lazydev::db::DB;
-use lazydev::models::{Mistake, Module, Project, StyleRule, Task};
+use lazydev::models::{Module, Project, Task};
 use lazydev::vector_db::VectorDB;
 use lazydev::ingest::add_knowledge;
 use lazydev::context::get_task_context;
-use serde_json::Value;
 
 #[tokio::test]
 async fn test_hierarchy_context() -> anyhow::Result<()> {
@@ -14,7 +13,7 @@ async fn test_hierarchy_context() -> anyhow::Result<()> {
     // Ideally we'd use a mock or in-memory DB.
     // Since `DB::new` connects to a URL, let's try connecting to a test namespace.
     
-    let db = DB::new("ws://localhost:8000").await?;
+    let db = DB::new("mem://").await?;
     let vector_db = VectorDB::new("mem://").await?;
 
     // Create a unique project to isolate the test
