@@ -9,9 +9,17 @@ use serde_json::json;
 
 #[tokio::main]
 async fn main() {
-    let args = Args::parse();
+    let args = match Args::try_parse() {
+        Ok(args) => args,
+        Err(err) => {
+            print_error_json("cli_parse_error", err.to_string());
+            std::process::exit(2);
+        }
+    };
+
     if let Err(err) = run(args).await {
-        println!("{}", json!({ "error": err.to_string() }));
+        print_error_json("runtime_error", err.to_string());
+        std::process::exit(1);
     }
 }
 
@@ -39,4 +47,15 @@ async fn run(args: Args) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn print_error_json(kind: &str, message: String) {
+    println!(
+        "{}",
+        json!({
+            "status": "error",
+            "kind": kind,
+            "error": message
+        })
+    );
 }
