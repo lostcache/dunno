@@ -31,8 +31,8 @@
 
 ## Phase 5: Polish & Error Handling
 - [x] Task: Ensure all error paths return structured JSON (as per guidelines). [a30c131]
-- [x] Task: Add helpful help messages to the CLI.
-- [ ] Task: Verify the single-binary build process.
+- [x] Task: Add helpful help messages to the CLI. [c865f28]
+- [x] Task: Verify the single-binary build process.
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Polish & Error Handling' (Protocol in workflow.md)
 
 ## Phase 6: Agent-Centric Knowledge Graph (Project/Module/Task/Todo)
