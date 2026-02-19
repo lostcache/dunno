@@ -5,9 +5,13 @@
 - **Human Developers:** A secondary audience, using the tool for reference and onboarding to project standards.
 
 ## Data Storage & Architecture
-- **Knowledge Base:** The system uses a strict graph hierarchy centered on SurrealDB.
+- **Knowledge Base:** The system uses a strict graph hierarchy powered by SurrealDB.
 - **Why:** Agents need deterministic, auditable retrieval for task execution, best supported by explicit hierarchy and relation edges. Natural language search is replaced by precise structural traversal.
 - **Hierarchy:** `Project -> Module -> Task`. Context is inherited down this path.
+- **Storage Modes:**
+    - **Local (default):** Embedded SurrealDB persisted to disk. Zero-config, works offline, single-binary experience. Ideal for individual developers.
+    - **Cloud:** Remote SurrealDB instance (e.g., SurrealDB Cloud). Enables cross-machine sync and team-shared knowledge bases.
+- **Configuration:** All storage settings live in `~/.config/dunno/config.toml`. The CLI works out of the box with no config file (local mode with defaults). Backend switching is a single config toggle.
 
 ## Core Functionality
 - **Retrieval Interface:** The interaction model is ID-based traversal via the CLI.

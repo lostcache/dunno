@@ -7,8 +7,43 @@
 - **clap (Command Line Argument Parser):** The de facto standard for building CLIs in Rust, ensuring robust and ergonomic argument parsing.
 
 ## Database & Persistence
-- **Graph Database: SurrealDB (Primary):** The sole knowledge engine for the MVP. Knowledge is strictly hierarchical: `Project -> Module -> Task`. Context nodes (`mistake`, `style_rule`, `skill`) are linked to these structural nodes.
+- **Graph Database: SurrealDB** — the sole knowledge engine. Knowledge is strictly hierarchical: `Project -> Module -> Task`. Context nodes (`mistake`, `style_rule`, `skill`) are linked to these structural nodes.
 - **Vector Database:** Removed for MVP. Retrieval is purely deterministic based on graph structure.
+
+### Storage Backends
+The CLI supports two storage backends, selected via configuration:
+
+1. **Local (default):** Embedded SurrealDB using the `surrealkv://` engine. Data persists to a local directory (default: `~/.local/share/dunno/data.db`). Zero external dependencies — the binary is fully self-contained.
+2. **Cloud:** Remote SurrealDB instance (e.g., SurrealDB Cloud). Connects over `wss://` with namespace, database, and credential fields from config. Enables cross-machine sync and team sharing.
+
+Backend selection is a single config toggle; the application code uses a unified SurrealDB client regardless of backend.
+
+## Configuration
+- **Location:** `~/.config/dunno/config.toml`
+- **Format:** TOML (parsed via the `toml` crate).
+- **Precedence:** CLI flags > environment variables > config file > built-in defaults.
+- **Defaults:** If no config file exists, the CLI operates with local storage and sensible defaults (no setup required for first run).
+
+### Reference Config
+```toml
+# ~/.config/dunno/config.toml
+
+# "local" | "cloud"
+backend = "local"
+
+[local]
+# Path to the embedded SurrealDB data directory.
+path = "~/.local/share/dunno/data.db"
+
+[cloud]
+# SurrealDB Cloud (or any remote SurrealDB) endpoint.
+url = "wss://YOUR_INSTANCE.surrealdb.com"
+namespace = "dunno"
+database = "dunno"
+# Credentials — prefer env vars (DUNNO_CLOUD_USER / DUNNO_CLOUD_PASS) over plaintext here.
+username = ""
+password = ""
+```
 
 ## Retrieval Strategy
 - **Primary Retrieval:** Deterministic graph traversal starting from a `task_id`. The system traverses up to the parent `Module` and `Project` to aggregate all relevant context.
@@ -33,7 +68,8 @@
 
 ## Data Handling
 - **Serialization: serde (serde_json):** The standard framework for serializing and deserializing Rust data structures efficiently, especially for JSON output.
-- **Configuration: toml:** For parsing TOML configuration files.
+- **Configuration: toml:** For parsing TOML configuration files from `~/.config/dunno/config.toml`.
+- **Path Resolution: dirs:** For resolving platform-appropriate config/data directories (`~/.config/dunno`, `~/.local/share/dunno`).
 
 ## Development Tools
 - **Cargo:** The standard build system and package manager for Rust.
