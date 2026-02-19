@@ -1,7 +1,7 @@
-use anyhow::Result;
 use crate::db::DB;
 use crate::models::{Mistake, Skill, StyleRule};
 use crate::vector_db::VectorDB;
+use anyhow::Result;
 
 /// Adds a new knowledge record and links it into the graph.
 pub async fn add_knowledge(
@@ -25,7 +25,7 @@ pub async fn add_knowledge(
             };
             let created = db.create_mistake(&mistake).await?;
             created.id
-        },
+        }
         "style" => {
             let rule = StyleRule {
                 id: None,
@@ -34,7 +34,7 @@ pub async fn add_knowledge(
             };
             let created = db.create_style_rule(&rule).await?;
             created.id
-        },
+        }
         "skill" => {
             let skill = Skill {
                 id: None,

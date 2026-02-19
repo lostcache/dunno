@@ -5,20 +5,23 @@ use lazydev::models::Mistake;
 async fn test_surreal_crud() {
     // Attempt to initialize DB (in-memory for testing)
     let db = DB::new("mem://").await.expect("Failed to init DB");
-    
+
     // Test data
     let mistake = Mistake {
-        id: None, 
+        id: None,
         content: "Using unwrap in production code".to_string(),
         category: "rust".to_string(),
         tags: vec!["safety".to_string()],
     };
-    
+
     // CRUD: Create
-    let created: Mistake = db.create_mistake(&mistake).await.expect("Failed to create mistake");
+    let created: Mistake = db
+        .create_mistake(&mistake)
+        .await
+        .expect("Failed to create mistake");
     assert!(created.id.is_some());
     assert_eq!(created.content, mistake.content);
-    
+
     // CRUD: Read
     let id = created.id.as_ref().unwrap();
     let fetched: Option<Mistake> = db.get_mistake(id).await.expect("Failed to fetch mistake");

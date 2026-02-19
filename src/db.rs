@@ -1,10 +1,10 @@
-use surrealdb::engine::any::{connect, Any};
-use surrealdb::Surreal;
-use anyhow::Result;
 use crate::models::{CategoryTag, KnowledgeEdge, Mistake, Skill, StyleRule};
-use surrealdb::types::Value;
+use anyhow::Result;
 use serde_json::to_value as to_json_value;
 use std::collections::BTreeMap;
+use surrealdb::Surreal;
+use surrealdb::engine::any::{Any, connect};
+use surrealdb::types::Value;
 
 #[derive(Clone)]
 pub struct DB {
@@ -24,10 +24,7 @@ impl DB {
         let json = to_json_value(mistake)?;
         let value = json_to_surreal(json);
 
-        let created: Option<Value> = self.client
-            .create("mistake")
-            .content(value)
-            .await?;
+        let created: Option<Value> = self.client.create("mistake").content(value).await?;
 
         if let Some(val) = created {
             let json = surreal_to_json(val);
@@ -76,10 +73,7 @@ impl DB {
         let json = to_json_value(rule)?;
         let value = json_to_surreal(json);
 
-        let created: Option<Value> = self.client
-            .create("style_rule")
-            .content(value)
-            .await?;
+        let created: Option<Value> = self.client.create("style_rule").content(value).await?;
 
         if let Some(val) = created {
             let json = surreal_to_json(val);
@@ -128,10 +122,7 @@ impl DB {
         let json = to_json_value(skill)?;
         let value = json_to_surreal(json);
 
-        let created: Option<Value> = self.client
-            .create("skill")
-            .content(value)
-            .await?;
+        let created: Option<Value> = self.client.create("skill").content(value).await?;
 
         if let Some(val) = created {
             let json = surreal_to_json(val);
@@ -191,11 +182,7 @@ impl DB {
 
         let json = to_json_value(&tag)?;
         let value = json_to_surreal(json);
-        let created: Option<Value> = self
-            .client
-            .create("category_tag")
-            .content(value)
-            .await?;
+        let created: Option<Value> = self.client.create("category_tag").content(value).await?;
 
         if let Some(val) = created {
             let json = surreal_to_json(val);
@@ -222,7 +209,12 @@ impl DB {
     }
 
     /// Creates a graph edge from one record id to another.
-    pub async fn create_edge(&self, from_id: &str, to_id: &str, relation: &str) -> Result<KnowledgeEdge> {
+    pub async fn create_edge(
+        &self,
+        from_id: &str,
+        to_id: &str,
+        relation: &str,
+    ) -> Result<KnowledgeEdge> {
         let existing = self.list_edges().await?;
         if let Some(edge) = existing
             .into_iter()
@@ -272,7 +264,10 @@ impl DB {
             if let Some(item) = self.get_mistake(id).await? {
                 let mut value = serde_json::to_value(item)?;
                 if let Some(obj) = value.as_object_mut() {
-                    obj.insert("node_type".to_string(), serde_json::Value::String("mistake".to_string()));
+                    obj.insert(
+                        "node_type".to_string(),
+                        serde_json::Value::String("mistake".to_string()),
+                    );
                 }
                 return Ok(Some(value));
             }
@@ -283,7 +278,10 @@ impl DB {
             if let Some(item) = self.get_style_rule(id).await? {
                 let mut value = serde_json::to_value(item)?;
                 if let Some(obj) = value.as_object_mut() {
-                    obj.insert("node_type".to_string(), serde_json::Value::String("style_rule".to_string()));
+                    obj.insert(
+                        "node_type".to_string(),
+                        serde_json::Value::String("style_rule".to_string()),
+                    );
                 }
                 return Ok(Some(value));
             }
@@ -294,7 +292,10 @@ impl DB {
             if let Some(item) = self.get_skill(id).await? {
                 let mut value = serde_json::to_value(item)?;
                 if let Some(obj) = value.as_object_mut() {
-                    obj.insert("node_type".to_string(), serde_json::Value::String("skill".to_string()));
+                    obj.insert(
+                        "node_type".to_string(),
+                        serde_json::Value::String("skill".to_string()),
+                    );
                 }
                 return Ok(Some(value));
             }
@@ -325,9 +326,12 @@ fn json_to_surreal(json: serde_json::Value) -> Value {
             }
         }
         serde_json::Value::String(s) => Value::String(s),
-        serde_json::Value::Array(a) => {
-            Value::Array(a.into_iter().map(json_to_surreal).collect::<Vec<_>>().into())
-        }
+        serde_json::Value::Array(a) => Value::Array(
+            a.into_iter()
+                .map(json_to_surreal)
+                .collect::<Vec<_>>()
+                .into(),
+        ),
         serde_json::Value::Object(o) => {
             let mut map = BTreeMap::new();
             for (k, v) in o {

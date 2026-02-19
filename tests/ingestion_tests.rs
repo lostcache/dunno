@@ -5,7 +5,9 @@ use lazydev::vector_db::VectorDB;
 #[tokio::test]
 async fn test_ingestion_flow() {
     let db = DB::new("mem://").await.expect("Failed to init SurrealDB");
-    let vector_db = VectorDB::new("mem://").await.expect("Failed to init VectorDB");
+    let vector_db = VectorDB::new("mem://")
+        .await
+        .expect("Failed to init VectorDB");
 
     let result = add_knowledge(
         "rust".to_string(),

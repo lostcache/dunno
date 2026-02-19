@@ -1,6 +1,6 @@
+use anyhow::Result;
 use qdrant_client::Qdrant;
 use qdrant_client::qdrant::{CreateCollectionBuilder, Distance, VectorParamsBuilder};
-use anyhow::Result;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -24,7 +24,9 @@ impl VectorDB {
     pub async fn new(url: &str) -> Result<Self> {
         if url == "mem://" {
             return Ok(Self {
-                backend: VectorBackend::Memory(Arc::new(Mutex::new(InMemoryVectorStore::default()))),
+                backend: VectorBackend::Memory(Arc::new(
+                    Mutex::new(InMemoryVectorStore::default()),
+                )),
             });
         }
 
@@ -40,15 +42,16 @@ impl VectorDB {
             VectorBackend::Qdrant(client) => {
                 if !client.collection_exists(name).await? {
                     client
-                        .create_collection(
-                            CreateCollectionBuilder::new(name)
-                                .vectors_config(VectorParamsBuilder::new(vector_size, Distance::Cosine)),
-                        )
+                        .create_collection(CreateCollectionBuilder::new(name).vectors_config(
+                            VectorParamsBuilder::new(vector_size, Distance::Cosine),
+                        ))
                         .await?;
                 }
             }
             VectorBackend::Memory(store) => {
-                let mut store = store.lock().map_err(|_| anyhow::anyhow!("Vector store lock poisoned"))?;
+                let mut store = store
+                    .lock()
+                    .map_err(|_| anyhow::anyhow!("Vector store lock poisoned"))?;
                 store.collections.entry(name.to_string()).or_default();
             }
         }
@@ -64,7 +67,9 @@ impl VectorDB {
                 Ok(())
             }
             VectorBackend::Memory(store) => {
-                let mut store = store.lock().map_err(|_| anyhow::anyhow!("Vector store lock poisoned"))?;
+                let mut store = store
+                    .lock()
+                    .map_err(|_| anyhow::anyhow!("Vector store lock poisoned"))?;
                 let col = store.collections.entry(collection.to_string()).or_default();
                 col.insert(id.to_string(), vector);
                 Ok(())
@@ -73,14 +78,21 @@ impl VectorDB {
     }
 
     /// Searches by cosine similarity and returns ids sorted descending by score.
-    pub async fn search(&self, collection: &str, query: &[f32], limit: usize) -> Result<Vec<String>> {
+    pub async fn search(
+        &self,
+        collection: &str,
+        query: &[f32],
+        limit: usize,
+    ) -> Result<Vec<String>> {
         match &self.backend {
             VectorBackend::Qdrant(_client) => {
                 // Graph-first MVP does not require production vector search.
                 Ok(Vec::new())
             }
             VectorBackend::Memory(store) => {
-                let store = store.lock().map_err(|_| anyhow::anyhow!("Vector store lock poisoned"))?;
+                let store = store
+                    .lock()
+                    .map_err(|_| anyhow::anyhow!("Vector store lock poisoned"))?;
                 let Some(col) = store.collections.get(collection) else {
                     return Ok(Vec::new());
                 };
