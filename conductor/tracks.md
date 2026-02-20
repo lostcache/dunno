@@ -9,5 +9,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: Dual Storage Backend & Config System — local embedded + SurrealDB Cloud with `~/.config/dunno/config.toml`.
+## [x] Track: Dual Storage Backend & Config System — local embedded + SurrealDB Cloud with `~/.config/dunno/config.toml`.
 *Link: [./conductor/tracks/storage_config_20260219/](./conductor/tracks/storage_config_20260219/)*

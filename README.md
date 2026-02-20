@@ -21,7 +21,7 @@ Retrieval is purely deterministic and graph-based:
 ## Prerequisites
 
 - Rust toolchain (stable) with `cargo`.
-- Optional: SurrealDB Cloud credentials if using the cloud backend.
+- Optional: SurrealDB Cloud credentials if using the cloud backend. Supports `root`, `namespace`, and `database` authentication scopes via the `auth_type` config field.
 
 ## Build
 
@@ -45,17 +45,17 @@ By default, no config file is required. The app uses local embedded storage at `
 
 ```toml
 backend = "local" # "local" | "cloud"
-qdrant_url = "mem://"
 
 [local]
 path = "~/.local/share/dunno/data.db"
 
 [cloud]
 url = "wss://YOUR_INSTANCE.surrealdb.com"
-namespace = "dunno"
-database = "dunno"
-username = ""
-password = ""
+namespace = ""
+database = ""
+username = "root"
+password = "root"
+auth_type = "root" # "root" | "namespace" | "database"
 ```
 
 ### Environment overrides
@@ -67,6 +67,7 @@ password = ""
 - `DUNNO_CLOUD_DB`
 - `DUNNO_CLOUD_USER`
 - `DUNNO_CLOUD_PASS`
+- `DUNNO_CLOUD_AUTH_TYPE`
 
 ### Backend examples
 
@@ -208,3 +209,21 @@ End-to-end shell tests verify the full CLI against a locally persistent embedded
 | `cross` | `test_local_cross_method.sh` | Data created via one config method readable via another |
 
 Each script is self-contained: builds the binary, creates isolated test DBs, backs up and restores any existing config file, and cleans up on exit.
+
+### Shell Tests (Cloud)
+
+Cloud end-to-end tests verify the full CLI against a live SurrealDB Cloud instance. They require a valid `~/.config/dunno/config.toml` with `backend = "cloud"` (for the config test) or `DUNNO_CLOUD_URL` env var (for env/cli tests).
+
+```bash
+# Run all cloud suites
+./tests/sh/run_cloud.sh
+
+# Run a specific cloud suite
+./tests/sh/run_cloud.sh config
+```
+
+| Suite | File | What it tests |
+|-------|------|---------------|
+| `env` | `test_cloud_env_vars.sh` | Full Phase-6 flow using `DUNNO_CLOUD_*` env vars |
+| `config` | `test_cloud_config_file.sh` | Full Phase-6 flow using `~/.config/dunno/config.toml` only |
+| `cli` | `test_cloud_cli_flags.sh` | Full Phase-6 flow using `--backend cloud` CLI flag |

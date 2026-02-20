@@ -37,13 +37,27 @@ impl Default for LocalConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CloudConfig {
     pub url: String,
     pub namespace: String,
     pub database: String,
     pub username: String,
     pub password: String,
+    pub auth_type: String,
+}
+
+impl Default for CloudConfig {
+    fn default() -> Self {
+        Self {
+            url: String::new(),
+            namespace: String::new(),
+            database: String::new(),
+            username: "root".to_string(),
+            password: "root".to_string(),
+            auth_type: "root".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,6 +99,7 @@ struct PartialCloudConfig {
     database: Option<String>,
     username: Option<String>,
     password: Option<String>,
+    auth_type: Option<String>,
 }
 
 impl Config {
@@ -124,6 +139,7 @@ impl Config {
                 "database": self.cloud.database,
                 "username": self.cloud.username,
                 "password": if self.cloud.password.is_empty() { "" } else { "***redacted***" },
+                "auth_type": self.cloud.auth_type,
             },
             "qdrant_url": self.qdrant_url,
             "config_path": Self::config_file_path(),
@@ -151,6 +167,7 @@ impl Config {
             ("DUNNO_CLOUD_DB", env::var("DUNNO_CLOUD_DB").ok()),
             ("DUNNO_CLOUD_USER", env::var("DUNNO_CLOUD_USER").ok()),
             ("DUNNO_CLOUD_PASS", env::var("DUNNO_CLOUD_PASS").ok()),
+            ("DUNNO_CLOUD_AUTH_TYPE", env::var("DUNNO_CLOUD_AUTH_TYPE").ok()),
         ];
         self.apply_env_override_pairs(pairs)
     }
@@ -187,6 +204,9 @@ impl Config {
         if let Some(value) = map.get("DUNNO_CLOUD_PASS") {
             self.cloud.password = value.to_string();
         }
+        if let Some(value) = map.get("DUNNO_CLOUD_AUTH_TYPE") {
+            self.cloud.auth_type = value.to_string();
+        }
         Ok(())
     }
 
@@ -221,6 +241,9 @@ impl Config {
             }
             if let Some(password) = cloud.password {
                 self.cloud.password = password;
+            }
+            if let Some(auth_type) = cloud.auth_type {
+                self.cloud.auth_type = auth_type;
             }
         }
         if let Some(qdrant_url) = partial.qdrant_url {
@@ -331,6 +354,38 @@ password = "pass"
         assert!(matches!(loaded.backend, StorageBackend::Local));
 
         let _ = fs::remove_file(tmp_path);
+    }
+
+    #[test]
+    fn test_cloud_defaults_match_surrealdb() {
+        let config = Config::default();
+        assert_eq!(config.cloud.url, "");
+        assert_eq!(config.cloud.namespace, "");
+        assert_eq!(config.cloud.database, "");
+        assert_eq!(config.cloud.username, "root");
+        assert_eq!(config.cloud.password, "root");
+    }
+
+    #[test]
+    fn test_cloud_config_partial_override() {
+        let toml_str = r#"
+            backend = "cloud"
+            [cloud]
+            url = "wss://my-instance.surreal.cloud"
+            namespace = "dunno"
+            database = "dunno"
+        "#;
+
+        let parsed: PartialConfig = toml::from_str(toml_str).expect("Failed to parse TOML");
+        let mut config = Config::default();
+        config.merge_partial(parsed).expect("Failed to merge");
+
+        assert!(matches!(config.backend, StorageBackend::Cloud));
+        assert_eq!(config.cloud.url, "wss://my-instance.surreal.cloud");
+        assert_eq!(config.cloud.namespace, "dunno");
+        assert_eq!(config.cloud.database, "dunno");
+        assert_eq!(config.cloud.username, "root");
+        assert_eq!(config.cloud.password, "root");
     }
 
     #[test]

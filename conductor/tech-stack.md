@@ -14,7 +14,9 @@
 The CLI supports two storage backends, selected via configuration:
 
 1. **Local (default):** Embedded SurrealDB using the `surrealkv://` engine. Data persists to a local directory (default: `~/.local/share/dunno/data.db`). Zero external dependencies — the binary is fully self-contained.
-2. **Cloud:** Remote SurrealDB instance (e.g., SurrealDB Cloud). Connects over `wss://` with namespace, database, and credential fields from config. Enables cross-machine sync and team sharing.
+2. **Cloud:** Remote SurrealDB instance (e.g., SurrealDB Cloud). Connects over `wss://` with namespace, database, and credential fields from config. Supports configurable authentication types (`root`, `namespace`, `database`) via `auth_type`. Enables cross-machine sync and team sharing.
+
+TLS for `wss://` connections is handled by `rustls` with the `aws-lc-rs` crypto provider, installed at process startup.
 
 Backend selection is a single config toggle; the application code uses a unified SurrealDB client regardless of backend.
 
@@ -38,11 +40,13 @@ path = "~/.local/share/dunno/data.db"
 [cloud]
 # SurrealDB Cloud (or any remote SurrealDB) endpoint.
 url = "wss://YOUR_INSTANCE.surrealdb.com"
-namespace = "dunno"
-database = "dunno"
+namespace = ""
+database = ""
 # Credentials — prefer env vars (DUNNO_CLOUD_USER / DUNNO_CLOUD_PASS) over plaintext here.
-username = ""
-password = ""
+username = "root"
+password = "root"
+# "root" | "namespace" | "database" — determines the SurrealDB signin scope.
+auth_type = "root"
 ```
 
 ## Retrieval Strategy

@@ -147,6 +147,20 @@ json_str() {
     printf '%s' "$1" | grep -o "\"$2\":\"[^\"]*\"" | head -1 | sed "s/\"$2\":\"//;s/\"$//"
 }
 
+# ── Cloud prerequisite check ──────────────────────────────────────
+
+require_cloud_env() {
+    if [[ -z "${DUNNO_CLOUD_URL:-}" ]]; then
+        echo "SKIP: DUNNO_CLOUD_URL is not set."
+        echo "  Cloud tests require: DUNNO_CLOUD_URL"
+        echo "  (namespace, database, username, password are set in each test script)"
+        exit 0
+    fi
+}
+
+# Unique suffix for cloud test data to avoid collisions across runs.
+CLOUD_TS="$(date +%s)"
+
 # ── Reporting ──────────────────────────────────────────────────────
 
 print_header() {

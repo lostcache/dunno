@@ -41,7 +41,7 @@ impl DB {
                     fs::create_dir_all(parent)?;
                 }
                 let url = format!("surrealkv://{}", path.to_string_lossy());
-                Self::new_with_auth(&url, "lazydev", "lazydev", None).await
+                Self::new_local(&url, "lazydev", "lazydev").await
             }
             StorageBackend::Cloud => {
                 let cloud = &config.cloud;
@@ -70,27 +70,14 @@ impl DB {
                         "Cloud backend requires `cloud.password` (or DUNNO_CLOUD_PASS)"
                     ));
                 }
-                let auth = surrealdb::opt::auth::Database {
-                    namespace: cloud.namespace.clone(),
-                    database: cloud.database.clone(),
-                    username: cloud.username.clone(),
-                    password: cloud.password.clone(),
-                };
-                Self::new_with_auth(&cloud.url, &cloud.namespace, &cloud.database, Some(auth)).await
+                Self::connect_cloud(cloud).await
             }
         }
     }
 
-    async fn new_with_auth(
-        url: &str,
-        namespace: &str,
-        database: &str,
-        auth: Option<surrealdb::opt::auth::Database>,
-    ) -> Result<Self> {
+    async fn new_local(url: &str, namespace: &str, database: &str) -> Result<Self> {
         let client = connect(url).await?;
-        if let Some(auth) = auth {
-            client.signin(auth).await?;
-        } else if url.starts_with("ws://")
+        if url.starts_with("ws://")
             || url.starts_with("wss://")
             || url.starts_with("http://")
             || url.starts_with("https://")
@@ -103,6 +90,43 @@ impl DB {
                 .await?;
         }
         client.use_ns(namespace).use_db(database).await?;
+        Ok(Self { client })
+    }
+
+    async fn connect_cloud(cloud: &crate::config::CloudConfig) -> Result<Self> {
+        let client = connect(&cloud.url).await?;
+        client.use_ns(&cloud.namespace).use_db(&cloud.database).await?;
+
+        match cloud.auth_type.as_str() {
+            "namespace" => {
+                client
+                    .signin(surrealdb::opt::auth::Namespace {
+                        namespace: cloud.namespace.clone(),
+                        username: cloud.username.clone(),
+                        password: cloud.password.clone(),
+                    })
+                    .await?;
+            }
+            "database" => {
+                client
+                    .signin(surrealdb::opt::auth::Database {
+                        namespace: cloud.namespace.clone(),
+                        database: cloud.database.clone(),
+                        username: cloud.username.clone(),
+                        password: cloud.password.clone(),
+                    })
+                    .await?;
+            }
+            _ => {
+                client
+                    .signin(surrealdb::opt::auth::Root {
+                        username: cloud.username.clone(),
+                        password: cloud.password.clone(),
+                    })
+                    .await?;
+            }
+        }
+
         Ok(Self { client })
     }
 

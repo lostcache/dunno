@@ -19,7 +19,8 @@ Replace the hardcoded SurrealDB connection with a config-driven storage layer th
 ## Technical Requirements
 - **Language:** Rust (Edition 2024)
 - **Crates:**
-    - `surrealdb` — unified client for both embedded and remote connections.
+    - `surrealdb` — unified client for both embedded and remote connections (features: `kv-mem`, `kv-surrealkv`, `protocol-ws`).
+    - `rustls` — TLS for `wss://` cloud connections (feature: `aws-lc-rs`).
     - `toml` — config file parsing.
     - `dirs` (or `directories`) — resolve `~/.config/dunno` and `~/.local/share/dunno` cross-platform.
     - `serde`, `serde_json` — config struct deserialization.
@@ -44,10 +45,12 @@ path = "~/.local/share/dunno/data.db"
 
 [cloud]
 url = "wss://YOUR_INSTANCE.surrealdb.com"
-namespace = "dunno"
-database = "dunno"
-username = ""
-password = ""
+namespace = ""
+database = ""
+username = "root"
+password = "root"
+# "root" | "namespace" | "database"
+auth_type = "root"
 ```
 
 ## Environment Variable Overrides
@@ -60,3 +63,4 @@ password = ""
 | `DUNNO_CLOUD_DB` | `cloud.database` |
 | `DUNNO_CLOUD_USER` | `cloud.username` |
 | `DUNNO_CLOUD_PASS` | `cloud.password` |
+| `DUNNO_CLOUD_AUTH_TYPE` | `cloud.auth_type` |

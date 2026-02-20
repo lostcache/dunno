@@ -2310,6 +2310,7 @@ dependencies = [
  "clap",
  "dirs",
  "qdrant-client",
+ "rustls",
  "serde",
  "serde_json",
  "surrealdb",
