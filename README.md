@@ -176,12 +176,35 @@ Errors are also returned as JSON:
 
 ## Development
 
-Run tests:
+### Unit & Integration Tests
 
 ```bash
 cargo test
 ```
 
-Notes:
-- Unit and integration tests run against in-memory/embedded backends and do not require a separate SurrealDB server.
-- Cloud backend validation is covered by tests that assert required credentials are present before connecting.
+Unit and integration tests run against in-memory backends (`mem://`) and do not require a separate SurrealDB server or config file.
+
+### Shell Tests (Local Persistence)
+
+End-to-end shell tests verify the full CLI against a locally persistent embedded SurrealDB instance. They cover all three configuration methods.
+
+```bash
+# Run all suites
+./tests/sh/run_all.sh
+
+# Run specific suites
+./tests/sh/run_all.sh env config cli
+
+# Run a single suite directly
+./tests/sh/test_local_env_vars.sh
+```
+
+| Suite | File | What it tests |
+|-------|------|---------------|
+| `env` | `test_local_env_vars.sh` | Full Phase-6 flow using `DUNNO_BACKEND` + `DUNNO_LOCAL_PATH` |
+| `config` | `test_local_config_file.sh` | Full Phase-6 flow using `~/.config/dunno/config.toml` |
+| `cli` | `test_local_cli_flags.sh` | Full Phase-6 flow using `--backend local` CLI flag |
+| `precedence` | `test_local_precedence.sh` | Config precedence: defaults → file → env → CLI |
+| `cross` | `test_local_cross_method.sh` | Data created via one config method readable via another |
+
+Each script is self-contained: builds the binary, creates isolated test DBs, backs up and restores any existing config file, and cleans up on exit.

@@ -27,13 +27,13 @@
     3.  Fetch connected knowledge nodes (`mistake`, `style_rule`, `skill`).
     4.  Format the output as JSON.
 - [x] Task: Write integration tests for the full flow (Add -> Context). [bc0812f]
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Core Logic - Retrieval' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Core Logic - Retrieval' (Protocol in workflow.md)
 
 ## Phase 5: Polish & Error Handling
 - [x] Task: Ensure all error paths return structured JSON (as per guidelines). [a30c131]
 - [x] Task: Add helpful help messages to the CLI. [c865f28]
 - [x] Task: Verify the single-binary build process.
-- [ ] Task: Conductor - User Manual Verification 'Phase 5: Polish & Error Handling' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 5: Polish & Error Handling' (Protocol in workflow.md)
 
 ## Phase 6: Agent-Centric Knowledge Graph (Project/Module/Task/Todo)
 - [x] Task: Define and implement graph entities for `Project`, `Module`, `Task`, `TodoItem`. [c6fe6a3]
@@ -42,4 +42,4 @@
 - [x] Task: Implement task-context retrieval by `task_id` including inherited project-global guidance and runtime learnings. [c6fe6a3]
 - [x] Task: Add CLI commands for hierarchy management, todo operations, global guidance linking, and mistake logging/listing. [c6fe6a3]
 - [x] Task: Write integration tests for full agent workflow (todo select -> task context -> append updates/mistakes -> subsequent retrieval). [c6fe6a3]
-- [ ] Task: Conductor - User Manual Verification 'Phase 6: Agent-Centric Knowledge Graph' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 6: Agent-Centric Knowledge Graph' (Protocol in workflow.md)

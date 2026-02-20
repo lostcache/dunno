@@ -1,11 +1,11 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde_json::Value;
 
 use crate::db::DB;
 use crate::vector_db::VectorDB;
 
 /// Retrieves hierarchical context for a specific task.
-/// 
+///
 /// Traverses: Task -> Module -> Project
 /// Collects context nodes (Mistakes, StyleRules, Skills) linked at each level.
 pub async fn get_task_context(task_id: &str, db: &DB, _vector_db: &VectorDB) -> Result<Vec<Value>> {
@@ -31,7 +31,7 @@ pub async fn get_task_context(task_id: &str, db: &DB, _vector_db: &VectorDB) -> 
 
     // 4. Collect Context from each level (Task -> Module -> Project)
     // Priority: Task > Module > Project (though we just append all for now)
-    
+
     // Task Context
     if let Some(id) = &task.id {
         let nodes = get_linked_context(id, db).await?;
