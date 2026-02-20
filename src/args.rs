@@ -10,6 +10,10 @@ use clap::{Parser, Subcommand};
     propagate_version = true
 )]
 pub struct Args {
+    /// Optional storage backend override (`local` or `cloud`).
+    #[arg(long, global = true, value_name = "BACKEND")]
+    pub backend: Option<String>,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -63,6 +67,12 @@ pub enum Commands {
         command: TodoCommands,
     },
 
+    #[command(about = "Inspect resolved runtime configuration.")]
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommands,
+    },
+
     #[command(
         about = "Retrieve coding context for a task.",
         long_about = "Find relevant context by traversing the Project -> Module -> Task hierarchy.",
@@ -104,7 +114,11 @@ pub enum TaskCommands {
         name: Option<String>,
         #[arg(long)]
         description: Option<String>,
-        #[arg(long, value_name = "STATUS", help = "One of: not_started, started, finished")]
+        #[arg(
+            long,
+            value_name = "STATUS",
+            help = "One of: not_started, started, finished"
+        )]
         status: Option<String>,
     },
     AppendUpdate {
@@ -125,4 +139,9 @@ pub enum TaskCommands {
 pub enum TodoCommands {
     Create { project_id: String, content: String },
     List { project_id: String },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ConfigCommands {
+    Show,
 }

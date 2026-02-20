@@ -1,3 +1,4 @@
+use crate::config::{Config, StorageBackend};
 use crate::models::{
     CategoryTag, KnowledgeEdge, Mistake, Module, Project, Skill, StyleRule, Task, TaskStatus,
     TaskUpdate, TodoItem,
@@ -5,9 +6,10 @@ use crate::models::{
 use anyhow::Result;
 use serde_json::to_value as to_json_value;
 use std::collections::BTreeMap;
-use surrealdb::engine::any::{connect, Any};
-use surrealdb::types::Value;
+use std::fs;
 use surrealdb::Surreal;
+use surrealdb::engine::any::{Any, connect};
+use surrealdb::types::Value;
 
 #[derive(Clone)]
 pub struct DB {
@@ -27,6 +29,80 @@ impl DB {
                 .await?;
         }
         client.use_ns("lazydev").use_db("lazydev").await?;
+        Ok(Self { client })
+    }
+
+    /// Creates a DB client from runtime config (local embedded or cloud).
+    pub async fn from_config(config: &Config) -> Result<Self> {
+        match config.backend {
+            StorageBackend::Local => {
+                let path = config.local_data_path();
+                if let Some(parent) = path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                let url = format!("surrealkv://{}", path.to_string_lossy());
+                Self::new_with_auth(&url, "lazydev", "lazydev", None).await
+            }
+            StorageBackend::Cloud => {
+                let cloud = &config.cloud;
+                if cloud.url.trim().is_empty() {
+                    return Err(anyhow::anyhow!(
+                        "Cloud backend requires `cloud.url` (or DUNNO_CLOUD_URL)"
+                    ));
+                }
+                if cloud.namespace.trim().is_empty() {
+                    return Err(anyhow::anyhow!(
+                        "Cloud backend requires `cloud.namespace` (or DUNNO_CLOUD_NS)"
+                    ));
+                }
+                if cloud.database.trim().is_empty() {
+                    return Err(anyhow::anyhow!(
+                        "Cloud backend requires `cloud.database` (or DUNNO_CLOUD_DB)"
+                    ));
+                }
+                if cloud.username.trim().is_empty() {
+                    return Err(anyhow::anyhow!(
+                        "Cloud backend requires `cloud.username` (or DUNNO_CLOUD_USER)"
+                    ));
+                }
+                if cloud.password.trim().is_empty() {
+                    return Err(anyhow::anyhow!(
+                        "Cloud backend requires `cloud.password` (or DUNNO_CLOUD_PASS)"
+                    ));
+                }
+                let auth = surrealdb::opt::auth::Database {
+                    namespace: cloud.namespace.clone(),
+                    database: cloud.database.clone(),
+                    username: cloud.username.clone(),
+                    password: cloud.password.clone(),
+                };
+                Self::new_with_auth(&cloud.url, &cloud.namespace, &cloud.database, Some(auth)).await
+            }
+        }
+    }
+
+    async fn new_with_auth(
+        url: &str,
+        namespace: &str,
+        database: &str,
+        auth: Option<surrealdb::opt::auth::Database>,
+    ) -> Result<Self> {
+        let client = connect(url).await?;
+        if let Some(auth) = auth {
+            client.signin(auth).await?;
+        } else if url.starts_with("ws://")
+            || url.starts_with("wss://")
+            || url.starts_with("http://")
+            || url.starts_with("https://")
+        {
+            client
+                .signin(surrealdb::opt::auth::Root {
+                    username: "root".to_string(),
+                    password: "root".to_string(),
+                })
+                .await?;
+        }
+        client.use_ns(namespace).use_db(database).await?;
         Ok(Self { client })
     }
 
@@ -103,7 +179,10 @@ impl DB {
         description: Option<String>,
         status: Option<TaskStatus>,
     ) -> Result<Option<Task>> {
-        let key = task_id.split_once(':').map(|(_, key)| key).unwrap_or(task_id);
+        let key = task_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(task_id);
 
         let mut patch = serde_json::Map::new();
         if let Some(name) = name {
@@ -480,9 +559,13 @@ impl DB {
     /// Returns all graph edges from a specific node.
     pub async fn get_edges_from(&self, from_id: &str) -> Result<Vec<KnowledgeEdge>> {
         let sql = "SELECT * FROM knowledge_edge WHERE from_id = $from";
-        let mut response = self.client.query(sql).bind(("from", from_id.to_string())).await?;
+        let mut response = self
+            .client
+            .query(sql)
+            .bind(("from", from_id.to_string()))
+            .await?;
         let values: Vec<Value> = response.take(0)?;
-        
+
         let mut out = Vec::with_capacity(values.len());
         for val in values {
             let json = surreal_to_json(val);
@@ -633,6 +716,9 @@ fn surreal_to_json(val: Value) -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::{CloudConfig, LocalConfig};
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[tokio::test]
     async fn test_surreal_crud() {
@@ -764,5 +850,67 @@ mod tests {
             .expect("Task update should exist");
         assert_eq!(edited.content, "First update (edited)");
         assert_eq!(edited.updated_at_ms, Some(3));
+    }
+
+    #[tokio::test]
+    async fn test_from_config_local_embedded_crud() {
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time should be valid")
+            .as_millis();
+        let db_path = std::env::temp_dir()
+            .join(format!("dunno-db-{ts}"))
+            .join("data.db");
+
+        let config = Config {
+            backend: StorageBackend::Local,
+            local: LocalConfig {
+                path: db_path.to_string_lossy().to_string(),
+            },
+            cloud: CloudConfig::default(),
+            qdrant_url: "mem://".to_string(),
+        };
+
+        let db = DB::from_config(&config)
+            .await
+            .expect("local embedded config should connect");
+        let created = db
+            .create_project(&Project {
+                id: None,
+                name: "Embedded".to_string(),
+                description: "embedded local test".to_string(),
+            })
+            .await
+            .expect("project create should work");
+        assert!(created.id.is_some());
+
+        let _ = cleanup_temp_db(db_path);
+    }
+
+    #[tokio::test]
+    async fn test_from_config_cloud_validation() {
+        let config = Config {
+            backend: StorageBackend::Cloud,
+            local: LocalConfig::default(),
+            cloud: CloudConfig::default(),
+            qdrant_url: "mem://".to_string(),
+        };
+        let err = match DB::from_config(&config).await {
+            Ok(_) => panic!("missing cloud fields should fail"),
+            Err(err) => err,
+        };
+        assert!(err.to_string().contains("cloud.url"));
+    }
+
+    fn cleanup_temp_db(db_path: PathBuf) -> Result<()> {
+        if db_path.exists() {
+            fs::remove_file(&db_path)?;
+        }
+        if let Some(parent) = db_path.parent() {
+            if parent.exists() {
+                fs::remove_dir_all(parent)?;
+            }
+        }
+        Ok(())
     }
 }

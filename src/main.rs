@@ -1,6 +1,8 @@
-use clap::error::ErrorKind;
 use clap::Parser;
-use lazydev::args::{Args, Commands, ModuleCommands, ProjectCommands, TaskCommands, TodoCommands};
+use clap::error::ErrorKind;
+use lazydev::args::{
+    Args, Commands, ConfigCommands, ModuleCommands, ProjectCommands, TaskCommands, TodoCommands,
+};
 use lazydev::config::Config;
 use lazydev::context::get_task_context;
 use lazydev::db::DB;
@@ -15,7 +17,10 @@ async fn main() {
     let args = match Args::try_parse() {
         Ok(args) => args,
         Err(err) => {
-            if matches!(err.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion) {
+            if matches!(
+                err.kind(),
+                ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
+            ) {
                 print!("{}", err);
                 return;
             }
@@ -31,8 +36,17 @@ async fn main() {
 }
 
 async fn run(args: Args) -> anyhow::Result<()> {
-    let config = Config::default();
-    let db = DB::new(&config.surreal_url).await?;
+    let config = Config::load(args.backend.as_deref())?;
+    if let Commands::Config { command } = &args.command {
+        match command {
+            ConfigCommands::Show => {
+                println!("{}", config.redacted_json());
+            }
+        }
+        return Ok(());
+    }
+
+    let db = DB::from_config(&config).await?;
     let vector_db = match VectorDB::new(&config.qdrant_url).await {
         Ok(db) => db,
         Err(_) => VectorDB::new("mem://").await?,
@@ -114,7 +128,9 @@ async fn run(args: Args) -> anyhow::Result<()> {
                     })?),
                     None => None,
                 };
-                let updated = db.update_task(&task_id, name, description, parsed_status).await?;
+                let updated = db
+                    .update_task(&task_id, name, description, parsed_status)
+                    .await?;
                 if let Some(task) = updated {
                     println!("{}", json!(task));
                 } else {
@@ -189,6 +205,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             let results = get_task_context(&task_id, &db, &vector_db).await?;
             println!("{}", json!({ "results": results }));
         }
+        Commands::Config { .. } => unreachable!("config command returns before DB init"),
     }
 
     Ok(())

@@ -21,7 +21,7 @@ Retrieval is purely deterministic and graph-based:
 ## Prerequisites
 
 - Rust toolchain (stable) with `cargo`.
-- A running SurrealDB endpoint at `ws://localhost:8000` (started with `file:data.db` for durability or `memory` for ephemeral).
+- Optional: SurrealDB Cloud credentials if using the cloud backend.
 
 ## Build
 
@@ -30,6 +30,65 @@ cargo build --release
 ```
 
 Binary path: `target/release/lazydev`
+
+## Configuration
+
+The CLI resolves configuration from:
+1. CLI flags
+2. Environment variables
+3. `~/.config/dunno/config.toml`
+4. Built-in defaults
+
+By default, no config file is required. The app uses local embedded storage at `~/.local/share/dunno/data.db`.
+
+### Example config file
+
+```toml
+backend = "local" # "local" | "cloud"
+qdrant_url = "mem://"
+
+[local]
+path = "~/.local/share/dunno/data.db"
+
+[cloud]
+url = "wss://YOUR_INSTANCE.surrealdb.com"
+namespace = "dunno"
+database = "dunno"
+username = ""
+password = ""
+```
+
+### Environment overrides
+
+- `DUNNO_BACKEND`
+- `DUNNO_LOCAL_PATH`
+- `DUNNO_CLOUD_URL`
+- `DUNNO_CLOUD_NS`
+- `DUNNO_CLOUD_DB`
+- `DUNNO_CLOUD_USER`
+- `DUNNO_CLOUD_PASS`
+
+### Backend examples
+
+```bash
+# Default local embedded mode (no config file needed)
+lazydev project list
+
+# Force local mode for one command
+lazydev --backend local project list
+
+# Cloud mode via env vars
+DUNNO_BACKEND=cloud \
+DUNNO_CLOUD_URL="wss://YOUR_INSTANCE.surrealdb.com" \
+DUNNO_CLOUD_NS="dunno" \
+DUNNO_CLOUD_DB="dunno" \
+DUNNO_CLOUD_USER="YOUR_USER" \
+DUNNO_CLOUD_PASS="YOUR_PASS" \
+lazydev project list
+
+# Inspect fully resolved config (password redacted)
+lazydev config show
+```
 
 ## Quick Start
 
@@ -87,6 +146,10 @@ A JSON object containing both the global style rule (inherited) and the task-spe
 - `lazydev todo create <PROJECT_ID> <CONTENT>`
 - `lazydev todo list <PROJECT_ID>`
 
+### Config
+- `lazydev config show`: Print resolved config with secrets redacted.
+- `lazydev --backend <local|cloud> ...`: Override backend for a single command run.
+
 ## Output Contract
 
 All commands return structured JSON for easy consumption by agents:
@@ -113,8 +176,12 @@ Errors are also returned as JSON:
 
 ## Development
 
-Run integration tests (requires SurrealDB at `ws://localhost:8000`):
+Run tests:
 
 ```bash
 cargo test
 ```
+
+Notes:
+- Unit and integration tests run against in-memory/embedded backends and do not require a separate SurrealDB server.
+- Cloud backend validation is covered by tests that assert required credentials are present before connecting.
