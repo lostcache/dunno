@@ -1,7 +1,7 @@
 use crate::config::{Config, StorageBackend};
 use crate::models::{
-    File, Mistake, Module, Project, SecurityDetail, StyleRule, Submodule, Subtask, Task,
-    TaskStatus, TaskUpdate, TodoItem,
+    File, Mistake, Module, Project, SecurityDetail, StyleRule, Submodule, SubmoduleInfo,
+    Subtask, Task, TaskContext, TaskHierarchy, TaskStatus, TaskUpdate, TodoItem,
 };
 use anyhow::Result;
 use serde_json::to_value as to_json_value;
@@ -424,6 +424,197 @@ impl DB {
         } else {
             Ok(None)
         }
+    }
+
+    /// Gets full context for a task including subtasks, updates, files, and linked knowledge.
+    pub async fn get_task_context(&self, task_id: &str) -> Result<TaskContext> {
+        let task = self
+            .get_task(task_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Task not found: {}", task_id))?;
+
+        let subtasks = self.list_subtasks_by_task(task_id).await?;
+        let updates = self.list_task_updates(task_id).await?;
+
+        let hierarchy = self.get_task_hierarchy(task_id).await?;
+
+        let files = self.get_files_from_hierarchy(&hierarchy).await?;
+
+        let mistakes = self
+            .get_linked_knowledge::<Mistake>(task_id, "mistake")
+            .await?;
+        let style_rules = self
+            .get_linked_knowledge::<StyleRule>(task_id, "style_rule")
+            .await?;
+        let security_details = self
+            .get_linked_knowledge::<SecurityDetail>(task_id, "security_detail")
+            .await?;
+
+        Ok(TaskContext {
+            task,
+            subtasks,
+            updates,
+            files,
+            mistakes,
+            style_rules,
+            security_details,
+            hierarchy,
+        })
+    }
+
+    /// Resolves the hierarchy path from a task to its project/module/submodule.
+    async fn get_task_hierarchy(&self, task_id: &str) -> Result<TaskHierarchy> {
+        let mut response = self
+            .client
+            .query("SELECT ->belongs_to_project->project.* AS project FROM ONLY type::record($tid)")
+            .bind(("tid", task_id.to_string()))
+            .await?;
+        let project_record: Option<Value> = response.take(0)?;
+
+        let project_json = surreal_to_json(
+            project_record.ok_or_else(|| anyhow::anyhow!("No project linked to task"))?,
+        );
+        let project_obj = project_json
+            .get("project")
+            .and_then(|v| v.as_array())
+            .and_then(|arr| arr.first())
+            .ok_or_else(|| anyhow::anyhow!("Failed to parse project from graph query"))?;
+
+        let project_id = project_obj
+            .get("id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow::anyhow!("Project missing id"))?;
+        let project_name = project_obj
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        let mut response = self
+            .client
+            .query("SELECT ->belongs_to_module->module.* AS module FROM ONLY type::record($tid)")
+            .bind(("tid", task_id.to_string()))
+            .await?;
+        let module_record: Option<Value> = response.take(0)?;
+
+        let module_json = surreal_to_json(
+            module_record.ok_or_else(|| anyhow::anyhow!("No module linked to task"))?,
+        );
+        let module_obj = module_json
+            .get("module")
+            .and_then(|v| v.as_array())
+            .and_then(|arr| arr.first())
+            .ok_or_else(|| anyhow::anyhow!("Failed to parse module from graph query"))?;
+
+        let module_id = module_obj
+            .get("id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow::anyhow!("Module missing id"))?;
+        let module_name = module_obj
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        let submodule = self.get_submodule_under_module(task_id).await?;
+
+        Ok(TaskHierarchy {
+            project_id: project_id.to_string(),
+            project_name,
+            module_id: module_id.to_string(),
+            module_name,
+            submodule,
+        })
+    }
+
+    /// Gets the submodule if the task belongs to one.
+    async fn get_submodule_under_module(&self, task_id: &str) -> Result<Option<SubmoduleInfo>> {
+        let mut response = self
+            .client
+            .query(
+                "SELECT ->belongs_to_module->contains->submodule.* AS submodule FROM ONLY type::record($tid)",
+            )
+            .bind(("tid", task_id.to_string()))
+            .await?;
+        let result: Option<Value> = response.take(0)?;
+
+        let json = surreal_to_json(result.ok_or_else(|| anyhow::anyhow!("Query failed"))?);
+
+        if let Some(serde_json::Value::Array(arr)) = json.get("submodule") {
+            if let Some(sub) = arr.first() {
+                let id = sub
+                    .get("id")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| anyhow::anyhow!("Submodule missing id"))?
+                    .to_string();
+                let name = sub
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                return Ok(Some(SubmoduleInfo { id, name }));
+            }
+        }
+        Ok(None)
+    }
+
+    /// Gets files from the parent module or submodule in the hierarchy.
+    async fn get_files_from_hierarchy(&self, hierarchy: &TaskHierarchy) -> Result<Vec<String>> {
+        if let Some(ref submodule) = hierarchy.submodule {
+            let submodule_record = self.get_submodule(&submodule.id).await?;
+            if let Some(sub) = submodule_record {
+                return Ok(sub.files.unwrap_or_default());
+            }
+        }
+
+        let module_record = self.get_module(&hierarchy.module_id).await?;
+        if let Some(module) = module_record {
+            return Ok(module.files.unwrap_or_default());
+        }
+
+        Ok(vec![])
+    }
+
+    /// Generic method to fetch linked knowledge of a specific type.
+    async fn get_linked_knowledge<T: serde::de::DeserializeOwned + 'static>(
+        &self,
+        task_id: &str,
+        table: &str,
+    ) -> Result<Vec<T>> {
+        let key = task_id.split_once(':').map(|(_, k)| k).unwrap_or(task_id);
+
+        let query = format!(
+            "SELECT ->has_context->{}.* AS items FROM ONLY type::record(('task', $key))",
+            table
+        );
+
+        let mut response = self
+            .client
+            .query(&query)
+            .bind(("key", key.to_string()))
+            .await?;
+        let result: Option<Value> = response.take(0)?;
+
+        let json = match result {
+            Some(val) => surreal_to_json(val),
+            None => return Ok(vec![]),
+        };
+
+        if let Some(serde_json::Value::Array(outer)) = json.get("items") {
+            let mut items = Vec::new();
+            for elem in outer {
+                if let serde_json::Value::Array(inner) = elem {
+                    for item in inner {
+                        items.push(serde_json::from_value(item.clone())?);
+                    }
+                } else {
+                    items.push(serde_json::from_value(elem.clone())?);
+                }
+            }
+            return Ok(items);
+        }
+
+        Ok(vec![])
     }
 
     // --- Subtask Operations ---
