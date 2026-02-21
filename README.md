@@ -114,30 +114,39 @@ lazydev project create "My App" "A web application"
 # Returns project:abc
 
 # Create a module within the project
-lazydev module create project:abc "Auth" "Authentication system"
+lazydev module create --project-id project:abc "Auth" "Authentication system"
 # Returns module:def
 
 # (Optional) Create a submodule within the module
-lazydev submodule create module:def "OAuth" "OAuth2 providers"
+lazydev submodule create --module-id module:def "OAuth" "OAuth2 providers"
 # Returns submodule:xyz
 
 # Register a file under the module (or submodule)
-lazydev file create module:def --submodule-id submodule:xyz "oauth.rs" "src/auth/oauth.rs"
+lazydev file create --parent-id module:def "oauth.rs" "src/auth/oauth.rs"
+# Or use submodule as parent:
+lazydev file create --parent-id submodule:xyz "oauth.rs" "src/auth/oauth.rs"
 # Returns file:456
 
 # Create a task within the module
-lazydev task create module:def "Implement JWT" "Add token support"
+lazydev task create --module-id module:def "Implement JWT" "Add token support"
 # Returns task:ghi
+
+# (Optional) Create a subtask within the task
+lazydev subtask create --task-id task:ghi "Write tests" "Add unit tests"
+# Returns subtask:stu
 ```
 
 ### 2. Link knowledge
 
 ```bash
-# Add a global style rule to the project
-lazydev add --category rust --type style --content "Use explicit error types" --link-to project:abc
+# Add a style rule to the project
+lazydev add --type style --content "Use explicit error types" --link-to project:abc
 
-# Add a task-specific mistake to avoid
-lazydev add --category security --type mistake --content "Do not log raw passwords" --link-to task:ghi
+# Add a mistake to a task
+lazydev add --type mistake --content "Do not log raw passwords" --link-to task:ghi
+
+# Add a security note to a module
+lazydev add --type security --content "Validate all user inputs" --link-to module:def
 ```
 
 ### 3. Retrieve context
@@ -156,24 +165,25 @@ A JSON object containing all linked knowledge (style rules, mistakes, security d
 ## CLI Commands
 
 ### Knowledge Management
-- `lazydev add`: Add a mistake, style rule, or skill. Optional `--link-to <ID>` for context mapping.
+- `lazydev add --type <mistake|style|security> --content <CONTENT> [--link-to <ID>]`: Add a knowledge entry and optionally link it to a structural node.
 - `lazydev context --task-id <ID>`: Retrieve aggregated context for a task.
 - `lazydev context --file-id <ID>`: Retrieve aggregated context for a file.
+- `lazydev context --subtask-id <ID>`: Retrieve aggregated context for a subtask.
 
 ### Hierarchy Management
 - `lazydev project create <NAME> <DESC>` / `list`
-- `lazydev module create <PROJECT_ID> <NAME> <DESC>` / `list`
-- `lazydev submodule create <MODULE_ID> <NAME> <DESC>` / `list [--module-id <ID>]`
-- `lazydev file create <MODULE_ID> [--submodule-id <ID>] <NAME> <PATH>` / `list [--module-id <ID>] [--submodule-id <ID>]`
-- `lazydev task create <MODULE_ID> <NAME> <DESC>` / `list`
+- `lazydev module create --project-id <ID> <NAME> <DESC>` / `list`
+- `lazydev submodule create --module-id <ID> <NAME> <DESC>` / `list`
+- `lazydev file create --parent-id <ID> <NAME> <PATH>` / `list [--module-id <ID>] [--submodule-id <ID>]`
+- `lazydev task create --module-id <ID> <NAME> <DESC>` / `list`
 - `lazydev task update <TASK_ID> [--name <NAME>] [--description <DESC>] [--status <not_started|started|finished>]`
 - `lazydev task append-update <TASK_ID> <CONTENT>`
 - `lazydev task update-entry <UPDATE_ID> <CONTENT>`
 - `lazydev task list-updates <TASK_ID>`
+- `lazydev subtask create --task-id <ID> <NAME> <DESC>` / `list --task-id <ID>`
 
 ### Work Queue
-- `lazydev todo create <PROJECT_ID> <CONTENT>`
-- `lazydev todo list <PROJECT_ID>`
+- `lazydev todo create --project-id <ID> <CONTENT>` / `list --project-id <ID>`
 
 ### Config
 - `lazydev config show`: Print resolved config with secrets redacted.
