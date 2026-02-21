@@ -33,6 +33,8 @@ pub struct Module {
     pub id: Option<String>,
     pub name: String,
     pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub files: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -41,6 +43,8 @@ pub struct Submodule {
     pub id: Option<String>,
     pub name: String,
     pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub files: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -133,6 +137,7 @@ mod tests {
             id: None,
             name: "Core".to_string(),
             description: "Core module".to_string(),
+            files: None,
         };
         let json = to_string(&module).expect("Failed to serialize Module");
         assert!(json.contains("Core module"));
@@ -144,6 +149,7 @@ mod tests {
             id: None,
             name: "Lexer".to_string(),
             description: "Lexer submodule".to_string(),
+            files: None,
         };
         let json = to_string(&submodule).expect("Failed to serialize Submodule");
         assert!(json.contains("Lexer submodule"));

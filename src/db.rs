@@ -174,6 +174,7 @@ impl DB {
             id: None,
             name: name.to_string(),
             description: description.to_string(),
+            files: None,
         };
         let json = to_json_value(&module)?;
         let value = json_to_surreal(json);
@@ -223,6 +224,7 @@ impl DB {
             id: None,
             name: name.to_string(),
             description: description.to_string(),
+            files: None,
         };
         let json = to_json_value(&submodule)?;
         let value = json_to_surreal(json);
