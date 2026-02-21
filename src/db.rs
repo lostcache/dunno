@@ -584,7 +584,7 @@ impl DB {
         let key = task_id.split_once(':').map(|(_, k)| k).unwrap_or(task_id);
 
         let query = format!(
-            "SELECT ->has_context->{}.* AS items FROM ONLY type::record(('task', $key))",
+            "SELECT ->has_context->{}.* AS items FROM ONLY type::record('task', $key)",
             table
         );
 
@@ -1307,5 +1307,62 @@ mod tests {
             fs::remove_dir_all(parent)?;
         }
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_task_context() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Auth", "Auth module", &project_id)
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let task = db
+            .create_task("Login", "Implement login", &module_id, &project_id)
+            .await
+            .expect("Failed to create task");
+        let task_id = task.id.expect("task id");
+
+        let _subtask = db
+            .create_subtask("Setup DB", "Create tables", &task_id)
+            .await
+            .expect("Failed to create subtask");
+
+        let _update = db
+            .create_task_update("Started working", 1000, &task_id)
+            .await
+            .expect("Failed to create update");
+
+        let mistake = db
+            .create_mistake(&Mistake {
+                id: None,
+                content: "Task specific mistake".to_string(),
+            })
+            .await
+            .expect("Failed to create mistake");
+        db.link_context(&task_id, &mistake.id.unwrap())
+            .await
+            .expect("Failed to link mistake");
+
+        let context = db.get_task_context(&task_id).await.expect("get_task_context failed");
+
+        assert_eq!(context.task.name, "Login");
+        assert_eq!(context.subtasks.len(), 1);
+        assert_eq!(context.updates.len(), 1);
+        assert_eq!(context.mistakes.len(), 1);
+        assert_eq!(context.hierarchy.project_name, "TestProject");
+        assert_eq!(context.hierarchy.module_name, "Auth");
     }
 }
