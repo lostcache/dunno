@@ -27,7 +27,7 @@ async fn setup_hierarchy_with_context(db: &DB) -> (String, String, String) {
     let module_id = module.id.expect("module id");
 
     let task = db
-        .create_task("Login", "Implement login", &module_id)
+        .create_task("Login", "Implement login", &module_id, &project_id)
         .await
         .expect("create task");
     let task_id = task.id.expect("task id");
@@ -272,7 +272,7 @@ async fn test_security_detail_in_context() {
     let module_id = module.id.expect("id");
 
     let task = db
-        .create_task("Fix SQL", "Fix injection", &module_id)
+        .create_task("Fix SQL", "Fix injection", &module_id, &project_id)
         .await
         .expect("create task");
     let task_id = task.id.expect("id");

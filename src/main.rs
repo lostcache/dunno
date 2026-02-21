@@ -134,10 +134,11 @@ async fn run(args: Args) -> anyhow::Result<()> {
         Commands::Task { command } => match command {
             TaskCommands::Create {
                 module_id,
+                project_id,
                 name,
                 description,
             } => {
-                let created = db.create_task(&name, &description, &module_id).await?;
+                let created = db.create_task(&name, &description, &module_id, &project_id).await?;
                 println!("{}", json!(created));
             }
             TaskCommands::Update {

@@ -318,12 +318,13 @@ impl DB {
 
     // --- Task Operations ---
 
-    /// Creates a task and RELATEs it to its parent module.
+    /// Creates a task and RELATEs it to its parent module with bidirectional edges.
     pub async fn create_task(
         &self,
         name: &str,
         description: &str,
         module_id: &str,
+        project_id: &str,
     ) -> Result<Task> {
         let task = Task {
             id: None,
@@ -342,6 +343,9 @@ impl DB {
             .ok_or_else(|| anyhow::anyhow!("Task missing id after create"))?;
 
         self.relate(module_id, "contains", task_id).await?;
+        self.relate(project_id, "has_task", task_id).await?;
+        self.relate(task_id, "belongs_to_project", project_id).await?;
+        self.relate(task_id, "belongs_to_module", module_id).await?;
         Ok(result)
     }
 
@@ -361,6 +365,17 @@ impl DB {
             "SELECT ->contains->task.* AS items FROM ONLY type::record($mid)",
             "mid",
             module_id.to_string(),
+            "items",
+        )
+        .await
+    }
+
+    /// Lists all tasks directly under a project via has_task relationship.
+    pub async fn list_tasks_by_project(&self, project_id: &str) -> Result<Vec<Task>> {
+        self.query_graph_list(
+            "SELECT ->has_task->task.* AS items FROM ONLY type::record($pid)",
+            "pid",
+            project_id.to_string(),
             "items",
         )
         .await
@@ -928,7 +943,7 @@ mod tests {
         let module_id = module.id.expect("Module id should exist");
 
         let task = db
-            .create_task("Task", "Initial", &module_id)
+            .create_task("Task", "Initial", &module_id, &project_id)
             .await
             .expect("Failed to create task");
         let task_id = task.id.expect("Task id should exist");
@@ -1026,7 +1041,7 @@ mod tests {
         let module = db.create_module("M", "d", &pid).await.unwrap();
         let mid = module.id.unwrap();
 
-        let task = db.create_task("T", "d", &mid).await.unwrap();
+        let task = db.create_task("T", "d", &mid, &pid).await.unwrap();
         let tid = task.id.unwrap();
 
         let subtask = db

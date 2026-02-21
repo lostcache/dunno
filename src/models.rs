@@ -115,6 +115,33 @@ pub struct SecurityDetail {
     pub tags: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SubmoduleInfo {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TaskHierarchy {
+    pub project_id: String,
+    pub project_name: String,
+    pub module_id: String,
+    pub module_name: String,
+    pub submodule: Option<SubmoduleInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TaskContext {
+    pub task: Task,
+    pub subtasks: Vec<Subtask>,
+    pub updates: Vec<TaskUpdate>,
+    pub files: Vec<String>,
+    pub mistakes: Vec<Mistake>,
+    pub style_rules: Vec<StyleRule>,
+    pub security_details: Vec<SecurityDetail>,
+    pub hierarchy: TaskHierarchy,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

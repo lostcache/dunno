@@ -160,6 +160,8 @@ pub enum TaskCommands {
     Create {
         #[arg(long)]
         module_id: String,
+        #[arg(long)]
+        project_id: String,
         name: String,
         description: String,
     },
