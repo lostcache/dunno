@@ -2,21 +2,34 @@
 
 `lazydev` is a Rust CLI that captures coding knowledge and retrieves deterministic context for AI agents.
 
-Unlike traditional natural language search, `lazydev` uses a strict **Project -> Module -> Task** hierarchy. Context (mistakes, style rules, and skills) is linked to nodes in this hierarchy and is inherited down the tree.
+Unlike traditional natural language search, `lazydev` uses a strict graph hierarchy. Context (mistakes, style rules, and security details) is linked to nodes in this hierarchy and is inherited down the tree.
 
 ## Core Hierarchy
 
-- **Project:** The top-level container for all code and knowledge.
-- **Module:** A functional area or component within a project.
-- **Task:** A specific unit of work or feature.
+The knowledge graph has two parallel structural paths:
+
+**Code Structure Path:**
+- **Project** -> **Module** -> **Submodule** (optional) -> **File** (path)
+
+**Work Tracking Path:**
+- **Project** -> **Module** -> **Task** -> **Subtask** (optional)
+
+### Knowledge Entities (linkable to any structural node)
+- **Mistake:** Known pitfalls and errors to avoid.
+- **StyleRule:** Coding style rules with examples.
+- **SecurityDetail:** Security constraints and audit notes.
+
+### Supporting Entities
 - **Todo:** A project-level work queue item that can map to a task.
+- **TaskUpdate:** Append-only log entries on a task.
 
 ## Retrieval Strategy
 
 Retrieval is purely deterministic and graph-based:
-1. Provide a `task_id`.
-2. The system traverses up to the parent **Module** and **Project**.
-3. All unique knowledge nodes (Mistakes, Style Rules, Skills) linked to the task, its module, or the project are aggregated and returned as JSON.
+1. Provide a `task_id` or `file_id`.
+2. **Task path:** Traverses Task -> Module -> Project, collecting all linked knowledge at each level.
+3. **File path:** Traverses File -> Submodule (if any) -> Module -> Project, collecting all linked knowledge at each level.
+4. All unique knowledge nodes (Mistakes, Style Rules, Security Details) are deduplicated and returned as JSON.
 
 ## Prerequisites
 
@@ -104,6 +117,14 @@ lazydev project create "My App" "A web application"
 lazydev module create project:abc "Auth" "Authentication system"
 # Returns module:def
 
+# (Optional) Create a submodule within the module
+lazydev submodule create module:def "OAuth" "OAuth2 providers"
+# Returns submodule:xyz
+
+# Register a file under the module (or submodule)
+lazydev file create module:def --submodule-id submodule:xyz "oauth.rs" "src/auth/oauth.rs"
+# Returns file:456
+
 # Create a task within the module
 lazydev task create module:def "Implement JWT" "Add token support"
 # Returns task:ghi
@@ -119,24 +140,31 @@ lazydev add --category rust --type style --content "Use explicit error types" --
 lazydev add --category security --type mistake --content "Do not log raw passwords" --link-to task:ghi
 ```
 
-### 3. Retrieve context for the task
+### 3. Retrieve context
 
 ```bash
+# By task (traverses Task -> Module -> Project)
 lazydev context --task-id task:ghi
+
+# By file (traverses File -> Submodule -> Module -> Project)
+lazydev context --file-id file:456
 ```
 
 **Expected output:**
-A JSON object containing both the global style rule (inherited) and the task-specific mistake.
+A JSON object containing all linked knowledge (style rules, mistakes, security details) aggregated from the node and its ancestors.
 
 ## CLI Commands
 
 ### Knowledge Management
 - `lazydev add`: Add a mistake, style rule, or skill. Optional `--link-to <ID>` for context mapping.
 - `lazydev context --task-id <ID>`: Retrieve aggregated context for a task.
+- `lazydev context --file-id <ID>`: Retrieve aggregated context for a file.
 
 ### Hierarchy Management
 - `lazydev project create <NAME> <DESC>` / `list`
 - `lazydev module create <PROJECT_ID> <NAME> <DESC>` / `list`
+- `lazydev submodule create <MODULE_ID> <NAME> <DESC>` / `list [--module-id <ID>]`
+- `lazydev file create <MODULE_ID> [--submodule-id <ID>] <NAME> <PATH>` / `list [--module-id <ID>] [--submodule-id <ID>]`
 - `lazydev task create <MODULE_ID> <NAME> <DESC>` / `list`
 - `lazydev task update <TASK_ID> [--name <NAME>] [--description <DESC>] [--status <not_started|started|finished>]`
 - `lazydev task append-update <TASK_ID> <CONTENT>`

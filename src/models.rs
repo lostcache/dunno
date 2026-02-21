@@ -31,16 +31,39 @@ pub struct Project {
 pub struct Module {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    pub project_id: String,
     pub name: String,
     pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Submodule {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct File {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub name: String,
+    pub path: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Task {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    pub module_id: String,
+    pub name: String,
+    pub description: String,
+    pub status: TaskStatus,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Subtask {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     pub name: String,
     pub description: String,
     pub status: TaskStatus,
@@ -50,7 +73,6 @@ pub struct Task {
 pub struct TaskUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    pub task_id: String,
     pub content: String,
     pub created_at_ms: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -61,10 +83,7 @@ pub struct TaskUpdate {
 pub struct TodoItem {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    pub project_id: String,
-    pub task_id: Option<String>, // Optional link to a specific task context
     pub content: String,
-    pub status: String, // e.g., "pending", "claimed", "completed"
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -72,8 +91,6 @@ pub struct Mistake {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     pub content: String,
-    pub category: String, // Can be used for tagging, but primary link is via graph
-    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -85,96 +102,19 @@ pub struct StyleRule {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Skill {
+pub struct SecurityDetail {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    pub name: String,
-    pub proficiency: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct CategoryTag {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-    pub name: String,
-    pub normalized: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct KnowledgeEdge {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-    pub from_id: String,
-    pub to_id: String,
-    pub relation: String,
+    pub content: String,
+    pub severity: String,
+    pub category: String,
+    pub tags: Vec<String>,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::to_string;
-
-    #[test]
-    fn test_mistake_model() {
-        let mistake = Mistake {
-            id: None,
-            content: "Using unwrap instead of expect".to_string(),
-            category: "rust".to_string(),
-            tags: vec!["error-handling".to_string()],
-        };
-
-        let json = to_string(&mistake).expect("Failed to serialize Mistake");
-        assert!(json.contains("Using unwrap instead of expect"));
-    }
-
-    #[test]
-    fn test_style_rule_model() {
-        let rule = StyleRule {
-            id: None,
-            description: "Prefer functional style for iterators".to_string(),
-            example: "vec.iter().map(...).collect()".to_string(),
-        };
-
-        let json = to_string(&rule).expect("Failed to serialize StyleRule");
-        assert!(json.contains("Prefer functional style"));
-    }
-
-    #[test]
-    fn test_skill_model() {
-        let skill = Skill {
-            id: None,
-            name: "Async Rust".to_string(),
-            proficiency: "Intermediate".to_string(),
-        };
-
-        let json = to_string(&skill).expect("Failed to serialize Skill");
-        assert!(json.contains("Async Rust"));
-    }
-
-    #[test]
-    fn test_category_tag_model() {
-        let tag = CategoryTag {
-            id: None,
-            name: "Rust".to_string(),
-            normalized: "rust".to_string(),
-        };
-
-        let json = to_string(&tag).expect("Failed to serialize CategoryTag");
-        assert!(json.contains("\"normalized\":\"rust\""));
-    }
-
-    #[test]
-    fn test_knowledge_edge_model() {
-        let edge = KnowledgeEdge {
-            id: None,
-            from_id: "mistake:1".to_string(),
-            to_id: "category_tag:rust".to_string(),
-            relation: "has_tag".to_string(),
-        };
-
-        let json = to_string(&edge).expect("Failed to serialize KnowledgeEdge");
-        assert!(json.contains("\"relation\":\"has_tag\""));
-    }
 
     #[test]
     fn test_project_model() {
@@ -191,7 +131,6 @@ mod tests {
     fn test_module_model() {
         let module = Module {
             id: None,
-            project_id: "project:1".to_string(),
             name: "Core".to_string(),
             description: "Core module".to_string(),
         };
@@ -200,10 +139,31 @@ mod tests {
     }
 
     #[test]
+    fn test_submodule_model() {
+        let submodule = Submodule {
+            id: None,
+            name: "Lexer".to_string(),
+            description: "Lexer submodule".to_string(),
+        };
+        let json = to_string(&submodule).expect("Failed to serialize Submodule");
+        assert!(json.contains("Lexer submodule"));
+    }
+
+    #[test]
+    fn test_file_model() {
+        let file = File {
+            id: None,
+            name: "lexer.rs".to_string(),
+            path: "src/lexer.rs".to_string(),
+        };
+        let json = to_string(&file).expect("Failed to serialize File");
+        assert!(json.contains("lexer.rs"));
+    }
+
+    #[test]
     fn test_task_model() {
         let task = Task {
             id: None,
-            module_id: "module:1".to_string(),
             name: "Implement Auth".to_string(),
             description: "Add login".to_string(),
             status: TaskStatus::NotStarted,
@@ -214,10 +174,22 @@ mod tests {
     }
 
     #[test]
+    fn test_subtask_model() {
+        let subtask = Subtask {
+            id: None,
+            name: "Write unit tests".to_string(),
+            description: "Tests for login flow".to_string(),
+            status: TaskStatus::NotStarted,
+        };
+        let json = to_string(&subtask).expect("Failed to serialize Subtask");
+        assert!(json.contains("Write unit tests"));
+        assert!(json.contains("\"status\":\"not_started\""));
+    }
+
+    #[test]
     fn test_task_update_model() {
         let update = TaskUpdate {
             id: None,
-            task_id: "task:1".to_string(),
             content: "Implemented initial endpoint wiring".to_string(),
             created_at_ms: 1_739_000_000_000,
             updated_at_ms: None,
@@ -230,12 +202,44 @@ mod tests {
     fn test_todo_model() {
         let todo = TodoItem {
             id: None,
-            project_id: "project:1".to_string(),
-            task_id: Some("task:1".to_string()),
             content: "Fix bug".to_string(),
-            status: "pending".to_string(),
         };
         let json = to_string(&todo).expect("Failed to serialize TodoItem");
         assert!(json.contains("Fix bug"));
+    }
+
+    #[test]
+    fn test_mistake_model() {
+        let mistake = Mistake {
+            id: None,
+            content: "Using unwrap instead of expect".to_string(),
+        };
+        let json = to_string(&mistake).expect("Failed to serialize Mistake");
+        assert!(json.contains("Using unwrap instead of expect"));
+    }
+
+    #[test]
+    fn test_style_rule_model() {
+        let rule = StyleRule {
+            id: None,
+            description: "Prefer functional style for iterators".to_string(),
+            example: "vec.iter().map(...).collect()".to_string(),
+        };
+        let json = to_string(&rule).expect("Failed to serialize StyleRule");
+        assert!(json.contains("Prefer functional style"));
+    }
+
+    #[test]
+    fn test_security_detail_model() {
+        let detail = SecurityDetail {
+            id: None,
+            content: "SQL injection risk in raw queries".to_string(),
+            severity: "high".to_string(),
+            category: "injection".to_string(),
+            tags: vec!["sql".to_string(), "security".to_string()],
+        };
+        let json = to_string(&detail).expect("Failed to serialize SecurityDetail");
+        assert!(json.contains("SQL injection risk"));
+        assert!(json.contains("\"severity\":\"high\""));
     }
 }

@@ -167,7 +167,10 @@ impl Config {
             ("DUNNO_CLOUD_DB", env::var("DUNNO_CLOUD_DB").ok()),
             ("DUNNO_CLOUD_USER", env::var("DUNNO_CLOUD_USER").ok()),
             ("DUNNO_CLOUD_PASS", env::var("DUNNO_CLOUD_PASS").ok()),
-            ("DUNNO_CLOUD_AUTH_TYPE", env::var("DUNNO_CLOUD_AUTH_TYPE").ok()),
+            (
+                "DUNNO_CLOUD_AUTH_TYPE",
+                env::var("DUNNO_CLOUD_AUTH_TYPE").ok(),
+            ),
         ];
         self.apply_env_override_pairs(pairs)
     }

@@ -11,3 +11,19 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] Track: Dual Storage Backend & Config System — local embedded + SurrealDB Cloud with `~/.config/dunno/config.toml`.
 *Link: [./conductor/tracks/storage_config_20260219/](./conductor/tracks/storage_config_20260219/)*
+
+---
+
+## [x] Track: Extend hierarchy to support Submodule and File nodes.
+*Link: [./conductor/tracks/hierarchy_update_20260219/](./conductor/tracks/hierarchy_update_20260219/)*
+
+---
+
+## [~] Track: ~~Add Subtask and SecurityDetail entities to complete the ER model.~~ Superseded.
+*Link: [./conductor/tracks/er_completion_20260219/](./conductor/tracks/er_completion_20260219/)*
+*Superseded by: graph_native_schema_20260219 — the scope expanded from "add 2 entities" to a full graph-native schema rewrite.*
+
+---
+
+## [ ] Track: Graph-Native Schema Redesign — rewrite data layer to use SurrealDB RELATE edges, add Subtask & SecurityDetail.
+*Link: [./conductor/tracks/graph_native_schema_20260219/](./conductor/tracks/graph_native_schema_20260219/)*

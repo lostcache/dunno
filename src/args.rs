@@ -5,8 +5,8 @@ use clap::{Parser, Subcommand};
     name = "lazydev",
     author,
     version,
-    about = "Capture and retrieve coding knowledge from mistakes, style guides, and skills.",
-    long_about = "lazydev stores coding knowledge in a local graph+vector setup and retrieves context for natural-language queries.",
+    about = "Capture and retrieve coding knowledge from mistakes, style guides, and security details.",
+    long_about = "lazydev stores coding knowledge in a graph database and retrieves context via deterministic hierarchy traversal.",
     propagate_version = true
 )]
 pub struct Args {
@@ -22,15 +22,11 @@ pub struct Args {
 pub enum Commands {
     #[command(
         about = "Add a new knowledge entry.",
-        long_about = "Persist one knowledge entry (Mistake/Style/Skill) so it can be linked to tasks.",
-        after_help = "Examples:\n  lazydev add --category rust --type mistake --content \"Avoid unwrap\""
+        long_about = "Persist one knowledge entry (mistake/style/security) and optionally link it to a structural node.",
+        after_help = "Examples:\n  lazydev add --type mistake --content \"Avoid unwrap\"\n  lazydev add --type security --content \"SQL injection risk\" --link-to module:abc"
     )]
     Add {
-        /// Knowledge category (for tagging).
-        #[arg(short, long, value_name = "CATEGORY")]
-        category: String,
-
-        /// Knowledge type (`mistake`, `style`, or `skill`).
+        /// Knowledge type (`mistake`, `style`, or `security`).
         #[arg(short = 't', long = "type", value_name = "TYPE")]
         kind: String,
 
@@ -38,7 +34,7 @@ pub enum Commands {
         #[arg(short = 'C', long, value_name = "CONTENT")]
         content: String,
 
-        /// Optional ID of a Project/Module/Task to link this knowledge to.
+        /// Optional ID of a structural node to link this knowledge to.
         #[arg(long, value_name = "LINK_TO")]
         link_to: Option<String>,
     },
@@ -55,10 +51,28 @@ pub enum Commands {
         command: ModuleCommands,
     },
 
+    #[command(about = "Manage submodules.")]
+    Submodule {
+        #[command(subcommand)]
+        command: SubmoduleCommands,
+    },
+
+    #[command(about = "Manage files.")]
+    File {
+        #[command(subcommand)]
+        command: FileCommands,
+    },
+
     #[command(about = "Manage tasks.")]
     Task {
         #[command(subcommand)]
         command: TaskCommands,
+    },
+
+    #[command(about = "Manage subtasks.")]
+    Subtask {
+        #[command(subcommand)]
+        command: SubtaskCommands,
     },
 
     #[command(about = "Manage todo items.")]
@@ -74,14 +88,22 @@ pub enum Commands {
     },
 
     #[command(
-        about = "Retrieve coding context for a task.",
-        long_about = "Find relevant context by traversing the Project -> Module -> Task hierarchy.",
-        after_help = "Example:\n  lazydev context --task-id task:123"
+        about = "Retrieve coding context for a task, file, or subtask.",
+        long_about = "Find relevant context by traversing the structural hierarchy via graph edges.",
+        after_help = "Example:\n  lazydev context --task-id task:123\n  lazydev context --file-id file:456\n  lazydev context --subtask-id subtask:789"
     )]
     Context {
         /// The Task ID to retrieve context for.
-        #[arg(long, value_name = "TASK_ID")]
-        task_id: String,
+        #[arg(long, value_name = "TASK_ID", conflicts_with_all = ["file_id", "subtask_id"])]
+        task_id: Option<String>,
+
+        /// The File ID to retrieve context for.
+        #[arg(long, value_name = "FILE_ID", conflicts_with_all = ["task_id", "subtask_id"])]
+        file_id: Option<String>,
+
+        /// The Subtask ID to retrieve context for.
+        #[arg(long, value_name = "SUBTASK_ID", conflicts_with_all = ["task_id", "file_id"])]
+        subtask_id: Option<String>,
     },
 }
 
@@ -94,6 +116,7 @@ pub enum ProjectCommands {
 #[derive(Subcommand, Debug)]
 pub enum ModuleCommands {
     Create {
+        #[arg(long)]
         project_id: String,
         name: String,
         description: String,
@@ -102,8 +125,40 @@ pub enum ModuleCommands {
 }
 
 #[derive(Subcommand, Debug)]
+pub enum SubmoduleCommands {
+    Create {
+        #[arg(long)]
+        module_id: String,
+        name: String,
+        description: String,
+    },
+    List {
+        #[arg(long)]
+        module_id: Option<String>,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum FileCommands {
+    Create {
+        /// Parent ID (module or submodule).
+        #[arg(long)]
+        parent_id: String,
+        name: String,
+        path: String,
+    },
+    List {
+        #[arg(long, conflicts_with = "submodule_id")]
+        module_id: Option<String>,
+        #[arg(long, conflicts_with = "module_id")]
+        submodule_id: Option<String>,
+    },
+}
+
+#[derive(Subcommand, Debug)]
 pub enum TaskCommands {
     Create {
+        #[arg(long)]
         module_id: String,
         name: String,
         description: String,
@@ -136,9 +191,30 @@ pub enum TaskCommands {
 }
 
 #[derive(Subcommand, Debug)]
+pub enum SubtaskCommands {
+    Create {
+        #[arg(long)]
+        task_id: String,
+        name: String,
+        description: String,
+    },
+    List {
+        #[arg(long)]
+        task_id: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
 pub enum TodoCommands {
-    Create { project_id: String, content: String },
-    List { project_id: String },
+    Create {
+        #[arg(long)]
+        project_id: String,
+        content: String,
+    },
+    List {
+        #[arg(long)]
+        project_id: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]

@@ -1,0 +1,7 @@
+{
+  "track": "graph_native_schema",
+  "created": "2026-02-19",
+  "status": "planned",
+  "supersedes": "er_completion_20260219",
+  "description": "Rewrite the data layer to use SurrealDB native RELATE edges and arrow traversal. Remove hand-rolled FK fields, KnowledgeEdge table, and CategoryTag. Add Subtask and SecurityDetail entities. Collapse context retrieval from N+1 queries to 1."
+}

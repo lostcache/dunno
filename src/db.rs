@@ -1,7 +1,7 @@
 use crate::config::{Config, StorageBackend};
 use crate::models::{
-    CategoryTag, KnowledgeEdge, Mistake, Module, Project, Skill, StyleRule, Task, TaskStatus,
-    TaskUpdate, TodoItem,
+    File, Mistake, Module, Project, SecurityDetail, StyleRule, Submodule, Subtask, Task,
+    TaskStatus, TaskUpdate, TodoItem,
 };
 use anyhow::Result;
 use serde_json::to_value as to_json_value;
@@ -20,6 +20,8 @@ impl DB {
     /// Creates a new SurrealDB client and selects the default namespace/database.
     pub async fn new(url: &str) -> Result<Self> {
         let client = connect(url).await?;
+
+        // if is backend is cloud
         if !url.starts_with("mem:") {
             client
                 .signin(surrealdb::opt::auth::Root {
@@ -95,7 +97,10 @@ impl DB {
 
     async fn connect_cloud(cloud: &crate::config::CloudConfig) -> Result<Self> {
         let client = connect(&cloud.url).await?;
-        client.use_ns(&cloud.namespace).use_db(&cloud.database).await?;
+        client
+            .use_ns(&cloud.namespace)
+            .use_db(&cloud.database)
+            .await?;
 
         match cloud.auth_type.as_str() {
             "namespace" => {
@@ -132,6 +137,7 @@ impl DB {
 
     // --- Project Operations ---
 
+    /// Creates a new project record.
     pub async fn create_project(&self, project: &Project) -> Result<Project> {
         let json = to_json_value(project)?;
         let value = json_to_surreal(json);
@@ -144,58 +150,219 @@ impl DB {
         }
     }
 
+    /// Fetches a project by record id.
     pub async fn get_project(&self, id: &str) -> Result<Option<Project>> {
         self.get_record("project", id).await
     }
 
+    /// Returns all projects.
     pub async fn list_projects(&self) -> Result<Vec<Project>> {
         self.list_records("project").await
     }
 
     // --- Module Operations ---
 
-    pub async fn create_module(&self, module: &Module) -> Result<Module> {
-        let json = to_json_value(module)?;
+    /// Creates a module and RELATEs it to its parent project.
+    pub async fn create_module(
+        &self,
+        name: &str,
+        description: &str,
+        project_id: &str,
+    ) -> Result<Module> {
+        let module = Module {
+            id: None,
+            name: name.to_string(),
+            description: description.to_string(),
+        };
+        let json = to_json_value(&module)?;
         let value = json_to_surreal(json);
         let created: Option<Value> = self.client.create("module").content(value).await?;
-        if let Some(val) = created {
-            let json = surreal_to_json(val);
-            Ok(serde_json::from_value(json)?)
-        } else {
-            Err(anyhow::anyhow!("Failed to create module"))
-        }
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create module"))?;
+        let result: Module = serde_json::from_value(surreal_to_json(val))?;
+        let module_id = result
+            .id
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Module missing id after create"))?;
+
+        self.relate(project_id, "contains", module_id).await?;
+        Ok(result)
     }
 
+    /// Fetches a module by record id.
     pub async fn get_module(&self, id: &str) -> Result<Option<Module>> {
         self.get_record("module", id).await
     }
 
+    /// Lists modules under a project via graph traversal.
+    pub async fn list_modules_by_project(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<Module>> {
+        self.query_graph_list(
+            "SELECT ->contains->module.* AS items FROM ONLY type::record($pid)",
+            "pid", project_id.to_string(), "items",
+        ).await
+    }
+
+    /// Returns all modules (unfiltered).
     pub async fn list_modules(&self) -> Result<Vec<Module>> {
         self.list_records("module").await
     }
 
-    // --- Task Operations ---
+    // --- Submodule Operations ---
 
-    pub async fn create_task(&self, task: &Task) -> Result<Task> {
-        let json = to_json_value(task)?;
+    /// Creates a submodule and RELATEs it to its parent module.
+    pub async fn create_submodule(
+        &self,
+        name: &str,
+        description: &str,
+        module_id: &str,
+    ) -> Result<Submodule> {
+        let submodule = Submodule {
+            id: None,
+            name: name.to_string(),
+            description: description.to_string(),
+        };
+        let json = to_json_value(&submodule)?;
         let value = json_to_surreal(json);
-        let created: Option<Value> = self.client.create("task").content(value).await?;
-        if let Some(val) = created {
-            let json = surreal_to_json(val);
-            Ok(serde_json::from_value(json)?)
-        } else {
-            Err(anyhow::anyhow!("Failed to create task"))
-        }
+        let created: Option<Value> = self.client.create("submodule").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create submodule"))?;
+        let result: Submodule = serde_json::from_value(surreal_to_json(val))?;
+        let sub_id = result
+            .id
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Submodule missing id after create"))?;
+
+        self.relate(module_id, "contains", sub_id).await?;
+        Ok(result)
     }
 
+    /// Fetches a submodule by record id.
+    pub async fn get_submodule(&self, id: &str) -> Result<Option<Submodule>> {
+        self.get_record("submodule", id).await
+    }
+
+    /// Returns all submodules.
+    pub async fn list_submodules(&self) -> Result<Vec<Submodule>> {
+        self.list_records("submodule").await
+    }
+
+    /// Lists submodules under a module via graph traversal.
+    pub async fn list_submodules_by_module(
+        &self,
+        module_id: &str,
+    ) -> Result<Vec<Submodule>> {
+        self.query_graph_list(
+            "SELECT ->contains->submodule.* AS items FROM ONLY type::record($mid)",
+            "mid", module_id.to_string(), "items",
+        ).await
+    }
+
+    // --- File Operations ---
+
+    /// Creates a file and RELATEs it to a parent (module or submodule).
+    pub async fn create_file(
+        &self,
+        name: &str,
+        path: &str,
+        parent_id: &str,
+    ) -> Result<File> {
+        let file = File {
+            id: None,
+            name: name.to_string(),
+            path: path.to_string(),
+        };
+        let json = to_json_value(&file)?;
+        let value = json_to_surreal(json);
+        let created: Option<Value> = self.client.create("file").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create file"))?;
+        let result: File = serde_json::from_value(surreal_to_json(val))?;
+        let file_id = result
+            .id
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("File missing id after create"))?;
+
+        self.relate(parent_id, "contains", file_id).await?;
+        Ok(result)
+    }
+
+    /// Fetches a file by record id.
+    pub async fn get_file(&self, id: &str) -> Result<Option<File>> {
+        self.get_record("file", id).await
+    }
+
+    /// Returns all files.
+    pub async fn list_files(&self) -> Result<Vec<File>> {
+        self.list_records("file").await
+    }
+
+    /// Lists files under a module via graph traversal.
+    pub async fn list_files_by_module(&self, module_id: &str) -> Result<Vec<File>> {
+        self.query_graph_list(
+            "SELECT ->contains->file.* AS items FROM ONLY type::record($mid)",
+            "mid", module_id.to_string(), "items",
+        ).await
+    }
+
+    /// Lists files under a submodule via graph traversal.
+    pub async fn list_files_by_submodule(
+        &self,
+        submodule_id: &str,
+    ) -> Result<Vec<File>> {
+        self.query_graph_list(
+            "SELECT ->contains->file.* AS items FROM ONLY type::record($sid)",
+            "sid", submodule_id.to_string(), "items",
+        ).await
+    }
+
+    // --- Task Operations ---
+
+    /// Creates a task and RELATEs it to its parent module.
+    pub async fn create_task(
+        &self,
+        name: &str,
+        description: &str,
+        module_id: &str,
+    ) -> Result<Task> {
+        let task = Task {
+            id: None,
+            name: name.to_string(),
+            description: description.to_string(),
+            status: TaskStatus::NotStarted,
+        };
+        let json = to_json_value(&task)?;
+        let value = json_to_surreal(json);
+        let created: Option<Value> = self.client.create("task").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create task"))?;
+        let result: Task = serde_json::from_value(surreal_to_json(val))?;
+        let task_id = result
+            .id
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Task missing id after create"))?;
+
+        self.relate(module_id, "contains", task_id).await?;
+        Ok(result)
+    }
+
+    /// Fetches a task by record id.
     pub async fn get_task(&self, id: &str) -> Result<Option<Task>> {
         self.get_record("task", id).await
     }
 
+    /// Returns all tasks (unfiltered).
     pub async fn list_tasks(&self) -> Result<Vec<Task>> {
         self.list_records("task").await
     }
 
+    /// Lists tasks under a module via graph traversal.
+    pub async fn list_tasks_by_module(&self, module_id: &str) -> Result<Vec<Task>> {
+        self.query_graph_list(
+            "SELECT ->contains->task.* AS items FROM ONLY type::record($mid)",
+            "mid", module_id.to_string(), "items",
+        ).await
+    }
+
+    /// Updates a task's name, description, or status.
     pub async fn update_task(
         &self,
         task_id: &str,
@@ -240,35 +407,92 @@ impl DB {
         }
     }
 
-    pub async fn create_task_update(&self, task_update: &TaskUpdate) -> Result<TaskUpdate> {
-        let json = to_json_value(task_update)?;
+    // --- Subtask Operations ---
+
+    /// Creates a subtask and RELATEs it to its parent task.
+    pub async fn create_subtask(
+        &self,
+        name: &str,
+        description: &str,
+        task_id: &str,
+    ) -> Result<Subtask> {
+        let subtask = Subtask {
+            id: None,
+            name: name.to_string(),
+            description: description.to_string(),
+            status: TaskStatus::NotStarted,
+        };
+        let json = to_json_value(&subtask)?;
         let value = json_to_surreal(json);
-        let created: Option<Value> = self.client.create("task_update").content(value).await?;
-        if let Some(val) = created {
-            let json = surreal_to_json(val);
-            Ok(serde_json::from_value(json)?)
-        } else {
-            Err(anyhow::anyhow!("Failed to create task update"))
-        }
+        let created: Option<Value> = self.client.create("subtask").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create subtask"))?;
+        let result: Subtask = serde_json::from_value(surreal_to_json(val))?;
+        let subtask_id = result
+            .id
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Subtask missing id after create"))?;
+
+        self.relate(task_id, "contains", subtask_id).await?;
+        Ok(result)
     }
 
+    /// Fetches a subtask by record id.
+    pub async fn get_subtask(&self, id: &str) -> Result<Option<Subtask>> {
+        self.get_record("subtask", id).await
+    }
+
+    /// Lists subtasks under a task via graph traversal.
+    pub async fn list_subtasks_by_task(
+        &self,
+        task_id: &str,
+    ) -> Result<Vec<Subtask>> {
+        self.query_graph_list(
+            "SELECT ->contains->subtask.* AS items FROM ONLY type::record($tid)",
+            "tid", task_id.to_string(), "items",
+        ).await
+    }
+
+    // --- TaskUpdate Operations ---
+
+    /// Creates a task update and RELATEs it to its parent task via `has_update`.
+    pub async fn create_task_update(
+        &self,
+        content: &str,
+        created_at_ms: i64,
+        task_id: &str,
+    ) -> Result<TaskUpdate> {
+        let update = TaskUpdate {
+            id: None,
+            content: content.to_string(),
+            created_at_ms,
+            updated_at_ms: None,
+        };
+        let json = to_json_value(&update)?;
+        let value = json_to_surreal(json);
+        let created: Option<Value> =
+            self.client.create("task_update").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create task update"))?;
+        let result: TaskUpdate = serde_json::from_value(surreal_to_json(val))?;
+        let update_id = result
+            .id
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("TaskUpdate missing id after create"))?;
+
+        self.relate(task_id, "has_update", update_id).await?;
+        Ok(result)
+    }
+
+    /// Lists task updates for a task via graph traversal.
     pub async fn list_task_updates(&self, task_id: &str) -> Result<Vec<TaskUpdate>> {
-        let sql = "SELECT * FROM task_update WHERE task_id = $task_id ORDER BY created_at_ms ASC";
-        let mut response = self
-            .client
-            .query(sql)
-            .bind(("task_id", task_id.to_string()))
-            .await?;
-        let values: Vec<Value> = response.take(0)?;
-
-        let mut out = Vec::with_capacity(values.len());
-        for val in values {
-            let json = surreal_to_json(val);
-            out.push(serde_json::from_value(json)?);
-        }
-        Ok(out)
+        let mut updates: Vec<TaskUpdate> = self.query_graph_list(
+            "SELECT ->has_update->task_update.* AS items FROM ONLY type::record($tid)",
+            "tid", task_id.to_string(), "items",
+        ).await?;
+        updates.sort_by_key(|u| u.created_at_ms);
+        Ok(updates)
     }
 
+    /// Edits a task update's content.
     pub async fn update_task_update(
         &self,
         update_id: &str,
@@ -300,27 +524,174 @@ impl DB {
 
     // --- Todo Operations ---
 
-    pub async fn create_todo(&self, todo: &TodoItem) -> Result<TodoItem> {
-        let json = to_json_value(todo)?;
+    /// Creates a todo item and RELATEs it to a project via `has_todo`.
+    pub async fn create_todo(
+        &self,
+        content: &str,
+        project_id: &str,
+    ) -> Result<TodoItem> {
+        let todo = TodoItem {
+            id: None,
+            content: content.to_string(),
+        };
+        let json = to_json_value(&todo)?;
         let value = json_to_surreal(json);
-        let created: Option<Value> = self.client.create("todo_item").content(value).await?;
-        if let Some(val) = created {
-            let json = surreal_to_json(val);
-            Ok(serde_json::from_value(json)?)
-        } else {
-            Err(anyhow::anyhow!("Failed to create todo item"))
-        }
+        let created: Option<Value> =
+            self.client.create("todo_item").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create todo item"))?;
+        let result: TodoItem = serde_json::from_value(surreal_to_json(val))?;
+        let todo_id = result
+            .id
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("TodoItem missing id after create"))?;
+
+        self.relate(project_id, "has_todo", todo_id).await?;
+        Ok(result)
     }
 
+    /// Fetches a todo item by record id.
     pub async fn get_todo(&self, id: &str) -> Result<Option<TodoItem>> {
         self.get_record("todo_item", id).await
     }
 
+    /// Lists todo items for a project via graph traversal.
+    pub async fn list_todos_by_project(
+        &self,
+        project_id: &str,
+    ) -> Result<Vec<TodoItem>> {
+        self.query_graph_list(
+            "SELECT ->has_todo->todo_item.* AS items FROM ONLY type::record($pid)",
+            "pid", project_id.to_string(), "items",
+        ).await
+    }
+
+    /// Returns all todo items (unfiltered).
     pub async fn list_todos(&self) -> Result<Vec<TodoItem>> {
         self.list_records("todo_item").await
     }
 
+    // --- Knowledge Operations ---
+
+    /// Creates a new mistake record.
+    pub async fn create_mistake(&self, mistake: &Mistake) -> Result<Mistake> {
+        let json = to_json_value(mistake)?;
+        let value = json_to_surreal(json);
+        let created: Option<Value> = self.client.create("mistake").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create mistake"))?;
+        Ok(serde_json::from_value(surreal_to_json(val))?)
+    }
+
+    /// Fetches a mistake by record id.
+    pub async fn get_mistake(&self, id: &str) -> Result<Option<Mistake>> {
+        self.get_record("mistake", id).await
+    }
+
+    /// Returns all mistakes.
+    pub async fn list_mistakes(&self) -> Result<Vec<Mistake>> {
+        self.list_records("mistake").await
+    }
+
+    /// Creates a new style rule record.
+    pub async fn create_style_rule(&self, rule: &StyleRule) -> Result<StyleRule> {
+        let json = to_json_value(rule)?;
+        let value = json_to_surreal(json);
+        let created: Option<Value> =
+            self.client.create("style_rule").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create style rule"))?;
+        Ok(serde_json::from_value(surreal_to_json(val))?)
+    }
+
+    /// Fetches a style rule by record id.
+    pub async fn get_style_rule(&self, id: &str) -> Result<Option<StyleRule>> {
+        self.get_record("style_rule", id).await
+    }
+
+    /// Returns all style rules.
+    pub async fn list_style_rules(&self) -> Result<Vec<StyleRule>> {
+        self.list_records("style_rule").await
+    }
+
+    /// Creates a new security detail record.
+    pub async fn create_security_detail(
+        &self,
+        detail: &SecurityDetail,
+    ) -> Result<SecurityDetail> {
+        let json = to_json_value(detail)?;
+        let value = json_to_surreal(json);
+        let created: Option<Value> = self
+            .client
+            .create("security_detail")
+            .content(value)
+            .await?;
+        let val =
+            created.ok_or_else(|| anyhow::anyhow!("Failed to create security detail"))?;
+        Ok(serde_json::from_value(surreal_to_json(val))?)
+    }
+
+    /// Fetches a security detail by record id.
+    pub async fn get_security_detail(
+        &self,
+        id: &str,
+    ) -> Result<Option<SecurityDetail>> {
+        self.get_record("security_detail", id).await
+    }
+
+    /// Returns all security details.
+    pub async fn list_security_details(&self) -> Result<Vec<SecurityDetail>> {
+        self.list_records("security_detail").await
+    }
+
+    // --- Graph Edge Operations ---
+
+    /// Creates a `has_context` edge from a structural node to a knowledge node.
+    pub async fn link_context(
+        &self,
+        from_id: &str,
+        to_id: &str,
+    ) -> Result<()> {
+        self.relate(from_id, "has_context", to_id).await?;
+        Ok(())
+    }
+
     // --- Generic Helpers ---
+
+    /// Runs a raw SurrealQL query with a single string binding.
+    /// Returns the result at the given statement index as a serde_json::Value.
+    pub async fn query_raw_json(
+        &self,
+        sql: &str,
+        key: &str,
+        value: String,
+        take_index: usize,
+    ) -> Result<serde_json::Value> {
+        let mut response = self
+            .client
+            .query(sql)
+            .bind((key.to_string(), value))
+            .await?;
+        let val: Value = response.take(take_index)?;
+        Ok(surreal_to_json(val))
+    }
+
+    /// Creates a RELATE edge between two record ids.
+    async fn relate(
+        &self,
+        from_id: &str,
+        edge_table: &str,
+        to_id: &str,
+    ) -> Result<()> {
+        let sql = format!(
+            "LET $f = type::record($from); \
+             LET $t = type::record($to); \
+             RELATE $f->{edge_table}->$t;"
+        );
+        self.client
+            .query(&sql)
+            .bind(("from", from_id.to_string()))
+            .bind(("to", to_id.to_string()))
+            .await?;
+        Ok(())
+    }
 
     async fn get_record<T: serde::de::DeserializeOwned>(
         &self,
@@ -342,7 +713,10 @@ impl DB {
         }
     }
 
-    async fn list_records<T: serde::de::DeserializeOwned>(&self, table: &str) -> Result<Vec<T>> {
+    async fn list_records<T: serde::de::DeserializeOwned>(
+        &self,
+        table: &str,
+    ) -> Result<Vec<T>> {
         let fetched: Vec<Value> = match self.client.select(table).await {
             Ok(values) => values,
             Err(err) if is_missing_table_error(&err) => Vec::new(),
@@ -356,314 +730,53 @@ impl DB {
         Ok(out)
     }
 
-    /// Creates a new mistake record.
-    pub async fn create_mistake(&self, mistake: &Mistake) -> Result<Mistake> {
-        let json = to_json_value(mistake)?;
-        let value = json_to_surreal(json);
-
-        let created: Option<Value> = self.client.create("mistake").content(value).await?;
-
-        if let Some(val) = created {
-            let json = surreal_to_json(val);
-            let mistake: Mistake = serde_json::from_value(json)?;
-            Ok(mistake)
-        } else {
-            Err(anyhow::anyhow!("Failed to create mistake"))
-        }
-    }
-
-    /// Fetches a mistake by record id.
-    pub async fn get_mistake(&self, id: &str) -> Result<Option<Mistake>> {
-        let key = id.split_once(':').map(|(_, key)| key).unwrap_or(id);
-        let fetched: Option<Value> = match self.client.select(("mistake", key)).await {
-            Ok(value) => value,
-            Err(err) if is_missing_table_error(&err) => None,
-            Err(err) => return Err(err.into()),
-        };
-
-        if let Some(val) = fetched {
-            let json = surreal_to_json(val);
-            let mistake: Mistake = serde_json::from_value(json)?;
-            Ok(Some(mistake))
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Returns all mistakes.
-    pub async fn list_mistakes(&self) -> Result<Vec<Mistake>> {
-        let fetched: Vec<Value> = match self.client.select("mistake").await {
-            Ok(values) => values,
-            Err(err) if is_missing_table_error(&err) => Vec::new(),
-            Err(err) => return Err(err.into()),
-        };
-        let mut out = Vec::with_capacity(fetched.len());
-        for val in fetched {
-            let json = surreal_to_json(val);
-            out.push(serde_json::from_value(json)?);
-        }
-        Ok(out)
-    }
-
-    /// Creates a new style rule record.
-    pub async fn create_style_rule(&self, rule: &StyleRule) -> Result<StyleRule> {
-        let json = to_json_value(rule)?;
-        let value = json_to_surreal(json);
-
-        let created: Option<Value> = self.client.create("style_rule").content(value).await?;
-
-        if let Some(val) = created {
-            let json = surreal_to_json(val);
-            let rule: StyleRule = serde_json::from_value(json)?;
-            Ok(rule)
-        } else {
-            Err(anyhow::anyhow!("Failed to create style rule"))
-        }
-    }
-
-    /// Fetches a style rule by record id.
-    pub async fn get_style_rule(&self, id: &str) -> Result<Option<StyleRule>> {
-        let key = id.split_once(':').map(|(_, key)| key).unwrap_or(id);
-        let fetched: Option<Value> = match self.client.select(("style_rule", key)).await {
-            Ok(value) => value,
-            Err(err) if is_missing_table_error(&err) => None,
-            Err(err) => return Err(err.into()),
-        };
-
-        if let Some(val) = fetched {
-            let json = surreal_to_json(val);
-            let rule: StyleRule = serde_json::from_value(json)?;
-            Ok(Some(rule))
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Returns all style rules.
-    pub async fn list_style_rules(&self) -> Result<Vec<StyleRule>> {
-        let fetched: Vec<Value> = match self.client.select("style_rule").await {
-            Ok(values) => values,
-            Err(err) if is_missing_table_error(&err) => Vec::new(),
-            Err(err) => return Err(err.into()),
-        };
-        let mut out = Vec::with_capacity(fetched.len());
-        for val in fetched {
-            let json = surreal_to_json(val);
-            out.push(serde_json::from_value(json)?);
-        }
-        Ok(out)
-    }
-
-    /// Creates a new skill record.
-    pub async fn create_skill(&self, skill: &Skill) -> Result<Skill> {
-        let json = to_json_value(skill)?;
-        let value = json_to_surreal(json);
-
-        let created: Option<Value> = self.client.create("skill").content(value).await?;
-
-        if let Some(val) = created {
-            let json = surreal_to_json(val);
-            let skill: Skill = serde_json::from_value(json)?;
-            Ok(skill)
-        } else {
-            Err(anyhow::anyhow!("Failed to create skill"))
-        }
-    }
-
-    /// Fetches a skill by record id.
-    pub async fn get_skill(&self, id: &str) -> Result<Option<Skill>> {
-        let key = id.split_once(':').map(|(_, key)| key).unwrap_or(id);
-        let fetched: Option<Value> = match self.client.select(("skill", key)).await {
-            Ok(value) => value,
-            Err(err) if is_missing_table_error(&err) => None,
-            Err(err) => return Err(err.into()),
-        };
-
-        if let Some(val) = fetched {
-            let json = surreal_to_json(val);
-            let skill: Skill = serde_json::from_value(json)?;
-            Ok(Some(skill))
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Returns all skills.
-    pub async fn list_skills(&self) -> Result<Vec<Skill>> {
-        let fetched: Vec<Value> = match self.client.select("skill").await {
-            Ok(values) => values,
-            Err(err) if is_missing_table_error(&err) => Vec::new(),
-            Err(err) => return Err(err.into()),
-        };
-        let mut out = Vec::with_capacity(fetched.len());
-        for val in fetched {
-            let json = surreal_to_json(val);
-            out.push(serde_json::from_value(json)?);
-        }
-        Ok(out)
-    }
-
-    /// Creates or returns an existing normalized category tag.
-    pub async fn create_or_get_category_tag(&self, name: &str) -> Result<CategoryTag> {
-        let normalized = normalize_tag(name);
-        let existing = self.list_category_tags().await?;
-        if let Some(found) = existing.into_iter().find(|t| t.normalized == normalized) {
-            return Ok(found);
-        }
-
-        let tag = CategoryTag {
-            id: None,
-            name: name.to_string(),
-            normalized,
-        };
-
-        let json = to_json_value(&tag)?;
-        let value = json_to_surreal(json);
-        let created: Option<Value> = self.client.create("category_tag").content(value).await?;
-
-        if let Some(val) = created {
-            let json = surreal_to_json(val);
-            let tag: CategoryTag = serde_json::from_value(json)?;
-            Ok(tag)
-        } else {
-            Err(anyhow::anyhow!("Failed to create category tag"))
-        }
-    }
-
-    /// Returns all category tags.
-    pub async fn list_category_tags(&self) -> Result<Vec<CategoryTag>> {
-        let fetched: Vec<Value> = match self.client.select("category_tag").await {
-            Ok(values) => values,
-            Err(err) if is_missing_table_error(&err) => Vec::new(),
-            Err(err) => return Err(err.into()),
-        };
-        let mut out = Vec::with_capacity(fetched.len());
-        for val in fetched {
-            let json = surreal_to_json(val);
-            out.push(serde_json::from_value(json)?);
-        }
-        Ok(out)
-    }
-
-    /// Creates a graph edge from one record id to another.
-    pub async fn create_edge(
+    /// Runs a graph traversal query and extracts a nested array.
+    ///
+    /// SurrealDB graph queries return `{ field: [[...]] }`. This helper
+    /// unwraps the outer array and deserializes each inner element.
+    async fn query_graph_list<T: serde::de::DeserializeOwned>(
         &self,
-        from_id: &str,
-        to_id: &str,
-        relation: &str,
-    ) -> Result<KnowledgeEdge> {
-        let existing = self.list_edges().await?;
-        if let Some(edge) = existing
-            .into_iter()
-            .find(|e| e.from_id == from_id && e.to_id == to_id && e.relation == relation)
-        {
-            return Ok(edge);
-        }
-
-        let edge = KnowledgeEdge {
-            id: None,
-            from_id: from_id.to_string(),
-            to_id: to_id.to_string(),
-            relation: relation.to_string(),
-        };
-
-        let json = to_json_value(&edge)?;
-        let value = json_to_surreal(json);
-        let created: Option<Value> = self.client.create("knowledge_edge").content(value).await?;
-
-        if let Some(val) = created {
-            let json = surreal_to_json(val);
-            let edge: KnowledgeEdge = serde_json::from_value(json)?;
-            Ok(edge)
-        } else {
-            Err(anyhow::anyhow!("Failed to create knowledge edge"))
-        }
-    }
-
-    /// Returns all graph edges from a specific node.
-    pub async fn get_edges_from(&self, from_id: &str) -> Result<Vec<KnowledgeEdge>> {
-        let sql = "SELECT * FROM knowledge_edge WHERE from_id = $from";
+        sql: &str,
+        bind_key: &str,
+        bind_val: String,
+        field: &str,
+    ) -> Result<Vec<T>> {
         let mut response = self
             .client
             .query(sql)
-            .bind(("from", from_id.to_string()))
+            .bind((bind_key.to_string(), bind_val))
             .await?;
-        let values: Vec<Value> = response.take(0)?;
-
-        let mut out = Vec::with_capacity(values.len());
-        for val in values {
-            let json = surreal_to_json(val);
-            out.push(serde_json::from_value(json)?);
-        }
-        Ok(out)
-    }
-
-    /// Returns all graph edges.
-    pub async fn list_edges(&self) -> Result<Vec<KnowledgeEdge>> {
-        let fetched: Vec<Value> = match self.client.select("knowledge_edge").await {
-            Ok(values) => values,
-            Err(err) if is_missing_table_error(&err) => Vec::new(),
-            Err(err) => return Err(err.into()),
+        let row: Option<Value> = response.take(0)?;
+        let row = match row {
+            Some(r) => r,
+            None => return Ok(Vec::new()),
         };
-        let mut out = Vec::with_capacity(fetched.len());
-        for val in fetched {
-            let json = surreal_to_json(val);
-            out.push(serde_json::from_value(json)?);
-        }
-        Ok(out)
-    }
 
-    /// Fetches a knowledge node and maps it to a JSON object.
-    pub async fn fetch_knowledge_node_json(&self, id: &str) -> Result<Option<serde_json::Value>> {
-        if id.starts_with("mistake:") {
-            if let Some(item) = self.get_mistake(id).await? {
-                let mut value = serde_json::to_value(item)?;
-                if let Some(obj) = value.as_object_mut() {
-                    obj.insert(
-                        "node_type".to_string(),
-                        serde_json::Value::String("mistake".to_string()),
-                    );
+        let json = surreal_to_json(row);
+        let items = match json.get(field) {
+            Some(serde_json::Value::Array(outer)) => {
+                let mut flat = Vec::new();
+                for elem in outer {
+                    match elem {
+                        serde_json::Value::Array(inner) => {
+                            for item in inner {
+                                flat.push(serde_json::from_value(item.clone())?);
+                            }
+                        }
+                        _ => {
+                            flat.push(serde_json::from_value(elem.clone())?);
+                        }
+                    }
                 }
-                return Ok(Some(value));
+                flat
             }
-            return Ok(None);
-        }
-
-        if id.starts_with("style_rule:") {
-            if let Some(item) = self.get_style_rule(id).await? {
-                let mut value = serde_json::to_value(item)?;
-                if let Some(obj) = value.as_object_mut() {
-                    obj.insert(
-                        "node_type".to_string(),
-                        serde_json::Value::String("style_rule".to_string()),
-                    );
-                }
-                return Ok(Some(value));
-            }
-            return Ok(None);
-        }
-
-        if id.starts_with("skill:") {
-            if let Some(item) = self.get_skill(id).await? {
-                let mut value = serde_json::to_value(item)?;
-                if let Some(obj) = value.as_object_mut() {
-                    obj.insert(
-                        "node_type".to_string(),
-                        serde_json::Value::String("skill".to_string()),
-                    );
-                }
-                return Ok(Some(value));
-            }
-            return Ok(None);
-        }
-
-        Ok(None)
+            _ => Vec::new(),
+        };
+        Ok(items)
     }
 }
 
-fn normalize_tag(name: &str) -> String {
-    name.trim().to_lowercase().replace(' ', "_")
-}
+
 
 fn is_missing_table_error(err: &surrealdb::Error) -> bool {
     err.to_string().contains("does not exist")
@@ -713,7 +826,9 @@ fn surreal_to_json(val: Value) -> serde_json::Value {
             }
         }
         Value::String(s) => s.into(),
-        Value::Array(a) => serde_json::Value::Array(a.into_iter().map(surreal_to_json).collect()),
+        Value::Array(a) => {
+            serde_json::Value::Array(a.into_iter().map(surreal_to_json).collect())
+        }
         Value::Object(o) => {
             let mut map = serde_json::Map::new();
             for (k, v) in o {
@@ -746,43 +861,76 @@ mod tests {
 
     #[tokio::test]
     async fn test_surreal_crud() {
-        // Attempt to initialize DB (in-memory for testing)
         let db = DB::new("mem://").await.expect("Failed to init DB");
 
-        // Test data
         let mistake = Mistake {
             id: None,
             content: "Using unwrap in production code".to_string(),
-            category: "rust".to_string(),
-            tags: vec!["safety".to_string()],
         };
 
-        // CRUD: Create
-        let created: Mistake = db
+        let created = db
             .create_mistake(&mistake)
             .await
             .expect("Failed to create mistake");
         assert!(created.id.is_some());
         assert_eq!(created.content, mistake.content);
 
-        // CRUD: Read
         let id = created.id.as_ref().unwrap();
-        let fetched: Option<Mistake> = db.get_mistake(id).await.expect("Failed to fetch mistake");
+        let fetched = db.get_mistake(id).await.expect("Failed to fetch mistake");
         assert!(fetched.is_some());
         assert_eq!(fetched.unwrap().content, mistake.content);
+    }
 
-        let tag = db
-            .create_or_get_category_tag("rust")
-            .await
-            .expect("Failed to create tag");
-        assert_eq!(tag.normalized, "rust");
+    #[tokio::test]
+    async fn test_graph_relate_and_list() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
 
-        let tag_id = tag.id.expect("Tag should have id");
-        db.create_edge(id, &tag_id, "has_tag")
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "Test".to_string(),
+                description: "Test project".to_string(),
+            })
             .await
-            .expect("Failed to create edge");
-        let edges = db.list_edges().await.expect("Failed to list edges");
-        assert!(edges.iter().any(|e| e.relation == "has_tag"));
+            .expect("Failed to create project");
+        let project_id = project.id.expect("Project id should exist");
+
+        let module = db
+            .create_module("Module", "Module desc", &project_id)
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("Module id should exist");
+
+        let modules = db
+            .list_modules_by_project(&project_id)
+            .await
+            .expect("Failed to list modules");
+        assert_eq!(modules.len(), 1);
+        assert_eq!(modules[0].name, "Module");
+
+        let submodule = db
+            .create_submodule("Sub", "Sub desc", &module_id)
+            .await
+            .expect("Failed to create submodule");
+        let sub_id = submodule.id.expect("Submodule id should exist");
+
+        let subs = db
+            .list_submodules_by_module(&module_id)
+            .await
+            .expect("Failed to list submodules");
+        assert_eq!(subs.len(), 1);
+
+        let file = db
+            .create_file("test.rs", "src/test.rs", &sub_id)
+            .await
+            .expect("Failed to create file");
+        assert!(file.id.is_some());
+
+        let files = db
+            .list_files_by_submodule(&sub_id)
+            .await
+            .expect("Failed to list files");
+        assert_eq!(files.len(), 1);
     }
 
     #[tokio::test]
@@ -800,24 +948,13 @@ mod tests {
         let project_id = project.id.expect("Project id should exist");
 
         let module = db
-            .create_module(&Module {
-                id: None,
-                project_id,
-                name: "Module".to_string(),
-                description: "Module desc".to_string(),
-            })
+            .create_module("Module", "Module desc", &project_id)
             .await
             .expect("Failed to create module");
         let module_id = module.id.expect("Module id should exist");
 
         let task = db
-            .create_task(&Task {
-                id: None,
-                module_id,
-                name: "Task".to_string(),
-                description: "Initial".to_string(),
-                status: TaskStatus::NotStarted,
-            })
+            .create_task("Task", "Initial", &module_id)
             .await
             .expect("Failed to create task");
         let task_id = task.id.expect("Task id should exist");
@@ -835,24 +972,12 @@ mod tests {
         assert_eq!(updated.description, "Updated description");
         assert_eq!(updated.status, TaskStatus::Started);
 
-        db.create_task_update(&TaskUpdate {
-            id: None,
-            task_id: task_id.clone(),
-            content: "First update".to_string(),
-            created_at_ms: 1,
-            updated_at_ms: None,
-        })
-        .await
-        .expect("Failed to append first update");
-        db.create_task_update(&TaskUpdate {
-            id: None,
-            task_id: task_id.clone(),
-            content: "Second update".to_string(),
-            created_at_ms: 2,
-            updated_at_ms: None,
-        })
-        .await
-        .expect("Failed to append second update");
+        db.create_task_update("First update", 1, &task_id)
+            .await
+            .expect("Failed to append first update");
+        db.create_task_update("Second update", 2, &task_id)
+            .await
+            .expect("Failed to append second update");
 
         let updates = db
             .list_task_updates(&task_id)
@@ -874,6 +999,75 @@ mod tests {
             .expect("Task update should exist");
         assert_eq!(edited.content, "First update (edited)");
         assert_eq!(edited.updated_at_ms, Some(3));
+    }
+
+    #[tokio::test]
+    async fn test_link_context() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "Ctx".to_string(),
+                description: "d".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("id");
+
+        let module = db
+            .create_module("M", "d", &project_id)
+            .await
+            .expect("create module");
+        let module_id = module.id.expect("id");
+
+        let mistake = db
+            .create_mistake(&Mistake {
+                id: None,
+                content: "test mistake".to_string(),
+            })
+            .await
+            .expect("create mistake");
+        let mistake_id = mistake.id.expect("id");
+
+        db.link_context(&module_id, &mistake_id)
+            .await
+            .expect("link_context should succeed");
+    }
+
+    #[tokio::test]
+    async fn test_subtask_crud() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "P".to_string(),
+                description: "d".to_string(),
+            })
+            .await
+            .unwrap();
+        let pid = project.id.unwrap();
+
+        let module = db.create_module("M", "d", &pid).await.unwrap();
+        let mid = module.id.unwrap();
+
+        let task = db.create_task("T", "d", &mid).await.unwrap();
+        let tid = task.id.unwrap();
+
+        let subtask = db
+            .create_subtask("ST", "sub desc", &tid)
+            .await
+            .expect("create subtask");
+        assert!(subtask.id.is_some());
+        assert_eq!(subtask.name, "ST");
+
+        let list = db
+            .list_subtasks_by_task(&tid)
+            .await
+            .expect("list subtasks");
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].name, "ST");
     }
 
     #[tokio::test]

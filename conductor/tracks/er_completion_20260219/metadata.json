@@ -1,0 +1,7 @@
+{
+  "track": "er_completion",
+  "created": "2026-02-19",
+  "status": "superseded",
+  "superseded_by": "graph_native_schema_20260219",
+  "description": "Add Subtask and SecurityDetail entities to complete the agent knowledge graph ER model. SUPERSEDED: scope expanded to full graph-native schema redesign."
+}

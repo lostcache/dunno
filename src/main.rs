@@ -1,14 +1,14 @@
 use clap::Parser;
 use clap::error::ErrorKind;
 use lazydev::args::{
-    Args, Commands, ConfigCommands, ModuleCommands, ProjectCommands, TaskCommands, TodoCommands,
+    Args, Commands, ConfigCommands, FileCommands, ModuleCommands, ProjectCommands,
+    SubmoduleCommands, SubtaskCommands, TaskCommands, TodoCommands,
 };
 use lazydev::config::Config;
-use lazydev::context::get_task_context;
+use lazydev::context::{get_file_context, get_subtask_context, get_task_context};
 use lazydev::db::DB;
 use lazydev::ingest::add_knowledge;
-use lazydev::models::{Module, Project, Task, TaskStatus, TaskUpdate, TodoItem};
-use lazydev::vector_db::VectorDB;
+use lazydev::models::Project;
 use serde_json::json;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -51,19 +51,14 @@ async fn run(args: Args) -> anyhow::Result<()> {
     }
 
     let db = DB::from_config(&config).await?;
-    let vector_db = match VectorDB::new(&config.qdrant_url).await {
-        Ok(db) => db,
-        Err(_) => VectorDB::new("mem://").await?,
-    };
 
     match args.command {
         Commands::Add {
-            category,
             kind,
             content,
             link_to,
         } => {
-            add_knowledge(category, kind, content, link_to, &db, &vector_db).await?;
+            add_knowledge(kind, content, link_to, &db).await?;
             println!("{}", json!({ "status": "ok" }));
         }
         Commands::Project { command } => match command {
@@ -87,18 +82,54 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 name,
                 description,
             } => {
-                let module = Module {
-                    id: None,
-                    project_id,
-                    name,
-                    description,
-                };
-                let created = db.create_module(&module).await?;
+                let created = db.create_module(&name, &description, &project_id).await?;
                 println!("{}", json!(created));
             }
             ModuleCommands::List => {
                 let modules = db.list_modules().await?;
                 println!("{}", json!(modules));
+            }
+        },
+        Commands::Submodule { command } => match command {
+            SubmoduleCommands::Create {
+                module_id,
+                name,
+                description,
+            } => {
+                let created =
+                    db.create_submodule(&name, &description, &module_id).await?;
+                println!("{}", json!(created));
+            }
+            SubmoduleCommands::List { module_id } => {
+                let submodules = if let Some(mid) = module_id {
+                    db.list_submodules_by_module(&mid).await?
+                } else {
+                    db.list_submodules().await?
+                };
+                println!("{}", json!(submodules));
+            }
+        },
+        Commands::File { command } => match command {
+            FileCommands::Create {
+                parent_id,
+                name,
+                path,
+            } => {
+                let created = db.create_file(&name, &path, &parent_id).await?;
+                println!("{}", json!(created));
+            }
+            FileCommands::List {
+                module_id,
+                submodule_id,
+            } => {
+                let files = if let Some(mid) = module_id {
+                    db.list_files_by_module(&mid).await?
+                } else if let Some(sid) = submodule_id {
+                    db.list_files_by_submodule(&sid).await?
+                } else {
+                    db.list_files().await?
+                };
+                println!("{}", json!(files));
             }
         },
         Commands::Task { command } => match command {
@@ -107,14 +138,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 name,
                 description,
             } => {
-                let task = Task {
-                    id: None,
-                    module_id,
-                    name,
-                    description,
-                    status: TaskStatus::NotStarted,
-                };
-                let created = db.create_task(&task).await?;
+                let created = db.create_task(&name, &description, &module_id).await?;
                 println!("{}", json!(created));
             }
             TaskCommands::Update {
@@ -124,12 +148,16 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 status,
             } => {
                 let parsed_status = match status {
-                    Some(value) => Some(TaskStatus::parse(&value).ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "Invalid status '{}'. Expected one of: not_started, started, finished",
-                            value
-                        )
-                    })?),
+                    Some(value) => {
+                        Some(lazydev::models::TaskStatus::parse(&value).ok_or_else(
+                            || {
+                                anyhow::anyhow!(
+                                    "Invalid status '{}'. Expected: not_started, started, finished",
+                                    value
+                                )
+                            },
+                        )?)
+                    }
                     None => None,
                 };
                 let updated = db
@@ -151,14 +179,8 @@ async fn run(args: Args) -> anyhow::Result<()> {
                     .map_err(|_| anyhow::anyhow!("System clock is before UNIX_EPOCH"))?
                     .as_millis() as i64;
 
-                let update = TaskUpdate {
-                    id: None,
-                    task_id,
-                    content,
-                    created_at_ms,
-                    updated_at_ms: None,
-                };
-                let created = db.create_task_update(&update).await?;
+                let created =
+                    db.create_task_update(&content, created_at_ms, &task_id).await?;
                 println!("{}", json!(created));
             }
             TaskCommands::UpdateEntry { update_id, content } => {
@@ -172,7 +194,10 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 if let Some(update) = edited {
                     println!("{}", json!(update));
                 } else {
-                    return Err(anyhow::anyhow!("Task update not found: {}", update_id));
+                    return Err(anyhow::anyhow!(
+                        "Task update not found: {}",
+                        update_id
+                    ));
                 }
             }
             TaskCommands::ListUpdates { task_id } => {
@@ -184,32 +209,57 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 println!("{}", json!(tasks));
             }
         },
+        Commands::Subtask { command } => match command {
+            SubtaskCommands::Create {
+                task_id,
+                name,
+                description,
+            } => {
+                let created =
+                    db.create_subtask(&name, &description, &task_id).await?;
+                println!("{}", json!(created));
+            }
+            SubtaskCommands::List { task_id } => {
+                let subtasks = db.list_subtasks_by_task(&task_id).await?;
+                println!("{}", json!(subtasks));
+            }
+        },
         Commands::Todo { command } => match command {
             TodoCommands::Create {
                 project_id,
                 content,
             } => {
-                let todo = TodoItem {
-                    id: None,
-                    project_id,
-                    task_id: None,
-                    content,
-                    status: "pending".to_string(),
-                };
-                let created = db.create_todo(&todo).await?;
+                let created = db.create_todo(&content, &project_id).await?;
                 println!("{}", json!(created));
             }
-            TodoCommands::List { project_id: _ } => {
-                // TODO: Filter by project_id
-                let todos = db.list_todos().await?;
+            TodoCommands::List { project_id } => {
+                let todos = db.list_todos_by_project(&project_id).await?;
                 println!("{}", json!(todos));
             }
         },
-        Commands::Context { task_id } => {
-            let results = get_task_context(&task_id, &db, &vector_db).await?;
-            println!("{}", json!({ "results": results }));
+        Commands::Context {
+            task_id,
+            file_id,
+            subtask_id,
+        } => {
+            if let Some(t_id) = task_id {
+                let results = get_task_context(&t_id, &db).await?;
+                println!("{}", json!({ "results": results }));
+            } else if let Some(f_id) = file_id {
+                let results = get_file_context(&f_id, &db).await?;
+                println!("{}", json!({ "results": results }));
+            } else if let Some(st_id) = subtask_id {
+                let results = get_subtask_context(&st_id, &db).await?;
+                println!("{}", json!({ "results": results }));
+            } else {
+                return Err(anyhow::anyhow!(
+                    "One of --task-id, --file-id, or --subtask-id must be provided"
+                ));
+            }
         }
-        Commands::Config { .. } => unreachable!("config command returns before DB init"),
+        Commands::Config { .. } => {
+            unreachable!("config command returns before DB init")
+        }
     }
 
     Ok(())
