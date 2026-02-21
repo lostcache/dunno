@@ -13,7 +13,7 @@
 - **Append-Only Learning:** Agent runtime updates (task notes, mistakes) must be append-only to preserve auditability.
 
 ## Naming Conventions
-- **Kebab-Case:** All CLI commands and flags must use kebab-case (e.g., `lazydev get-context --mistakes`). This aligns with standard CLI practices.
+- **Kebab-Case:** All CLI commands and flags must use kebab-case (e.g., `dunno get-context --mistakes`). This aligns with standard CLI practices.
 
 ## Visual Identity
 - **Purely Functional:** No ASCII art, logos, or decorative elements. Help output and non-JSON responses should be plain text to avoid cluttering logs or terminal buffers.

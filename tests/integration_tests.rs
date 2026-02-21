@@ -1,6 +1,6 @@
-use lazydev::context::{get_file_context, get_subtask_context, get_task_context};
-use lazydev::db::DB;
-use lazydev::models::{Mistake, Project, SecurityDetail, StyleRule};
+use dunno::context::{get_file_context, get_subtask_context, get_task_context};
+use dunno::db::DB;
+use dunno::models::{Mistake, Project, SecurityDetail, StyleRule};
 
 /// Sets up a fresh in-memory DB.
 async fn setup_db() -> DB {

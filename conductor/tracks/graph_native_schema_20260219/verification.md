@@ -12,22 +12,22 @@
 
 ```bash
 # Create hierarchy
-lazydev project create "Test App" "A test application"
+dunno project create "Test App" "A test application"
 # Returns project:<id>
 
-lazydev module create --project-id project:<id> "Auth" "Authentication module"
+dunno module create --project-id project:<id> "Auth" "Authentication module"
 # Returns module:<id>
 
-lazydev submodule create --module-id module:<id> "OAuth" "OAuth2 providers"
+dunno submodule create --module-id module:<id> "OAuth" "OAuth2 providers"
 # Returns submodule:<id>
 
-lazydev file create --parent-id submodule:<id> "oauth.rs" "src/auth/oauth.rs"
+dunno file create --parent-id submodule:<id> "oauth.rs" "src/auth/oauth.rs"
 # Returns file:<id>
 
-lazydev task create --module-id module:<id> "Implement JWT" "Add token support"
+dunno task create --module-id module:<id> "Implement JWT" "Add token support"
 # Returns task:<id>
 
-lazydev subtask create --task-id task:<id> "Write tests" "Unit tests for JWT"
+dunno subtask create --task-id task:<id> "Write tests" "Unit tests for JWT"
 # Returns subtask:<id>
 ```
 
@@ -36,16 +36,16 @@ lazydev subtask create --task-id task:<id> "Write tests" "Unit tests for JWT"
 ### 2. List Children via Graph Traversal
 
 ```bash
-lazydev module list
+dunno module list
 # Should list all modules
 
-lazydev submodule list --module-id module:<id>
+dunno submodule list --module-id module:<id>
 # Should list only submodules under that module
 
-lazydev file list --submodule-id submodule:<id>
+dunno file list --submodule-id submodule:<id>
 # Should list only files under that submodule
 
-lazydev subtask list --task-id task:<id>
+dunno subtask list --task-id task:<id>
 # Should list only subtasks under that task
 ```
 
@@ -55,13 +55,13 @@ lazydev subtask list --task-id task:<id>
 
 ```bash
 # Link a style rule to the project (global)
-lazydev add --category rust --type style --content "Use explicit error types" --link-to project:<id>
+dunno add --category rust --type style --content "Use explicit error types" --link-to project:<id>
 
 # Link a mistake to the task
-lazydev add --category security --type mistake --content "Do not log raw passwords" --link-to task:<id>
+dunno add --category security --type mistake --content "Do not log raw passwords" --link-to task:<id>
 
 # Link a security detail to the module
-lazydev add --category auth --type security --content "Validate JWT expiry" --link-to module:<id>
+dunno add --category auth --type security --content "Validate JWT expiry" --link-to module:<id>
 ```
 
 **Verify:** Each `add` returns `{"status":"ok"}`.
@@ -70,13 +70,13 @@ lazydev add --category auth --type security --content "Validate JWT expiry" --li
 
 ```bash
 # Task context: should include task-linked mistake + module-linked security + project-linked style
-lazydev context --task-id task:<id>
+dunno context --task-id task:<id>
 
 # File context: should include project-linked style (inherited through submodule -> module -> project)
-lazydev context --file-id file:<id>
+dunno context --file-id file:<id>
 
 # Subtask context: should include all 4 levels (subtask -> task -> module -> project)
-lazydev context --subtask-id subtask:<id>
+dunno context --subtask-id subtask:<id>
 ```
 
 **Verify:** Each context response contains knowledge nodes from the queried node AND all ancestors. No duplicates.
@@ -86,20 +86,20 @@ lazydev context --subtask-id subtask:<id>
 ```bash
 # These should NOT appear in any output
 # Internally: no knowledge_edge or category_tag tables should exist
-lazydev config show
+dunno config show
 # Should work as before (config is unchanged)
 ```
 
 ### 6. No FK Fields in JSON Output
 
 ```bash
-lazydev module list
+dunno module list
 # Module JSON should NOT contain "project_id"
 
-lazydev task list
+dunno task list
 # Task JSON should NOT contain "module_id"
 
-lazydev file list
+dunno file list
 # File JSON should NOT contain "module_id" or "submodule_id"
 ```
 

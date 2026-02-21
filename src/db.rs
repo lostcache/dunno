@@ -31,7 +31,7 @@ impl DB {
                 })
                 .await?;
         }
-        client.use_ns("lazydev").use_db("lazydev").await?;
+        client.use_ns("dunno").use_db("dunno").await?;
         Ok(Self { client })
     }
 
@@ -44,7 +44,7 @@ impl DB {
                     fs::create_dir_all(parent)?;
                 }
                 let url = format!("surrealkv://{}", path.to_string_lossy());
-                Self::new_local(&url, "lazydev", "lazydev").await
+                Self::new_local(&url, "dunno", "dunno").await
             }
             StorageBackend::Cloud => {
                 let cloud = &config.cloud;

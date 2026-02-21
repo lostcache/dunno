@@ -1,7 +1,7 @@
 # Track Specification: MVP - CLI & Database Integration
 
 ## Overview
-This track focuses on building the Minimum Viable Product (MVP) of the `lazydev` CLI. The goal is to create a functional tool that can accept natural language queries and return relevant coding context (mistakes, style guides, skills) by leveraging a hybrid database approach (SurrealDB + Qdrant).
+This track focuses on building the Minimum Viable Product (MVP) of the `dunno` CLI. The goal is to create a functional tool that can accept natural language queries and return relevant coding context (mistakes, style guides, skills) by leveraging a hybrid database approach (SurrealDB + Qdrant).
 
 ## Objectives
 1.  **CLI Interface:** Implement a robust CLI using `clap` with commands to `add` new knowledge and `get-context` based on queries.
@@ -13,8 +13,8 @@ This track focuses on building the Minimum Viable Product (MVP) of the `lazydev`
 5.  **Error Handling:** Ensure all outputs, especially errors, strictly follow the JSON format defined in the guidelines.
 
 ## User Stories
--   **As a user**, I want to run `lazydev add --category "rust" --type "mistake" --content "..."` so I can expand the knowledge base.
--   **As a user**, I want to run `lazydev context "how to handle errors in rust"` and get a JSON response with relevant mistakes and style rules.
+-   **As a user**, I want to run `dunno add --category "rust" --type "mistake" --content "..."` so I can expand the knowledge base.
+-   **As a user**, I want to run `dunno context "how to handle errors in rust"` and get a JSON response with relevant mistakes and style rules.
 -   **As a system**, I need to persist data across sessions using the configured databases.
 
 ## Technical Requirements

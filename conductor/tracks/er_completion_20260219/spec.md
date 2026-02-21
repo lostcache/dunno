@@ -51,5 +51,5 @@ Add a `SecurityDetail` struct that represents security constraints, policies, or
 - Subtask must belong to exactly one Task.
 - SecurityDetail follows the same linking pattern as Mistake and StyleRule (via `KnowledgeEdge`).
 - Context retrieval (`get_task_context`, `get_file_context`) must include SecurityDetail nodes.
-- The `lazydev add` command must accept `--type security` to create SecurityDetail records.
+- The `dunno add` command must accept `--type security` to create SecurityDetail records.
 - Subtask context retrieval should traverse: Subtask -> Task -> Module -> Project.

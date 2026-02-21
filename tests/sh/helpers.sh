@@ -25,7 +25,7 @@ build_binary() {
     echo "Building..."
     cargo build --quiet --manifest-path "$PROJECT_ROOT/Cargo.toml" 2>&1
 
-    _BIN_WRAPPER="$(mktemp "${TMPDIR:-/tmp}/lazydev-test-bin.XXXXXX")"
+    _BIN_WRAPPER="$(mktemp "${TMPDIR:-/tmp}/dunno-test-bin.XXXXXX")"
     cat > "$_BIN_WRAPPER" <<WRAPPER
 #!/usr/bin/env bash
 exec cargo run --quiet --manifest-path "$PROJECT_ROOT/Cargo.toml" -- "\$@"

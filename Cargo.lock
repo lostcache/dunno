@@ -1184,6 +1184,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
+name = "dunno"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cargo-llvm-cov",
+ "clap",
+ "dirs",
+ "qdrant-client",
+ "rustls",
+ "serde",
+ "serde_json",
+ "surrealdb",
+ "tokio",
+ "toml",
+ "uuid",
+]
+
+[[package]]
 name = "earcutr"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2394,24 +2412,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 dependencies = [
  "spin",
-]
-
-[[package]]
-name = "lazydev"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cargo-llvm-cov",
- "clap",
- "dirs",
- "qdrant-client",
- "rustls",
- "serde",
- "serde_json",
- "surrealdb",
- "tokio",
- "toml",
- "uuid",
 ]
 
 [[package]]

@@ -78,9 +78,9 @@ Context retrieval traverses **upward** through `<-contains<-` edges, collecting 
 
 ## Core Functionality
 - **Retrieval Interface:** The interaction model is ID-based graph traversal via the CLI.
-    - Task context: `lazydev context --task-id <id>`
-    - File context: `lazydev context --file-id <id>`
-    - Subtask context: `lazydev context --subtask-id <id>`
+    - Task context: `dunno context --task-id <id>`
+    - File context: `dunno context --file-id <id>`
+    - Subtask context: `dunno context --subtask-id <id>`
     - Output: JSON containing knowledge nodes (mistakes, style rules, security details) aggregated from the queried node and all its ancestors.
 - **Knowledge Management:**
     - **Hierarchy Management:** CLI supports creating projects, modules, submodules, files, tasks, and subtasks. Parent relationships are created as `RELATE` graph edges.

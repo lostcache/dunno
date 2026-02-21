@@ -1,8 +1,8 @@
-# lazydev
+# dunno
 
-`lazydev` is a Rust CLI that captures coding knowledge and retrieves deterministic context for AI agents.
+`dunno` is a Rust CLI that captures coding knowledge and retrieves deterministic context for AI agents.
 
-Unlike traditional natural language search, `lazydev` uses a strict graph hierarchy. Context (mistakes, style rules, and security details) is linked to nodes in this hierarchy and is inherited down the tree.
+Unlike traditional natural language search, `dunno` uses a strict graph hierarchy. Context (mistakes, style rules, and security details) is linked to nodes in this hierarchy and is inherited down the tree.
 
 ## Core Hierarchy
 
@@ -42,7 +42,7 @@ Retrieval is purely deterministic and graph-based:
 cargo build --release
 ```
 
-Binary path: `target/release/lazydev`
+Binary path: `target/release/dunno`
 
 ## Configuration
 
@@ -86,10 +86,10 @@ auth_type = "root" # "root" | "namespace" | "database"
 
 ```bash
 # Default local embedded mode (no config file needed)
-lazydev project list
+dunno project list
 
 # Force local mode for one command
-lazydev --backend local project list
+dunno --backend local project list
 
 # Cloud mode via env vars
 DUNNO_BACKEND=cloud \
@@ -98,10 +98,10 @@ DUNNO_CLOUD_NS="dunno" \
 DUNNO_CLOUD_DB="dunno" \
 DUNNO_CLOUD_USER="YOUR_USER" \
 DUNNO_CLOUD_PASS="YOUR_PASS" \
-lazydev project list
+dunno project list
 
 # Inspect fully resolved config (password redacted)
-lazydev config show
+dunno config show
 ```
 
 ## Quick Start
@@ -110,29 +110,29 @@ lazydev config show
 
 ```bash
 # Create a project
-lazydev project create "My App" "A web application"
+dunno project create "My App" "A web application"
 # Returns project:abc
 
 # Create a module within the project
-lazydev module create --project-id project:abc "Auth" "Authentication system"
+dunno module create --project-id project:abc "Auth" "Authentication system"
 # Returns module:def
 
 # (Optional) Create a submodule within the module
-lazydev submodule create --module-id module:def "OAuth" "OAuth2 providers"
+dunno submodule create --module-id module:def "OAuth" "OAuth2 providers"
 # Returns submodule:xyz
 
 # Register a file under the module (or submodule)
-lazydev file create --parent-id module:def "oauth.rs" "src/auth/oauth.rs"
+dunno file create --parent-id module:def "oauth.rs" "src/auth/oauth.rs"
 # Or use submodule as parent:
-lazydev file create --parent-id submodule:xyz "oauth.rs" "src/auth/oauth.rs"
+dunno file create --parent-id submodule:xyz "oauth.rs" "src/auth/oauth.rs"
 # Returns file:456
 
 # Create a task within the module
-lazydev task create --module-id module:def "Implement JWT" "Add token support"
+dunno task create --module-id module:def "Implement JWT" "Add token support"
 # Returns task:ghi
 
 # (Optional) Create a subtask within the task
-lazydev subtask create --task-id task:ghi "Write tests" "Add unit tests"
+dunno subtask create --task-id task:ghi "Write tests" "Add unit tests"
 # Returns subtask:stu
 ```
 
@@ -140,23 +140,23 @@ lazydev subtask create --task-id task:ghi "Write tests" "Add unit tests"
 
 ```bash
 # Add a style rule to the project
-lazydev add --type style --content "Use explicit error types" --link-to project:abc
+dunno add --type style --content "Use explicit error types" --link-to project:abc
 
 # Add a mistake to a task
-lazydev add --type mistake --content "Do not log raw passwords" --link-to task:ghi
+dunno add --type mistake --content "Do not log raw passwords" --link-to task:ghi
 
 # Add a security note to a module
-lazydev add --type security --content "Validate all user inputs" --link-to module:def
+dunno add --type security --content "Validate all user inputs" --link-to module:def
 ```
 
 ### 3. Retrieve context
 
 ```bash
 # By task (traverses Task -> Module -> Project)
-lazydev context --task-id task:ghi
+dunno context --task-id task:ghi
 
 # By file (traverses File -> Submodule -> Module -> Project)
-lazydev context --file-id file:456
+dunno context --file-id file:456
 ```
 
 **Expected output:**
@@ -165,29 +165,29 @@ A JSON object containing all linked knowledge (style rules, mistakes, security d
 ## CLI Commands
 
 ### Knowledge Management
-- `lazydev add --type <mistake|style|security> --content <CONTENT> [--link-to <ID>]`: Add a knowledge entry and optionally link it to a structural node.
-- `lazydev context --task-id <ID>`: Retrieve aggregated context for a task.
-- `lazydev context --file-id <ID>`: Retrieve aggregated context for a file.
-- `lazydev context --subtask-id <ID>`: Retrieve aggregated context for a subtask.
+- `dunno add --type <mistake|style|security> --content <CONTENT> [--link-to <ID>]`: Add a knowledge entry and optionally link it to a structural node.
+- `dunno context --task-id <ID>`: Retrieve aggregated context for a task.
+- `dunno context --file-id <ID>`: Retrieve aggregated context for a file.
+- `dunno context --subtask-id <ID>`: Retrieve aggregated context for a subtask.
 
 ### Hierarchy Management
-- `lazydev project create <NAME> <DESC>` / `list`
-- `lazydev module create --project-id <ID> <NAME> <DESC>` / `list`
-- `lazydev submodule create --module-id <ID> <NAME> <DESC>` / `list`
-- `lazydev file create --parent-id <ID> <NAME> <PATH>` / `list [--module-id <ID>] [--submodule-id <ID>]`
-- `lazydev task create --module-id <ID> <NAME> <DESC>` / `list`
-- `lazydev task update <TASK_ID> [--name <NAME>] [--description <DESC>] [--status <not_started|started|finished>]`
-- `lazydev task append-update <TASK_ID> <CONTENT>`
-- `lazydev task update-entry <UPDATE_ID> <CONTENT>`
-- `lazydev task list-updates <TASK_ID>`
-- `lazydev subtask create --task-id <ID> <NAME> <DESC>` / `list --task-id <ID>`
+- `dunno project create <NAME> <DESC>` / `list`
+- `dunno module create --project-id <ID> <NAME> <DESC>` / `list`
+- `dunno submodule create --module-id <ID> <NAME> <DESC>` / `list`
+- `dunno file create --parent-id <ID> <NAME> <PATH>` / `list [--module-id <ID>] [--submodule-id <ID>]`
+- `dunno task create --module-id <ID> <NAME> <DESC>` / `list`
+- `dunno task update <TASK_ID> [--name <NAME>] [--description <DESC>] [--status <not_started|started|finished>]`
+- `dunno task append-update <TASK_ID> <CONTENT>`
+- `dunno task update-entry <UPDATE_ID> <CONTENT>`
+- `dunno task list-updates <TASK_ID>`
+- `dunno subtask create --task-id <ID> <NAME> <DESC>` / `list --task-id <ID>`
 
 ### Work Queue
-- `lazydev todo create --project-id <ID> <CONTENT>` / `list --project-id <ID>`
+- `dunno todo create --project-id <ID> <CONTENT>` / `list --project-id <ID>`
 
 ### Config
-- `lazydev config show`: Print resolved config with secrets redacted.
-- `lazydev --backend <local|cloud> ...`: Override backend for a single command run.
+- `dunno config show`: Print resolved config with secrets redacted.
+- `dunno --backend <local|cloud> ...`: Override backend for a single command run.
 
 ## Output Contract
 

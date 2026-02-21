@@ -1,14 +1,14 @@
 use clap::Parser;
 use clap::error::ErrorKind;
-use lazydev::args::{
+use dunno::args::{
     Args, Commands, ConfigCommands, FileCommands, ModuleCommands, ProjectCommands,
     SubmoduleCommands, SubtaskCommands, TaskCommands, TodoCommands,
 };
-use lazydev::config::Config;
-use lazydev::context::{get_file_context, get_subtask_context, get_task_context};
-use lazydev::db::DB;
-use lazydev::ingest::add_knowledge;
-use lazydev::models::Project;
+use dunno::config::Config;
+use dunno::context::{get_file_context, get_subtask_context, get_task_context};
+use dunno::db::DB;
+use dunno::ingest::add_knowledge;
+use dunno::models::Project;
 use serde_json::json;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -149,7 +149,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             } => {
                 let parsed_status = match status {
                     Some(value) => {
-                        Some(lazydev::models::TaskStatus::parse(&value).ok_or_else(|| {
+                        Some(dunno::models::TaskStatus::parse(&value).ok_or_else(|| {
                             anyhow::anyhow!(
                                 "Invalid status '{}'. Expected: not_started, started, finished",
                                 value

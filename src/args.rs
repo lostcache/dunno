@@ -2,11 +2,11 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "lazydev",
+    name = "dunno",
     author,
     version,
     about = "Capture and retrieve coding knowledge from mistakes, style guides, and security details.",
-    long_about = "lazydev stores coding knowledge in a graph database and retrieves context via deterministic hierarchy traversal.",
+    long_about = "dunno stores coding knowledge in a graph database and retrieves context via deterministic hierarchy traversal.",
     propagate_version = true
 )]
 pub struct Args {
@@ -23,7 +23,7 @@ pub enum Commands {
     #[command(
         about = "Add a new knowledge entry.",
         long_about = "Persist one knowledge entry (mistake/style/security) and optionally link it to a structural node.",
-        after_help = "Examples:\n  lazydev add --type mistake --content \"Avoid unwrap\"\n  lazydev add --type security --content \"SQL injection risk\" --link-to module:abc"
+        after_help = "Examples:\n  dunno add --type mistake --content \"Avoid unwrap\"\n  dunno add --type security --content \"SQL injection risk\" --link-to module:abc"
     )]
     Add {
         /// Knowledge type (`mistake`, `style`, or `security`).
@@ -90,7 +90,7 @@ pub enum Commands {
     #[command(
         about = "Retrieve coding context for a task, file, or subtask.",
         long_about = "Find relevant context by traversing the structural hierarchy via graph edges.",
-        after_help = "Example:\n  lazydev context --task-id task:123\n  lazydev context --file-id file:456\n  lazydev context --subtask-id subtask:789"
+        after_help = "Example:\n  dunno context --task-id task:123\n  dunno context --file-id file:456\n  dunno context --subtask-id subtask:789"
     )]
     Context {
         /// The Task ID to retrieve context for.

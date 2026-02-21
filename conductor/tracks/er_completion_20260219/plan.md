@@ -14,7 +14,7 @@
 ## Phase 3: CLI Commands
 - [ ] Task: Add `Subtask` subcommand group to `src/args.rs` (create, list, update).
 - [ ] Task: Update `src/main.rs` command interpreter to handle Subtask CRUD operations.
-- [ ] Task: Extend `lazydev add --type security` to create SecurityDetail records in `src/ingest.rs`.
+- [ ] Task: Extend `dunno add --type security` to create SecurityDetail records in `src/ingest.rs`.
 
 ## Phase 4: Context Retrieval Updates
 - [ ] Task: Add `get_subtask_context` function in `src/context.rs` (traverses Subtask -> Task -> Module -> Project).

@@ -13,7 +13,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Data Modeling & Database Setup' (Protocol in workflow.md) [abce752]
 
 ## Phase 3: Core Logic - Ingestion (Adding Data) [checkpoint: d31d15a]
-- [x] Task: Implement the `lazydev add` logic to: [bc7b423]
+- [x] Task: Implement the `dunno add` logic to: [bc7b423]
     1.  Generate an embedding for the content (using a placeholder or simple local model).
     2.  Store the structured data in SurrealDB.
     3.  Store the embedding + ID in Qdrant.
@@ -21,7 +21,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Core Logic - Ingestion' (Protocol in workflow.md) [d31d15a]
 
 ## Phase 4: Core Logic - Retrieval (Context)
-- [x] Task: Implement the `lazydev context` logic to: [bc0812f]
+- [x] Task: Implement the `dunno context` logic to: [bc0812f]
     1.  Parse user query into graph seeds (category/tag/token heuristics).
     2.  Traverse SurrealDB graph edges (bounded hop search).
     3.  Fetch connected knowledge nodes (`mistake`, `style_rule`, `skill`).
