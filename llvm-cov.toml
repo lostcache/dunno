@@ -1,0 +1,7 @@
+[llvm-cov]
+branch = true
+conditional = true
+
+[llvm-cov.output]
+html = { directory = "coverage", filename = "index.html" }
+text = { stdout = true }

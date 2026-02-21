@@ -17,3 +17,4 @@ toml = "1.0.2"
 
 [dev-dependencies]
 uuid = { version = "1.21.0", features = ["v4"] }
+cargo-llvm-cov = "0.6"
