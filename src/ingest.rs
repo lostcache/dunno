@@ -2,13 +2,20 @@ use crate::db::DB;
 use crate::models::{Mistake, SecurityDetail, StyleRule};
 use anyhow::Result;
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct KnowledgeResult {
+    pub kind: String,
+    pub content: String,
+    pub linked: bool,
+}
+
 /// Adds a new knowledge record and optionally links it to a structural node.
 pub async fn add_knowledge(
     kind: String,
     content: String,
     link_to: Option<String>,
     db: &DB,
-) -> Result<()> {
+) -> Result<KnowledgeResult> {
     let id = match kind.as_str() {
         "mistake" => {
             let mistake = Mistake {
@@ -42,9 +49,115 @@ pub async fn add_knowledge(
     };
 
     // Link to a structural node (Project/Module/Task/etc.) if requested.
-    if let (Some(target_id), Some(record_id)) = (link_to, &id) {
+    let linked = if let (Some(target_id), Some(record_id)) = (link_to, &id) {
         db.link_context(&target_id, record_id).await?;
+        true
+    } else {
+        false
+    };
+
+    Ok(KnowledgeResult {
+        kind,
+        content,
+        linked,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_add_mistake() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        
+        let result = add_knowledge(
+            "mistake".to_string(),
+            "Using unwrap".to_string(),
+            None,
+            &db,
+        ).await.expect("add_knowledge should succeed");
+        
+        assert_eq!(result.kind, "mistake");
+        assert_eq!(result.content, "Using unwrap");
+        assert!(!result.linked);
+        
+        let mistakes = db.list_mistakes().await.expect("list_mistakes should succeed");
+        assert_eq!(mistakes.len(), 1);
+        assert_eq!(mistakes[0].content, "Using unwrap");
     }
 
-    Ok(())
+    #[tokio::test]
+    async fn test_add_style_rule() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        
+        let result = add_knowledge(
+            "style".to_string(),
+            "Use match instead of unwrap".to_string(),
+            None,
+            &db,
+        ).await.expect("add_knowledge should succeed");
+        
+        assert_eq!(result.kind, "style");
+        assert!(!result.linked);
+        
+        let rules = db.list_style_rules().await.expect("list_style_rules should succeed");
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].description, "Use match instead of unwrap");
+    }
+
+    #[tokio::test]
+    async fn test_add_security_detail() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        
+        let result = add_knowledge(
+            "security".to_string(),
+            "SQL injection risk".to_string(),
+            None,
+            &db,
+        ).await.expect("add_knowledge should succeed");
+        
+        assert_eq!(result.kind, "security");
+        assert!(!result.linked);
+        
+        let details = db.list_security_details().await.expect("list_security_details should succeed");
+        assert_eq!(details.len(), 1);
+        assert_eq!(details[0].content, "SQL injection risk");
+    }
+
+    #[tokio::test]
+    async fn test_add_knowledge_invalid_kind() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        
+        let result = add_knowledge(
+            "invalid".to_string(),
+            "Some content".to_string(),
+            None,
+            &db,
+        ).await;
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Unknown knowledge type"));
+    }
+
+    #[tokio::test]
+    async fn test_add_knowledge_with_link() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        
+        let project = db.create_project(&crate::models::Project {
+            id: None,
+            name: "Test".to_string(),
+            description: "Test".to_string(),
+        }).await.expect("create project");
+        let project_id = project.id.expect("project id");
+        
+        let result = add_knowledge(
+            "mistake".to_string(),
+            "Using unwrap".to_string(),
+            Some(project_id.clone()),
+            &db,
+        ).await.expect("add_knowledge should succeed");
+        
+        assert!(result.linked);
+    }
 }

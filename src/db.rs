@@ -1608,4 +1608,302 @@ mod tests {
 
         assert!(context.files.is_empty());
     }
+
+    #[tokio::test]
+    async fn test_project_operations() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test description".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let fetched = db.get_project(&project_id).await.expect("get_project failed");
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().name, "TestProject");
+
+        let projects = db.list_projects().await.expect("list_projects failed");
+        assert_eq!(projects.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_module_operations() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Auth", "Auth module", &project_id)
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let fetched = db.get_module(&module_id).await.expect("get_module failed");
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().name, "Auth");
+
+        let modules = db.list_modules().await.expect("list_modules failed");
+        assert_eq!(modules.len(), 1);
+
+        let modules_by_project = db.list_modules_by_project(&project_id).await.expect("list_modules_by_project failed");
+        assert_eq!(modules_by_project.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_submodule_operations() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Auth", "Auth module", &project_id)
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let submodule = db
+            .create_submodule("JWT", "JWT submodule", &module_id)
+            .await
+            .expect("Failed to create submodule");
+        let submodule_id = submodule.id.expect("submodule id");
+
+        let fetched = db.get_submodule(&submodule_id).await.expect("get_submodule failed");
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().name, "JWT");
+
+        let submodules = db.list_submodules().await.expect("list_submodules failed");
+        assert_eq!(submodules.len(), 1);
+
+        let submodules_by_module = db.list_submodules_by_module(&module_id).await.expect("list_submodules_by_module failed");
+        assert_eq!(submodules_by_module.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_file_operations() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Auth", "Auth module", &project_id)
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let file = db
+            .create_file("main.rs", "src/main.rs", &module_id)
+            .await
+            .expect("Failed to create file");
+        let file_id = file.id.expect("file id");
+
+        let fetched = db.get_file(&file_id).await.expect("get_file failed");
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().name, "main.rs");
+
+        let files = db.list_files().await.expect("list_files failed");
+        assert_eq!(files.len(), 1);
+
+        let files_by_module = db.list_files_by_module(&module_id).await.expect("list_files_by_module failed");
+        assert_eq!(files_by_module.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_todo_operations() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let todo = db
+            .create_todo("Buy milk", &project_id)
+            .await
+            .expect("Failed to create todo");
+        let todo_id = todo.id.expect("todo id");
+
+        let fetched = db.get_todo(&todo_id).await.expect("get_todo failed");
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().content, "Buy milk");
+
+        let todos = db.list_todos().await.expect("list_todos failed");
+        assert_eq!(todos.len(), 1);
+
+        let todos_by_project = db.list_todos_by_project(&project_id).await.expect("list_todos_by_project failed");
+        assert_eq!(todos_by_project.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_task_update_operations() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Auth", "Auth module", &project_id)
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let task = db
+            .create_task("Login", "Implement login", &module_id, &project_id)
+            .await
+            .expect("Failed to create task");
+        let task_id = task.id.expect("task id");
+
+        let update = db
+            .create_task_update("Started working", 1000, &task_id)
+            .await
+            .expect("Failed to create update");
+        let update_id = update.id.expect("update id");
+
+        let edited = db
+            .update_task_update(&update_id, "Finished working".to_string(), 2000)
+            .await
+            .expect("update_task_update failed")
+            .expect("update should exist");
+        assert_eq!(edited.content, "Finished working");
+        assert_eq!(edited.updated_at_ms, Some(2000));
+
+        let updates = db.list_task_updates(&task_id).await.expect("list_task_updates failed");
+        assert_eq!(updates.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_list_tasks_by_module() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Auth", "Auth module", &project_id)
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let _task = db
+            .create_task("Task1", "Task 1", &module_id, &project_id)
+            .await
+            .expect("Failed to create task");
+
+        let tasks = db.list_tasks_by_module(&module_id).await.expect("list_tasks_by_module failed");
+        assert_eq!(tasks.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_mistake_operations() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let mistake = db
+            .create_mistake(&Mistake {
+                id: None,
+                content: "Using unwrap".to_string(),
+            })
+            .await
+            .expect("Failed to create mistake");
+        let mistake_id = mistake.id.expect("mistake id");
+
+        let fetched = db.get_mistake(&mistake_id).await.expect("get_mistake failed");
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().content, "Using unwrap");
+
+        let mistakes = db.list_mistakes().await.expect("list_mistakes failed");
+        assert_eq!(mistakes.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_style_rule_operations() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let rule = db
+            .create_style_rule(&StyleRule {
+                id: None,
+                description: "Use match".to_string(),
+                example: "match".to_string(),
+            })
+            .await
+            .expect("Failed to create style rule");
+        let rule_id = rule.id.expect("rule id");
+
+        let fetched = db.get_style_rule(&rule_id).await.expect("get_style_rule failed");
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().description, "Use match");
+
+        let rules = db.list_style_rules().await.expect("list_style_rules failed");
+        assert_eq!(rules.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_security_detail_operations() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let detail = db
+            .create_security_detail(&SecurityDetail {
+                id: None,
+                content: "SQL injection".to_string(),
+                severity: "high".to_string(),
+                category: "injection".to_string(),
+                tags: vec!["sql".to_string()],
+            })
+            .await
+            .expect("Failed to create security detail");
+        let detail_id = detail.id.expect("detail id");
+
+        let fetched = db.get_security_detail(&detail_id).await.expect("get_security_detail failed");
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().severity, "high");
+
+        let details = db.list_security_details().await.expect("list_security_details failed");
+        assert_eq!(details.len(), 1);
+    }
 }
