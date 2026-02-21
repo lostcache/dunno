@@ -34,7 +34,9 @@ pub async fn get_task_context(task_id: &str, db: &DB) -> Result<Vec<Value>> {
         RETURN [$t_ctx, $m_ctx, $p_ctx];
     "#;
 
-    let raw = db.query_raw_json(sql, "tid", task_id.to_string(), 8).await?;
+    let raw = db
+        .query_raw_json(sql, "tid", task_id.to_string(), 8)
+        .await?;
     Ok(flatten_context_result(raw))
 }
 
@@ -144,11 +146,19 @@ fn flatten_context_result(raw: Value) -> Vec<Value> {
     };
 
     for level in levels {
-        let obj = match level {
+        let level_obj = match level {
             Value::Object(map) => map,
             _ => continue,
         };
-        for (key, val) in obj.iter() {
+
+        // Find the has_context object (key contains "has_context")
+        let ctx_obj = match level_obj.iter().find(|(k, _)| k.contains("has_context")) {
+            Some((_, Value::Object(m))) => m,
+            _ => continue,
+        };
+
+        // Iterate over knowledge types in ctx_obj
+        for (key, val) in ctx_obj.iter() {
             let node_type = if key.contains("mistake") {
                 "mistake"
             } else if key.contains("style_rule") {
@@ -164,14 +174,12 @@ fn flatten_context_result(raw: Value) -> Vec<Value> {
                     match inner {
                         Value::Array(nested) => {
                             for item in nested {
-                                if item.is_object() {
+                                if let Value::Object(_) = item {
                                     let mut node = item.clone();
                                     if let Value::Object(ref mut m) = node {
                                         m.insert(
                                             "node_type".to_string(),
-                                            Value::String(
-                                                node_type.to_string(),
-                                            ),
+                                            Value::String(node_type.to_string()),
                                         );
                                     }
                                     nodes.push(node);

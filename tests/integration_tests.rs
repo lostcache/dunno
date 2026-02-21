@@ -1,289 +1,304 @@
-use lazydev::context::{get_file_context, get_task_context};
+use lazydev::context::{get_file_context, get_subtask_context, get_task_context};
 use lazydev::db::DB;
-use lazydev::ingest::add_knowledge;
-use lazydev::models::{File, Module, Project, Submodule, Task, TaskStatus};
-use lazydev::vector_db::VectorDB;
+use lazydev::models::{Mistake, Project, SecurityDetail, StyleRule};
 
-#[tokio::test]
-async fn test_hierarchy_context() -> anyhow::Result<()> {
-    // 1. Setup DB (using kv-mem feature for in-memory)
-    // Note: The main DB::new defaults to connecting to a server.
-    // We'll instantiate a client manually here for the test if possible,
-    // or just assume we can run against the local server if running tests.
-    // Ideally we'd use a mock or in-memory DB.
-    // Since `DB::new` connects to a URL, let's try connecting to a test namespace.
+/// Sets up a fresh in-memory DB.
+async fn setup_db() -> DB {
+    DB::new("mem://").await.expect("Failed to init DB")
+}
 
-    let db = DB::new("mem://").await?;
-    let vector_db = VectorDB::new("mem://").await?;
-
-    // Create a unique project to isolate the test
-    let project_name = format!("Test Project {}", uuid::Uuid::new_v4());
-
-    // 2. Create Hierarchy
+/// Helper: creates a full project → module → task hierarchy and links
+/// knowledge nodes at each level. Returns (project_id, module_id, task_id).
+async fn setup_hierarchy_with_context(db: &DB) -> (String, String, String) {
     let project = db
         .create_project(&Project {
             id: None,
-            name: project_name,
-            description: "Test Description".to_string(),
+            name: "TestProject".to_string(),
+            description: "A test project".to_string(),
         })
-        .await?;
-    let project_id = project.id.unwrap();
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module(&Module {
-            id: None,
-            project_id: project_id.clone(),
-            name: "Test Module".to_string(),
-            description: "Module Desc".to_string(),
-        })
-        .await?;
-    let module_id = module.id.unwrap();
+        .create_module("Auth", "Auth module", &project_id)
+        .await
+        .expect("create module");
+    let module_id = module.id.expect("module id");
 
     let task = db
-        .create_task(&Task {
+        .create_task("Login", "Implement login", &module_id)
+        .await
+        .expect("create task");
+    let task_id = task.id.expect("task id");
+
+    // Link knowledge at each level
+    let project_mistake = db
+        .create_mistake(&Mistake {
             id: None,
-            module_id: module_id.clone(),
-            name: "Test Task".to_string(),
-            description: "Task Desc".to_string(),
-            status: TaskStatus::NotStarted,
+            content: "Project Level Mistake".to_string(),
         })
-        .await?;
-    let task_id = task.id.unwrap();
+        .await
+        .expect("create mistake");
+    db.link_context(&project_id, project_mistake.id.as_ref().unwrap())
+        .await
+        .expect("link project mistake");
 
-    // 3. Add Context at Different Levels
+    let module_style = db
+        .create_style_rule(&StyleRule {
+            id: None,
+            description: "Module Level Style".to_string(),
+            example: "example".to_string(),
+        })
+        .await
+        .expect("create style rule");
+    db.link_context(&module_id, module_style.id.as_ref().unwrap())
+        .await
+        .expect("link module style");
 
-    // Task Level Mistake
-    add_knowledge(
-        "rust".to_string(),
-        "mistake".to_string(),
-        "Task Level Mistake".to_string(),
-        Some(task_id.clone()),
-        &db,
-        &vector_db,
-    )
-    .await?;
+    let task_mistake = db
+        .create_mistake(&Mistake {
+            id: None,
+            content: "Task Level Mistake".to_string(),
+        })
+        .await
+        .expect("create task mistake");
+    db.link_context(&task_id, task_mistake.id.as_ref().unwrap())
+        .await
+        .expect("link task mistake");
 
-    // Module Level Style Rule
-    add_knowledge(
-        "rust".to_string(),
-        "style".to_string(),
-        "Module Level Style".to_string(),
-        Some(module_id.clone()),
-        &db,
-        &vector_db,
-    )
-    .await?;
-
-    // Project Level Skill (or Mistake)
-    add_knowledge(
-        "rust".to_string(),
-        "mistake".to_string(),
-        "Project Level Mistake".to_string(),
-        Some(project_id.clone()),
-        &db,
-        &vector_db,
-    )
-    .await?;
-
-    // 4. Retrieve Context for Task
-    let context = get_task_context(&task_id, &db, &vector_db).await?;
-
-    // 5. Verify Results
-    println!("Context Results: {:#?}", context);
-
-    let has_task_mistake = context.iter().any(|v| v["content"] == "Task Level Mistake");
-    let has_module_style = context
-        .iter()
-        .any(|v| v["description"] == "Module Level Style");
-    let has_project_mistake = context
-        .iter()
-        .any(|v| v["content"] == "Project Level Mistake");
-
-    assert!(has_task_mistake, "Missing Task Level Mistake");
-    assert!(has_module_style, "Missing Module Level Style");
-    assert!(has_project_mistake, "Missing Project Level Mistake");
-
-    Ok(())
+    (project_id, module_id, task_id)
 }
 
 #[tokio::test]
-async fn test_file_hierarchy_context() -> anyhow::Result<()> {
-    let db = DB::new("mem://").await?;
-    let vector_db = VectorDB::new("mem://").await?;
+async fn test_task_hierarchy_context() {
+    let db = setup_db().await;
+    let (_project_id, _module_id, task_id) = setup_hierarchy_with_context(&db).await;
 
-    let project_name = format!("Test File Project {}", uuid::Uuid::new_v4());
-    let project = db
-        .create_project(&Project {
-            id: None,
-            name: project_name,
-            description: "Desc".to_string(),
-        })
-        .await?;
-    let project_id = project.id.unwrap();
+    let context = get_task_context(&task_id, &db)
+        .await
+        .expect("get_task_context should succeed");
 
-    let module = db
-        .create_module(&Module {
-            id: None,
-            project_id: project_id.clone(),
-            name: "Test Module".to_string(),
-            description: "Desc".to_string(),
-        })
-        .await?;
-    let module_id = module.id.unwrap();
+    // Should contain knowledge from task, module, and project levels
+    assert!(
+        context.iter().any(|v| v["content"] == "Task Level Mistake"),
+        "Missing task-level mistake. Context: {:?}",
+        context
+    );
+    assert!(
+        context
+            .iter()
+            .any(|v| v["description"] == "Module Level Style"),
+        "Missing module-level style. Context: {:?}",
+        context
+    );
+    assert!(
+        context
+            .iter()
+            .any(|v| v["content"] == "Project Level Mistake"),
+        "Missing project-level mistake. Context: {:?}",
+        context
+    );
+}
+
+#[tokio::test]
+async fn test_file_hierarchy_context() {
+    let db = setup_db().await;
+    let (_project_id, module_id, _task_id) = setup_hierarchy_with_context(&db).await;
 
     let submodule = db
-        .create_submodule(&Submodule {
-            id: None,
-            module_id: module_id.clone(),
-            name: "Test Submodule".to_string(),
-            description: "Desc".to_string(),
-        })
-        .await?;
-    let submodule_id = submodule.id.unwrap();
+        .create_submodule("Controllers", "Controllers submodule", &module_id)
+        .await
+        .expect("create submodule");
+    let submodule_id = submodule.id.expect("submodule id");
 
     let file = db
-        .create_file(&File {
+        .create_file(
+            "auth_controller.rs",
+            "src/controllers/auth.rs",
+            &submodule_id,
+        )
+        .await
+        .expect("create file");
+    let file_id = file.id.expect("file id");
+
+    // Link a mistake to the submodule level
+    let sub_mistake = db
+        .create_mistake(&Mistake {
             id: None,
-            module_id: module_id.clone(),
-            submodule_id: Some(submodule_id.clone()),
-            name: "test.rs".to_string(),
-            path: "src/test.rs".to_string(),
+            content: "Submodule Level Mistake".to_string(),
         })
-        .await?;
-    let file_id = file.id.unwrap();
+        .await
+        .expect("create sub mistake");
+    db.link_context(&submodule_id, sub_mistake.id.as_ref().unwrap())
+        .await
+        .expect("link sub mistake");
 
-    // Add context to each layer
-    add_knowledge(
-        "rust".to_string(),
-        "mistake".to_string(),
-        "File Level Mistake".to_string(),
-        Some(file_id.clone()),
-        &db,
-        &vector_db,
-    )
-    .await?;
+    let context = get_file_context(&file_id, &db)
+        .await
+        .expect("get_file_context should succeed");
 
-    add_knowledge(
-        "rust".to_string(),
-        "style".to_string(),
-        "Submodule Level Style".to_string(),
-        Some(submodule_id.clone()),
-        &db,
-        &vector_db,
-    )
-    .await?;
-
-    add_knowledge(
-        "rust".to_string(),
-        "mistake".to_string(),
-        "Module Level Mistake".to_string(),
-        Some(module_id.clone()),
-        &db,
-        &vector_db,
-    )
-    .await?;
-
-    add_knowledge(
-        "rust".to_string(),
-        "style".to_string(),
-        "Project Level Style".to_string(),
-        Some(project_id.clone()),
-        &db,
-        &vector_db,
-    )
-    .await?;
-
-    let context = get_file_context(&file_id, &db, &vector_db).await?;
-    println!("Context Results: {:#?}", context);
-
-    assert!(context.iter().any(|v| v["content"] == "File Level Mistake"));
+    // Should include context from submodule, module, and project
     assert!(
         context
             .iter()
-            .any(|v| v["description"] == "Submodule Level Style")
+            .any(|v| v["content"] == "Submodule Level Mistake"),
+        "Missing submodule-level mistake. Context: {:?}",
+        context
     );
     assert!(
         context
             .iter()
-            .any(|v| v["content"] == "Module Level Mistake")
+            .any(|v| v["description"] == "Module Level Style"),
+        "Missing module-level style. Context: {:?}",
+        context
     );
     assert!(
         context
             .iter()
-            .any(|v| v["description"] == "Project Level Style")
+            .any(|v| v["content"] == "Project Level Mistake"),
+        "Missing project-level mistake. Context: {:?}",
+        context
     );
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn test_file_without_submodule_context() -> anyhow::Result<()> {
-    let db = DB::new("mem://").await?;
-    let vector_db = VectorDB::new("mem://").await?;
+async fn test_file_without_submodule_context() {
+    let db = setup_db().await;
+    let (_project_id, module_id, _task_id) = setup_hierarchy_with_context(&db).await;
+
+    // File directly under module (no submodule)
+    let file = db
+        .create_file("lib.rs", "src/lib.rs", &module_id)
+        .await
+        .expect("create file");
+    let file_id = file.id.expect("file id");
+
+    let context = get_file_context(&file_id, &db)
+        .await
+        .expect("get_file_context should succeed");
+
+    // Should include context from module and project (no submodule)
+    assert!(
+        context
+            .iter()
+            .any(|v| v["description"] == "Module Level Style"),
+        "Missing module-level style. Context: {:?}",
+        context
+    );
+    assert!(
+        context
+            .iter()
+            .any(|v| v["content"] == "Project Level Mistake"),
+        "Missing project-level mistake. Context: {:?}",
+        context
+    );
+}
+
+#[tokio::test]
+async fn test_subtask_four_level_context() {
+    let db = setup_db().await;
+    let (_project_id, _module_id, task_id) = setup_hierarchy_with_context(&db).await;
+
+    let subtask = db
+        .create_subtask("Write Tests", "Unit tests for login", &task_id)
+        .await
+        .expect("create subtask");
+    let subtask_id = subtask.id.expect("subtask id");
+
+    // Link a mistake to the subtask level
+    let st_mistake = db
+        .create_mistake(&Mistake {
+            id: None,
+            content: "Subtask Level Mistake".to_string(),
+        })
+        .await
+        .expect("create subtask mistake");
+    db.link_context(&subtask_id, st_mistake.id.as_ref().unwrap())
+        .await
+        .expect("link subtask mistake");
+
+    let context = get_subtask_context(&subtask_id, &db)
+        .await
+        .expect("get_subtask_context should succeed");
+
+    // Should include context from subtask, task, module, and project (4 levels)
+    assert!(
+        context
+            .iter()
+            .any(|v| v["content"] == "Subtask Level Mistake"),
+        "Missing subtask-level mistake. Context: {:?}",
+        context
+    );
+    assert!(
+        context.iter().any(|v| v["content"] == "Task Level Mistake"),
+        "Missing task-level mistake. Context: {:?}",
+        context
+    );
+    assert!(
+        context
+            .iter()
+            .any(|v| v["description"] == "Module Level Style"),
+        "Missing module-level style. Context: {:?}",
+        context
+    );
+    assert!(
+        context
+            .iter()
+            .any(|v| v["content"] == "Project Level Mistake"),
+        "Missing project-level mistake. Context: {:?}",
+        context
+    );
+}
+
+#[tokio::test]
+async fn test_security_detail_in_context() {
+    let db = setup_db().await;
 
     let project = db
         .create_project(&Project {
             id: None,
-            name: format!("NoSub Project {}", uuid::Uuid::new_v4()),
-            description: "Desc".to_string(),
+            name: "SecProject".to_string(),
+            description: "Test".to_string(),
         })
-        .await?;
-    let project_id = project.id.unwrap();
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
 
     let module = db
-        .create_module(&Module {
+        .create_module("API", "API module", &project_id)
+        .await
+        .expect("create module");
+    let module_id = module.id.expect("id");
+
+    let task = db
+        .create_task("Fix SQL", "Fix injection", &module_id)
+        .await
+        .expect("create task");
+    let task_id = task.id.expect("id");
+
+    // Link a SecurityDetail to the module
+    let detail = db
+        .create_security_detail(&SecurityDetail {
             id: None,
-            project_id: project_id.clone(),
-            name: "Mod".to_string(),
-            description: "Desc".to_string(),
+            content: "SQL injection risk".to_string(),
+            severity: "high".to_string(),
+            category: "injection".to_string(),
+            tags: vec!["sql".to_string()],
         })
-        .await?;
-    let module_id = module.id.unwrap();
+        .await
+        .expect("create security detail");
+    db.link_context(&module_id, detail.id.as_ref().unwrap())
+        .await
+        .expect("link security detail");
 
-    // File directly under module, no submodule
-    let file = db
-        .create_file(&File {
-            id: None,
-            module_id: module_id.clone(),
-            submodule_id: None,
-            name: "main.rs".to_string(),
-            path: "src/main.rs".to_string(),
-        })
-        .await?;
-    let file_id = file.id.unwrap();
-
-    add_knowledge(
-        "rust".to_string(),
-        "mistake".to_string(),
-        "Direct File Mistake".to_string(),
-        Some(file_id.clone()),
-        &db,
-        &vector_db,
-    )
-    .await?;
-
-    add_knowledge(
-        "rust".to_string(),
-        "style".to_string(),
-        "Module Style".to_string(),
-        Some(module_id.clone()),
-        &db,
-        &vector_db,
-    )
-    .await?;
-
-    let context = get_file_context(&file_id, &db, &vector_db).await?;
+    let context = get_task_context(&task_id, &db)
+        .await
+        .expect("get_task_context should succeed");
 
     assert!(
+        context.iter().any(|v| v["content"] == "SQL injection risk"),
+        "Missing security detail. Context: {:?}",
         context
-            .iter()
-            .any(|v| v["content"] == "Direct File Mistake"),
-        "Missing Direct File Mistake"
     );
-    assert!(
-        context.iter().any(|v| v["description"] == "Module Style"),
-        "Missing Module Style"
-    );
-
-    Ok(())
 }

@@ -17,6 +17,7 @@ pub struct DB {
 }
 
 impl DB {
+    /// TODO: try and unify new methods.
     /// Creates a new SurrealDB client and selects the default namespace/database.
     pub async fn new(url: &str) -> Result<Self> {
         let client = connect(url).await?;
@@ -194,14 +195,14 @@ impl DB {
     }
 
     /// Lists modules under a project via graph traversal.
-    pub async fn list_modules_by_project(
-        &self,
-        project_id: &str,
-    ) -> Result<Vec<Module>> {
+    pub async fn list_modules_by_project(&self, project_id: &str) -> Result<Vec<Module>> {
         self.query_graph_list(
             "SELECT ->contains->module.* AS items FROM ONLY type::record($pid)",
-            "pid", project_id.to_string(), "items",
-        ).await
+            "pid",
+            project_id.to_string(),
+            "items",
+        )
+        .await
     }
 
     /// Returns all modules (unfiltered).
@@ -248,25 +249,20 @@ impl DB {
     }
 
     /// Lists submodules under a module via graph traversal.
-    pub async fn list_submodules_by_module(
-        &self,
-        module_id: &str,
-    ) -> Result<Vec<Submodule>> {
+    pub async fn list_submodules_by_module(&self, module_id: &str) -> Result<Vec<Submodule>> {
         self.query_graph_list(
             "SELECT ->contains->submodule.* AS items FROM ONLY type::record($mid)",
-            "mid", module_id.to_string(), "items",
-        ).await
+            "mid",
+            module_id.to_string(),
+            "items",
+        )
+        .await
     }
 
     // --- File Operations ---
 
     /// Creates a file and RELATEs it to a parent (module or submodule).
-    pub async fn create_file(
-        &self,
-        name: &str,
-        path: &str,
-        parent_id: &str,
-    ) -> Result<File> {
+    pub async fn create_file(&self, name: &str, path: &str, parent_id: &str) -> Result<File> {
         let file = File {
             id: None,
             name: name.to_string(),
@@ -300,19 +296,22 @@ impl DB {
     pub async fn list_files_by_module(&self, module_id: &str) -> Result<Vec<File>> {
         self.query_graph_list(
             "SELECT ->contains->file.* AS items FROM ONLY type::record($mid)",
-            "mid", module_id.to_string(), "items",
-        ).await
+            "mid",
+            module_id.to_string(),
+            "items",
+        )
+        .await
     }
 
     /// Lists files under a submodule via graph traversal.
-    pub async fn list_files_by_submodule(
-        &self,
-        submodule_id: &str,
-    ) -> Result<Vec<File>> {
+    pub async fn list_files_by_submodule(&self, submodule_id: &str) -> Result<Vec<File>> {
         self.query_graph_list(
             "SELECT ->contains->file.* AS items FROM ONLY type::record($sid)",
-            "sid", submodule_id.to_string(), "items",
-        ).await
+            "sid",
+            submodule_id.to_string(),
+            "items",
+        )
+        .await
     }
 
     // --- Task Operations ---
@@ -358,8 +357,11 @@ impl DB {
     pub async fn list_tasks_by_module(&self, module_id: &str) -> Result<Vec<Task>> {
         self.query_graph_list(
             "SELECT ->contains->task.* AS items FROM ONLY type::record($mid)",
-            "mid", module_id.to_string(), "items",
-        ).await
+            "mid",
+            module_id.to_string(),
+            "items",
+        )
+        .await
     }
 
     /// Updates a task's name, description, or status.
@@ -442,14 +444,14 @@ impl DB {
     }
 
     /// Lists subtasks under a task via graph traversal.
-    pub async fn list_subtasks_by_task(
-        &self,
-        task_id: &str,
-    ) -> Result<Vec<Subtask>> {
+    pub async fn list_subtasks_by_task(&self, task_id: &str) -> Result<Vec<Subtask>> {
         self.query_graph_list(
             "SELECT ->contains->subtask.* AS items FROM ONLY type::record($tid)",
-            "tid", task_id.to_string(), "items",
-        ).await
+            "tid",
+            task_id.to_string(),
+            "items",
+        )
+        .await
     }
 
     // --- TaskUpdate Operations ---
@@ -469,8 +471,7 @@ impl DB {
         };
         let json = to_json_value(&update)?;
         let value = json_to_surreal(json);
-        let created: Option<Value> =
-            self.client.create("task_update").content(value).await?;
+        let created: Option<Value> = self.client.create("task_update").content(value).await?;
         let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create task update"))?;
         let result: TaskUpdate = serde_json::from_value(surreal_to_json(val))?;
         let update_id = result
@@ -484,10 +485,14 @@ impl DB {
 
     /// Lists task updates for a task via graph traversal.
     pub async fn list_task_updates(&self, task_id: &str) -> Result<Vec<TaskUpdate>> {
-        let mut updates: Vec<TaskUpdate> = self.query_graph_list(
-            "SELECT ->has_update->task_update.* AS items FROM ONLY type::record($tid)",
-            "tid", task_id.to_string(), "items",
-        ).await?;
+        let mut updates: Vec<TaskUpdate> = self
+            .query_graph_list(
+                "SELECT ->has_update->task_update.* AS items FROM ONLY type::record($tid)",
+                "tid",
+                task_id.to_string(),
+                "items",
+            )
+            .await?;
         updates.sort_by_key(|u| u.created_at_ms);
         Ok(updates)
     }
@@ -525,19 +530,14 @@ impl DB {
     // --- Todo Operations ---
 
     /// Creates a todo item and RELATEs it to a project via `has_todo`.
-    pub async fn create_todo(
-        &self,
-        content: &str,
-        project_id: &str,
-    ) -> Result<TodoItem> {
+    pub async fn create_todo(&self, content: &str, project_id: &str) -> Result<TodoItem> {
         let todo = TodoItem {
             id: None,
             content: content.to_string(),
         };
         let json = to_json_value(&todo)?;
         let value = json_to_surreal(json);
-        let created: Option<Value> =
-            self.client.create("todo_item").content(value).await?;
+        let created: Option<Value> = self.client.create("todo_item").content(value).await?;
         let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create todo item"))?;
         let result: TodoItem = serde_json::from_value(surreal_to_json(val))?;
         let todo_id = result
@@ -555,14 +555,14 @@ impl DB {
     }
 
     /// Lists todo items for a project via graph traversal.
-    pub async fn list_todos_by_project(
-        &self,
-        project_id: &str,
-    ) -> Result<Vec<TodoItem>> {
+    pub async fn list_todos_by_project(&self, project_id: &str) -> Result<Vec<TodoItem>> {
         self.query_graph_list(
             "SELECT ->has_todo->todo_item.* AS items FROM ONLY type::record($pid)",
-            "pid", project_id.to_string(), "items",
-        ).await
+            "pid",
+            project_id.to_string(),
+            "items",
+        )
+        .await
     }
 
     /// Returns all todo items (unfiltered).
@@ -595,8 +595,7 @@ impl DB {
     pub async fn create_style_rule(&self, rule: &StyleRule) -> Result<StyleRule> {
         let json = to_json_value(rule)?;
         let value = json_to_surreal(json);
-        let created: Option<Value> =
-            self.client.create("style_rule").content(value).await?;
+        let created: Option<Value> = self.client.create("style_rule").content(value).await?;
         let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create style rule"))?;
         Ok(serde_json::from_value(surreal_to_json(val))?)
     }
@@ -612,27 +611,16 @@ impl DB {
     }
 
     /// Creates a new security detail record.
-    pub async fn create_security_detail(
-        &self,
-        detail: &SecurityDetail,
-    ) -> Result<SecurityDetail> {
+    pub async fn create_security_detail(&self, detail: &SecurityDetail) -> Result<SecurityDetail> {
         let json = to_json_value(detail)?;
         let value = json_to_surreal(json);
-        let created: Option<Value> = self
-            .client
-            .create("security_detail")
-            .content(value)
-            .await?;
-        let val =
-            created.ok_or_else(|| anyhow::anyhow!("Failed to create security detail"))?;
+        let created: Option<Value> = self.client.create("security_detail").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create security detail"))?;
         Ok(serde_json::from_value(surreal_to_json(val))?)
     }
 
     /// Fetches a security detail by record id.
-    pub async fn get_security_detail(
-        &self,
-        id: &str,
-    ) -> Result<Option<SecurityDetail>> {
+    pub async fn get_security_detail(&self, id: &str) -> Result<Option<SecurityDetail>> {
         self.get_record("security_detail", id).await
     }
 
@@ -644,11 +632,7 @@ impl DB {
     // --- Graph Edge Operations ---
 
     /// Creates a `has_context` edge from a structural node to a knowledge node.
-    pub async fn link_context(
-        &self,
-        from_id: &str,
-        to_id: &str,
-    ) -> Result<()> {
+    pub async fn link_context(&self, from_id: &str, to_id: &str) -> Result<()> {
         self.relate(from_id, "has_context", to_id).await?;
         Ok(())
     }
@@ -674,12 +658,7 @@ impl DB {
     }
 
     /// Creates a RELATE edge between two record ids.
-    async fn relate(
-        &self,
-        from_id: &str,
-        edge_table: &str,
-        to_id: &str,
-    ) -> Result<()> {
+    async fn relate(&self, from_id: &str, edge_table: &str, to_id: &str) -> Result<()> {
         let sql = format!(
             "LET $f = type::record($from); \
              LET $t = type::record($to); \
@@ -713,10 +692,7 @@ impl DB {
         }
     }
 
-    async fn list_records<T: serde::de::DeserializeOwned>(
-        &self,
-        table: &str,
-    ) -> Result<Vec<T>> {
+    async fn list_records<T: serde::de::DeserializeOwned>(&self, table: &str) -> Result<Vec<T>> {
         let fetched: Vec<Value> = match self.client.select(table).await {
             Ok(values) => values,
             Err(err) if is_missing_table_error(&err) => Vec::new(),
@@ -776,8 +752,6 @@ impl DB {
     }
 }
 
-
-
 fn is_missing_table_error(err: &surrealdb::Error) -> bool {
     err.to_string().contains("does not exist")
 }
@@ -826,9 +800,7 @@ fn surreal_to_json(val: Value) -> serde_json::Value {
             }
         }
         Value::String(s) => s.into(),
-        Value::Array(a) => {
-            serde_json::Value::Array(a.into_iter().map(surreal_to_json).collect())
-        }
+        Value::Array(a) => serde_json::Value::Array(a.into_iter().map(surreal_to_json).collect()),
         Value::Object(o) => {
             let mut map = serde_json::Map::new();
             for (k, v) in o {
@@ -1062,10 +1034,7 @@ mod tests {
         assert!(subtask.id.is_some());
         assert_eq!(subtask.name, "ST");
 
-        let list = db
-            .list_subtasks_by_task(&tid)
-            .await
-            .expect("list subtasks");
+        let list = db.list_subtasks_by_task(&tid).await.expect("list subtasks");
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].name, "ST");
     }
@@ -1124,10 +1093,10 @@ mod tests {
         if db_path.exists() {
             fs::remove_file(&db_path)?;
         }
-        if let Some(parent) = db_path.parent() {
-            if parent.exists() {
-                fs::remove_dir_all(parent)?;
-            }
+        if let Some(parent) = db_path.parent()
+            && parent.exists()
+        {
+            fs::remove_dir_all(parent)?;
         }
         Ok(())
     }

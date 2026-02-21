@@ -25,5 +25,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Graph-Native Schema Redesign — rewrite data layer to use SurrealDB RELATE edges, add Subtask & SecurityDetail.
+## [x] Track: Graph-Native Schema Redesign — rewrite data layer to use SurrealDB RELATE edges, add Subtask & SecurityDetail. (COMPLETE)
 *Link: [./conductor/tracks/graph_native_schema_20260219/](./conductor/tracks/graph_native_schema_20260219/)*

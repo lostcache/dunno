@@ -96,8 +96,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 name,
                 description,
             } => {
-                let created =
-                    db.create_submodule(&name, &description, &module_id).await?;
+                let created = db.create_submodule(&name, &description, &module_id).await?;
                 println!("{}", json!(created));
             }
             SubmoduleCommands::List { module_id } => {
@@ -149,14 +148,12 @@ async fn run(args: Args) -> anyhow::Result<()> {
             } => {
                 let parsed_status = match status {
                     Some(value) => {
-                        Some(lazydev::models::TaskStatus::parse(&value).ok_or_else(
-                            || {
-                                anyhow::anyhow!(
-                                    "Invalid status '{}'. Expected: not_started, started, finished",
-                                    value
-                                )
-                            },
-                        )?)
+                        Some(lazydev::models::TaskStatus::parse(&value).ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "Invalid status '{}'. Expected: not_started, started, finished",
+                                value
+                            )
+                        })?)
                     }
                     None => None,
                 };
@@ -179,8 +176,9 @@ async fn run(args: Args) -> anyhow::Result<()> {
                     .map_err(|_| anyhow::anyhow!("System clock is before UNIX_EPOCH"))?
                     .as_millis() as i64;
 
-                let created =
-                    db.create_task_update(&content, created_at_ms, &task_id).await?;
+                let created = db
+                    .create_task_update(&content, created_at_ms, &task_id)
+                    .await?;
                 println!("{}", json!(created));
             }
             TaskCommands::UpdateEntry { update_id, content } => {
@@ -194,10 +192,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 if let Some(update) = edited {
                     println!("{}", json!(update));
                 } else {
-                    return Err(anyhow::anyhow!(
-                        "Task update not found: {}",
-                        update_id
-                    ));
+                    return Err(anyhow::anyhow!("Task update not found: {}", update_id));
                 }
             }
             TaskCommands::ListUpdates { task_id } => {
@@ -215,8 +210,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 name,
                 description,
             } => {
-                let created =
-                    db.create_subtask(&name, &description, &task_id).await?;
+                let created = db.create_subtask(&name, &description, &task_id).await?;
                 println!("{}", json!(created));
             }
             SubtaskCommands::List { task_id } => {

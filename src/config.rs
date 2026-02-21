@@ -150,7 +150,7 @@ impl Config {
         if !path.exists() {
             return Ok(());
         }
-        let raw = fs::read_to_string(&path)
+        let raw = fs::read_to_string(path)
             .with_context(|| format!("Failed to read config file at {}", path.display()))?;
         let parsed: PartialConfig = toml::from_str(&raw)
             .with_context(|| format!("Failed to parse TOML at {}", path.display()))?;
@@ -187,7 +187,7 @@ impl Config {
         }
 
         if let Some(value) = map.get("DUNNO_BACKEND") {
-            self.backend = StorageBackend::parse(&value)?;
+            self.backend = StorageBackend::parse(value)?;
         }
         if let Some(value) = map.get("DUNNO_LOCAL_PATH") {
             self.local.path = value.to_string();
@@ -224,10 +224,10 @@ impl Config {
         if let Some(backend) = partial.backend {
             self.backend = StorageBackend::parse(&backend)?;
         }
-        if let Some(local) = partial.local {
-            if let Some(path) = local.path {
-                self.local.path = path;
-            }
+        if let Some(local) = partial.local
+            && let Some(path) = local.path
+        {
+            self.local.path = path;
         }
         if let Some(cloud) = partial.cloud {
             if let Some(url) = cloud.url {
@@ -260,10 +260,10 @@ fn expand_tilde_path(raw: &str) -> PathBuf {
     if raw == "~" {
         return dirs::home_dir().unwrap_or_else(|| PathBuf::from(raw));
     }
-    if let Some(rest) = raw.strip_prefix("~/") {
-        if let Some(home) = dirs::home_dir() {
-            return home.join(rest);
-        }
+    if let Some(rest) = raw.strip_prefix("~/")
+        && let Some(home) = dirs::home_dir()
+    {
+        return home.join(rest);
     }
     Path::new(raw).to_path_buf()
 }
