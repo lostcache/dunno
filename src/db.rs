@@ -1365,4 +1365,247 @@ mod tests {
         assert_eq!(context.hierarchy.project_name, "TestProject");
         assert_eq!(context.hierarchy.module_name, "Auth");
     }
+
+    #[tokio::test]
+    async fn test_list_tasks_by_project() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Module1", "First module", &project_id)
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let _task1 = db
+            .create_task("Task1", "First task", &module_id, &project_id)
+            .await
+            .expect("Failed to create task1");
+
+        let _task2 = db
+            .create_task("Task2", "Second task", &module_id, &project_id)
+            .await
+            .expect("Failed to create task2");
+
+        let tasks = db.list_tasks_by_project(&project_id).await.expect("list_tasks_by_project failed");
+
+        assert_eq!(tasks.len(), 2);
+        let names: Vec<&str> = tasks.iter().map(|t| t.name.as_str()).collect();
+        assert!(names.contains(&"Task1"));
+        assert!(names.contains(&"Task2"));
+    }
+
+    #[tokio::test]
+    async fn test_create_task_bidirectional_edges() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Module1", "First module", &project_id)
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let task = db
+            .create_task("TestTask", "Test task", &module_id, &project_id)
+            .await
+            .expect("Failed to create task");
+        let task_id = task.id.expect("task id");
+
+        let tasks_from_project = db.list_tasks_by_project(&project_id).await.expect("list_tasks_by_project failed");
+        assert_eq!(tasks_from_project.len(), 1);
+
+        let tasks_from_module = db.list_tasks_by_module(&module_id).await.expect("list_tasks_by_module failed");
+        assert_eq!(tasks_from_module.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_get_task_context_no_linked_knowledge() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Auth", "Auth module", &project_id)
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let task = db
+            .create_task("Login", "Implement login", &module_id, &project_id)
+            .await
+            .expect("Failed to create task");
+        let task_id = task.id.expect("task id");
+
+        let context = db.get_task_context(&task_id).await.expect("get_task_context failed");
+
+        assert_eq!(context.task.name, "Login");
+        assert!(context.subtasks.is_empty());
+        assert!(context.updates.is_empty());
+        assert!(context.mistakes.is_empty());
+        assert!(context.style_rules.is_empty());
+        assert!(context.security_details.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_get_task_context_all_knowledge_types() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Auth", "Auth module", &project_id)
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let task = db
+            .create_task("Login", "Implement login", &module_id, &project_id)
+            .await
+            .expect("Failed to create task");
+        let task_id = task.id.expect("task id");
+
+        let mistake = db
+            .create_mistake(&Mistake {
+                id: None,
+                content: "Using unwrap".to_string(),
+            })
+            .await
+            .expect("Failed to create mistake");
+        db.link_context(&task_id, &mistake.id.unwrap()).await.expect("link mistake");
+
+        let style = db
+            .create_style_rule(&StyleRule {
+                id: None,
+                description: "Use match".to_string(),
+                example: "match".to_string(),
+            })
+            .await
+            .expect("Failed to create style rule");
+        db.link_context(&task_id, &style.id.unwrap()).await.expect("link style");
+
+        let security = db
+            .create_security_detail(&SecurityDetail {
+                id: None,
+                content: "SQL injection".to_string(),
+                severity: "high".to_string(),
+                category: "injection".to_string(),
+                tags: vec!["sql".to_string()],
+            })
+            .await
+            .expect("Failed to create security detail");
+        db.link_context(&task_id, &security.id.unwrap()).await.expect("link security");
+
+        let context = db.get_task_context(&task_id).await.expect("get_task_context failed");
+
+        assert_eq!(context.mistakes.len(), 1);
+        assert_eq!(context.style_rules.len(), 1);
+        assert_eq!(context.security_details.len(), 1);
+        assert_eq!(context.mistakes[0].content, "Using unwrap");
+        assert_eq!(context.style_rules[0].description, "Use match");
+        assert_eq!(context.security_details[0].severity, "high");
+    }
+
+    #[tokio::test]
+    async fn test_get_task_context_under_submodule() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Auth", "Auth module", &project_id)
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let submodule = db
+            .create_submodule("JWT", "JWT submodule", &module_id)
+            .await
+            .expect("Failed to create submodule");
+        let _submodule_id = submodule.id.expect("submodule id");
+
+        let task = db
+            .create_task("Implement JWT", "Implement JWT auth", &module_id, &project_id)
+            .await
+            .expect("Failed to create task");
+        let task_id = task.id.expect("task id");
+
+        let context = db.get_task_context(&task_id).await.expect("get_task_context failed");
+
+        assert_eq!(context.hierarchy.module_name, "Auth");
+        assert!(context.hierarchy.submodule.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_get_task_context_files_from_module() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&Project {
+                id: None,
+                name: "TestProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Auth", "Auth module", &project_id)
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let task = db
+            .create_task("Login", "Implement login", &module_id, &project_id)
+            .await
+            .expect("Failed to create task");
+        let task_id = task.id.expect("task id");
+
+        let context = db.get_task_context(&task_id).await.expect("get_task_context failed");
+
+        assert!(context.files.is_empty());
+    }
 }
