@@ -1,19 +1,15 @@
-use dunno::context::{get_file_context, get_subtask_context, get_task_context};
-use dunno::db::DB;
-use dunno::models::{Mistake, Project, SecurityDetail, StyleRule};
-
-/// Sets up a fresh in-memory DB.
-async fn setup_db() -> DB {
-    DB::new("mem://").await.expect("Failed to init DB")
+/// Sets up a fresh in-memory dunno::db::DB.
+async fn setup_db() -> dunno::db::DB {
+    dunno::db::DB::new("mem://").await.expect("Failed to init dunno::db::DB")
 }
 
 /// Helper: creates a full project → module → task hierarchy and links
 /// knowledge nodes at each level. Returns (project_id, module_id, task_id).
-async fn setup_hierarchy_with_context(db: &DB) -> (String, String, String) {
+async fn setup_hierarchy_with_context(db: &dunno::db::DB) -> (String, String, String) {
     let project = db
-        .create_project(&Project {
+        .create_project(&dunno::models::Project {
             id: None,
-            name: "TestProject".to_string(),
+            name: "Testdunno::models::Project".to_string(),
             description: "A test project".to_string(),
         })
         .await
@@ -34,9 +30,9 @@ async fn setup_hierarchy_with_context(db: &DB) -> (String, String, String) {
 
     // Link knowledge at each level
     let project_mistake = db
-        .create_mistake(&Mistake {
+        .create_mistake(&dunno::models::Mistake {
             id: None,
-            content: "Project Level Mistake".to_string(),
+            content: "dunno::models::Project Level dunno::models::Mistake".to_string(),
         })
         .await
         .expect("create mistake");
@@ -45,7 +41,7 @@ async fn setup_hierarchy_with_context(db: &DB) -> (String, String, String) {
         .expect("link project mistake");
 
     let module_style = db
-        .create_style_rule(&StyleRule {
+        .create_style_rule(&dunno::models::StyleRule {
             id: None,
             description: "Module Level Style".to_string(),
             example: "example".to_string(),
@@ -57,9 +53,9 @@ async fn setup_hierarchy_with_context(db: &DB) -> (String, String, String) {
         .expect("link module style");
 
     let task_mistake = db
-        .create_mistake(&Mistake {
+        .create_mistake(&dunno::models::Mistake {
             id: None,
-            content: "Task Level Mistake".to_string(),
+            content: "Task Level dunno::models::Mistake".to_string(),
         })
         .await
         .expect("create task mistake");
@@ -75,13 +71,13 @@ async fn test_task_hierarchy_context() {
     let db = setup_db().await;
     let (_project_id, _module_id, task_id) = setup_hierarchy_with_context(&db).await;
 
-    let context = get_task_context(&task_id, &db)
+    let context = dunno::context::get_task_context(&task_id, &db)
         .await
-        .expect("get_task_context should succeed");
+        .expect("dunno::context::get_task_context should succeed");
 
     // Should contain knowledge from task, module, and project levels
     assert!(
-        context.iter().any(|v| v["content"] == "Task Level Mistake"),
+        context.iter().any(|v| v["content"] == "Task Level dunno::models::Mistake"),
         "Missing task-level mistake. Context: {:?}",
         context
     );
@@ -95,7 +91,7 @@ async fn test_task_hierarchy_context() {
     assert!(
         context
             .iter()
-            .any(|v| v["content"] == "Project Level Mistake"),
+            .any(|v| v["content"] == "dunno::models::Project Level dunno::models::Mistake"),
         "Missing project-level mistake. Context: {:?}",
         context
     );
@@ -124,9 +120,9 @@ async fn test_file_hierarchy_context() {
 
     // Link a mistake to the submodule level
     let sub_mistake = db
-        .create_mistake(&Mistake {
+        .create_mistake(&dunno::models::Mistake {
             id: None,
-            content: "Submodule Level Mistake".to_string(),
+            content: "Submodule Level dunno::models::Mistake".to_string(),
         })
         .await
         .expect("create sub mistake");
@@ -134,15 +130,15 @@ async fn test_file_hierarchy_context() {
         .await
         .expect("link sub mistake");
 
-    let context = get_file_context(&file_id, &db)
+    let context = dunno::context::get_file_context(&file_id, &db)
         .await
-        .expect("get_file_context should succeed");
+        .expect("dunno::context::get_file_context should succeed");
 
     // Should include context from submodule, module, and project
     assert!(
         context
             .iter()
-            .any(|v| v["content"] == "Submodule Level Mistake"),
+            .any(|v| v["content"] == "Submodule Level dunno::models::Mistake"),
         "Missing submodule-level mistake. Context: {:?}",
         context
     );
@@ -156,7 +152,7 @@ async fn test_file_hierarchy_context() {
     assert!(
         context
             .iter()
-            .any(|v| v["content"] == "Project Level Mistake"),
+            .any(|v| v["content"] == "dunno::models::Project Level dunno::models::Mistake"),
         "Missing project-level mistake. Context: {:?}",
         context
     );
@@ -174,9 +170,9 @@ async fn test_file_without_submodule_context() {
         .expect("create file");
     let file_id = file.id.expect("file id");
 
-    let context = get_file_context(&file_id, &db)
+    let context = dunno::context::get_file_context(&file_id, &db)
         .await
-        .expect("get_file_context should succeed");
+        .expect("dunno::context::get_file_context should succeed");
 
     // Should include context from module and project (no submodule)
     assert!(
@@ -189,7 +185,7 @@ async fn test_file_without_submodule_context() {
     assert!(
         context
             .iter()
-            .any(|v| v["content"] == "Project Level Mistake"),
+            .any(|v| v["content"] == "dunno::models::Project Level dunno::models::Mistake"),
         "Missing project-level mistake. Context: {:?}",
         context
     );
@@ -208,9 +204,9 @@ async fn test_subtask_four_level_context() {
 
     // Link a mistake to the subtask level
     let st_mistake = db
-        .create_mistake(&Mistake {
+        .create_mistake(&dunno::models::Mistake {
             id: None,
-            content: "Subtask Level Mistake".to_string(),
+            content: "Subtask Level dunno::models::Mistake".to_string(),
         })
         .await
         .expect("create subtask mistake");
@@ -218,20 +214,20 @@ async fn test_subtask_four_level_context() {
         .await
         .expect("link subtask mistake");
 
-    let context = get_subtask_context(&subtask_id, &db)
+    let context = dunno::context::get_subtask_context(&subtask_id, &db)
         .await
-        .expect("get_subtask_context should succeed");
+        .expect("dunno::context::get_subtask_context should succeed");
 
     // Should include context from subtask, task, module, and project (4 levels)
     assert!(
         context
             .iter()
-            .any(|v| v["content"] == "Subtask Level Mistake"),
+            .any(|v| v["content"] == "Subtask Level dunno::models::Mistake"),
         "Missing subtask-level mistake. Context: {:?}",
         context
     );
     assert!(
-        context.iter().any(|v| v["content"] == "Task Level Mistake"),
+        context.iter().any(|v| v["content"] == "Task Level dunno::models::Mistake"),
         "Missing task-level mistake. Context: {:?}",
         context
     );
@@ -245,7 +241,7 @@ async fn test_subtask_four_level_context() {
     assert!(
         context
             .iter()
-            .any(|v| v["content"] == "Project Level Mistake"),
+            .any(|v| v["content"] == "dunno::models::Project Level dunno::models::Mistake"),
         "Missing project-level mistake. Context: {:?}",
         context
     );
@@ -256,9 +252,9 @@ async fn test_security_detail_in_context() {
     let db = setup_db().await;
 
     let project = db
-        .create_project(&Project {
+        .create_project(&dunno::models::Project {
             id: None,
-            name: "SecProject".to_string(),
+            name: "Secdunno::models::Project".to_string(),
             description: "Test".to_string(),
         })
         .await
@@ -277,9 +273,9 @@ async fn test_security_detail_in_context() {
         .expect("create task");
     let task_id = task.id.expect("id");
 
-    // Link a SecurityDetail to the module
+    // Link a dunno::models::SecurityDetail to the module
     let detail = db
-        .create_security_detail(&SecurityDetail {
+        .create_security_detail(&dunno::models::SecurityDetail {
             id: None,
             content: "SQL injection risk".to_string(),
             severity: "high".to_string(),
@@ -292,9 +288,9 @@ async fn test_security_detail_in_context() {
         .await
         .expect("link security detail");
 
-    let context = get_task_context(&task_id, &db)
+    let context = dunno::context::get_task_context(&task_id, &db)
         .await
-        .expect("get_task_context should succeed");
+        .expect("dunno::context::get_task_context should succeed");
 
     assert!(
         context.iter().any(|v| v["content"] == "SQL injection risk"),

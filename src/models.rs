@@ -1,6 +1,4 @@
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskStatus {
     NotStarted,
@@ -19,7 +17,7 @@ impl TaskStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct Project {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -27,7 +25,7 @@ pub struct Project {
     pub description: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct Module {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -37,7 +35,7 @@ pub struct Module {
     pub files: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct Submodule {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -47,7 +45,7 @@ pub struct Submodule {
     pub files: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct File {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -55,7 +53,7 @@ pub struct File {
     pub path: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct Task {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -64,7 +62,7 @@ pub struct Task {
     pub status: TaskStatus,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct Subtask {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -73,7 +71,7 @@ pub struct Subtask {
     pub status: TaskStatus,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct TaskUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -83,21 +81,21 @@ pub struct TaskUpdate {
     pub updated_at_ms: Option<i64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct TodoItem {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     pub content: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct Mistake {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     pub content: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct StyleRule {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -105,7 +103,7 @@ pub struct StyleRule {
     pub example: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct SecurityDetail {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -115,13 +113,13 @@ pub struct SecurityDetail {
     pub tags: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct SubmoduleInfo {
     pub id: String,
     pub name: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct TaskHierarchy {
     pub project_id: String,
     pub project_name: String,
@@ -130,7 +128,7 @@ pub struct TaskHierarchy {
     pub submodule: Option<SubmoduleInfo>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct TaskContext {
     pub task: Task,
     pub subtasks: Vec<Subtask>,

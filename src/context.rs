@@ -1,13 +1,10 @@
-use anyhow::Result;
-use serde_json::Value;
 
-use crate::db::DB;
 
 /// Retrieves hierarchical context for a task.
 ///
 /// Traverses: Task <-contains<- Module <-contains<- Project
 /// Collects has_context knowledge nodes at each level.
-pub async fn get_task_context(task_id: &str, db: &DB) -> Result<Vec<Value>> {
+pub async fn get_task_context(task_id: &str, db: &crate::db::DB) -> anyhow::Result<Vec<serde_json::Value>> {
     let sql = r#"
         LET $t = type::record($tid);
         LET $modules = (SELECT <-contains<-module AS m FROM ONLY $t).m;
@@ -43,7 +40,7 @@ pub async fn get_task_context(task_id: &str, db: &DB) -> Result<Vec<Value>> {
 /// Retrieves hierarchical context for a file.
 ///
 /// Traverses: File <-contains<- Submodule (optional) <-contains<- Module <-contains<- Project
-pub async fn get_file_context(file_id: &str, db: &DB) -> Result<Vec<Value>> {
+pub async fn get_file_context(file_id: &str, db: &crate::db::DB) -> anyhow::Result<Vec<serde_json::Value>> {
     let sql = r#"
         LET $f = type::record($fid);
 
@@ -95,7 +92,7 @@ pub async fn get_file_context(file_id: &str, db: &DB) -> Result<Vec<Value>> {
 /// Retrieves hierarchical context for a subtask.
 ///
 /// Traverses: Subtask <-contains<- Task <-contains<- Module <-contains<- Project
-pub async fn get_subtask_context(subtask_id: &str, db: &DB) -> Result<Vec<Value>> {
+pub async fn get_subtask_context(subtask_id: &str, db: &crate::db::DB) -> anyhow::Result<Vec<serde_json::Value>> {
     let sql = r#"
         LET $st = type::record($stid);
         LET $tasks = (SELECT <-contains<-task AS t FROM ONLY $st).t;
@@ -137,23 +134,23 @@ pub async fn get_subtask_context(subtask_id: &str, db: &DB) -> Result<Vec<Value>
 
 /// Flattens the raw SurrealQL context result into a deduplicated list of
 /// knowledge node JSON objects, each tagged with a `node_type` field.
-fn flatten_context_result(raw: Value) -> Vec<Value> {
+fn flatten_context_result(raw: serde_json::Value) -> Vec<serde_json::Value> {
     let mut nodes = Vec::new();
 
     let levels = match raw {
-        Value::Array(arr) => arr,
+        serde_json::Value::Array(arr) => arr,
         _ => return nodes,
     };
 
     for level in levels {
         let level_obj = match level {
-            Value::Object(map) => map,
+            serde_json::Value::Object(map) => map,
             _ => continue,
         };
 
         // Find the has_context object (key contains "has_context")
         let ctx_obj = match level_obj.iter().find(|(k, _)| k.contains("has_context")) {
-            Some((_, Value::Object(m))) => m,
+            Some((_, serde_json::Value::Object(m))) => m,
             _ => continue,
         };
 
@@ -169,29 +166,29 @@ fn flatten_context_result(raw: Value) -> Vec<Value> {
                 continue;
             };
 
-            if let Value::Array(items) = val {
+            if let serde_json::Value::Array(items) = val {
                 for inner in items {
                     match inner {
-                        Value::Array(nested) => {
+                        serde_json::Value::Array(nested) => {
                             for item in nested {
-                                if let Value::Object(_) = item {
+                                if let serde_json::Value::Object(_) = item {
                                     let mut node = item.clone();
-                                    if let Value::Object(ref mut m) = node {
+                                    if let serde_json::Value::Object(ref mut m) = node {
                                         m.insert(
                                             "node_type".to_string(),
-                                            Value::String(node_type.to_string()),
+                                            serde_json::Value::String(node_type.to_string()),
                                         );
                                     }
                                     nodes.push(node);
                                 }
                             }
                         }
-                        Value::Object(_) => {
+                        serde_json::Value::Object(_) => {
                             let mut node = inner.clone();
-                            if let Value::Object(ref mut m) = node {
+                            if let serde_json::Value::Object(ref mut m) = node {
                                 m.insert(
                                     "node_type".to_string(),
-                                    Value::String(node_type.to_string()),
+                                    serde_json::Value::String(node_type.to_string()),
                                 );
                             }
                             nodes.push(node);

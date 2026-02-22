@@ -1,49 +1,42 @@
-use anyhow::Result;
-use qdrant_client::Qdrant;
-use qdrant_client::qdrant::{CreateCollectionBuilder, Distance, VectorParamsBuilder};
-use std::cmp::Ordering;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-
 pub struct VectorDB {
     backend: VectorBackend,
 }
 
 enum VectorBackend {
-    Qdrant(Qdrant),
-    Memory(Arc<Mutex<InMemoryVectorStore>>),
+    Qdrant(qdrant_client::Qdrant),
+    Memory(std::sync::Arc<std::sync::Mutex<InMemoryVectorStore>>),
 }
 
 #[derive(Default)]
 struct InMemoryVectorStore {
-    collections: HashMap<String, HashMap<String, Vec<f32>>>,
+    collections: std::collections::HashMap<String, std::collections::HashMap<String, Vec<f32>>>,
 }
 
 impl VectorDB {
     /// Creates a vector db client. Use `mem://` for in-memory tests.
-    pub async fn new(url: &str) -> Result<Self> {
+    pub async fn new(url: &str) -> anyhow::Result<Self> {
         if url == "mem://" {
             return Ok(Self {
-                backend: VectorBackend::Memory(Arc::new(
-                    Mutex::new(InMemoryVectorStore::default()),
+                backend: VectorBackend::Memory(std::sync::Arc::new(
+                    std::sync::Mutex::new(InMemoryVectorStore::default()),
                 )),
             });
         }
 
-        let client = Qdrant::from_url(url).build()?;
+        let client = qdrant_client::Qdrant::from_url(url).build()?;
         Ok(Self {
             backend: VectorBackend::Qdrant(client),
         })
     }
 
     /// Ensures a collection exists.
-    pub async fn ensure_collection(&self, name: &str, vector_size: u64) -> Result<()> {
+    pub async fn ensure_collection(&self, name: &str, vector_size: u64) -> anyhow::Result<()> {
         match &self.backend {
             VectorBackend::Qdrant(client) => {
                 if !client.collection_exists(name).await? {
                     client
-                        .create_collection(CreateCollectionBuilder::new(name).vectors_config(
-                            VectorParamsBuilder::new(vector_size, Distance::Cosine),
+                        .create_collection(qdrant_client::qdrant::CreateCollectionBuilder::new(name).vectors_config(
+                            qdrant_client::qdrant::VectorParamsBuilder::new(vector_size, qdrant_client::qdrant::Distance::Cosine),
                         ))
                         .await?;
                 }
@@ -60,7 +53,7 @@ impl VectorDB {
     }
 
     /// Inserts or updates a vector by id.
-    pub async fn upsert(&self, collection: &str, id: &str, vector: Vec<f32>) -> Result<()> {
+    pub async fn upsert(&self, collection: &str, id: &str, vector: Vec<f32>) -> anyhow::Result<()> {
         match &self.backend {
             VectorBackend::Qdrant(_client) => {
                 // Graph-first MVP does not require production vector upsert.
@@ -83,7 +76,7 @@ impl VectorDB {
         collection: &str,
         query: &[f32],
         limit: usize,
-    ) -> Result<Vec<String>> {
+    ) -> anyhow::Result<Vec<String>> {
         match &self.backend {
             VectorBackend::Qdrant(_client) => {
                 // Graph-first MVP does not require production vector search.
@@ -102,7 +95,7 @@ impl VectorDB {
                     .map(|(id, vector)| (id, cosine_similarity(vector, query)))
                     .collect();
 
-                scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+                scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
                 Ok(scored
                     .into_iter()
                     .take(limit)

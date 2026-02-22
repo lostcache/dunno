@@ -1,6 +1,4 @@
-use clap::{Parser, Subcommand};
-
-#[derive(Parser, Debug)]
+#[derive(clap::Parser, Debug)]
 #[command(
     name = "dunno",
     author,
@@ -18,7 +16,7 @@ pub struct Args {
     pub command: Commands,
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(clap::Subcommand, Debug)]
 pub enum Commands {
     #[command(
         about = "Add a new knowledge entry.",
@@ -107,13 +105,13 @@ pub enum Commands {
     },
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(clap::Subcommand, Debug)]
 pub enum ProjectCommands {
     Create { name: String, description: String },
     List,
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(clap::Subcommand, Debug)]
 pub enum ModuleCommands {
     Create {
         #[arg(long)]
@@ -124,7 +122,7 @@ pub enum ModuleCommands {
     List,
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(clap::Subcommand, Debug)]
 pub enum SubmoduleCommands {
     Create {
         #[arg(long)]
@@ -138,7 +136,7 @@ pub enum SubmoduleCommands {
     },
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(clap::Subcommand, Debug)]
 pub enum FileCommands {
     Create {
         /// Parent ID (module or submodule).
@@ -155,7 +153,7 @@ pub enum FileCommands {
     },
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(clap::Subcommand, Debug)]
 pub enum TaskCommands {
     Create {
         #[arg(long)]
@@ -192,7 +190,7 @@ pub enum TaskCommands {
     List,
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(clap::Subcommand, Debug)]
 pub enum SubtaskCommands {
     Create {
         #[arg(long)]
@@ -206,7 +204,7 @@ pub enum SubtaskCommands {
     },
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(clap::Subcommand, Debug)]
 pub enum TodoCommands {
     Create {
         #[arg(long)]
@@ -219,7 +217,7 @@ pub enum TodoCommands {
     },
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(clap::Subcommand, Debug)]
 pub enum ConfigCommands {
     Show,
 }

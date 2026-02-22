@@ -1,8 +1,5 @@
-use crate::db::DB;
-use crate::models::{Mistake, SecurityDetail, StyleRule};
-use anyhow::Result;
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug)]
 pub struct KnowledgeResult {
     pub kind: String,
     pub content: String,
@@ -14,11 +11,11 @@ pub async fn add_knowledge(
     kind: String,
     content: String,
     link_to: Option<String>,
-    db: &DB,
-) -> Result<KnowledgeResult> {
+    db: &crate::db::DB,
+) -> anyhow::Result<KnowledgeResult> {
     let id = match kind.as_str() {
         "mistake" => {
-            let mistake = Mistake {
+            let mistake = crate::models::Mistake {
                 id: None,
                 content: content.clone(),
             };
@@ -26,7 +23,7 @@ pub async fn add_knowledge(
             created.id
         }
         "style" => {
-            let rule = StyleRule {
+            let rule = crate::models::StyleRule {
                 id: None,
                 description: content.clone(),
                 example: String::new(),
@@ -35,7 +32,7 @@ pub async fn add_knowledge(
             created.id
         }
         "security" => {
-            let detail = SecurityDetail {
+            let detail = crate::models::SecurityDetail {
                 id: None,
                 content: content.clone(),
                 severity: "medium".to_string(),
@@ -65,13 +62,12 @@ pub async fn add_knowledge(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[tokio::test]
     async fn test_add_mistake() {
-        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let db = crate::db::DB::new("mem://").await.expect("Failed to init DB");
         
-        let result = add_knowledge(
+        let result = crate::ingest::add_knowledge(
             "mistake".to_string(),
             "Using unwrap".to_string(),
             None,
@@ -89,9 +85,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_style_rule() {
-        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let db = crate::db::DB::new("mem://").await.expect("Failed to init DB");
         
-        let result = add_knowledge(
+        let result = crate::ingest::add_knowledge(
             "style".to_string(),
             "Use match instead of unwrap".to_string(),
             None,
@@ -108,9 +104,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_security_detail() {
-        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let db = crate::db::DB::new("mem://").await.expect("Failed to init DB");
         
-        let result = add_knowledge(
+        let result = crate::ingest::add_knowledge(
             "security".to_string(),
             "SQL injection risk".to_string(),
             None,
@@ -127,9 +123,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_knowledge_invalid_kind() {
-        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let db = crate::db::DB::new("mem://").await.expect("Failed to init DB");
         
-        let result = add_knowledge(
+        let result = crate::ingest::add_knowledge(
             "invalid".to_string(),
             "Some content".to_string(),
             None,
@@ -142,7 +138,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_knowledge_with_link() {
-        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let db = crate::db::DB::new("mem://").await.expect("Failed to init DB");
         
         let project = db.create_project(&crate::models::Project {
             id: None,
@@ -151,7 +147,7 @@ mod tests {
         }).await.expect("create project");
         let project_id = project.id.expect("project id");
         
-        let result = add_knowledge(
+        let result = crate::ingest::add_knowledge(
             "mistake".to_string(),
             "Using unwrap".to_string(),
             Some(project_id.clone()),

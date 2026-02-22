@@ -1,10 +1,4 @@
-use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
-use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum StorageBackend {
     Local,
@@ -12,7 +6,7 @@ pub enum StorageBackend {
 }
 
 impl StorageBackend {
-    fn parse(value: &str) -> Result<Self> {
+    fn parse(value: &str) -> anyhow::Result<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "local" => Ok(Self::Local),
             "cloud" => Ok(Self::Cloud),
@@ -24,7 +18,7 @@ impl StorageBackend {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct LocalConfig {
     pub path: String,
 }
@@ -37,7 +31,7 @@ impl Default for LocalConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CloudConfig {
     pub url: String,
     pub namespace: String,
@@ -60,7 +54,7 @@ impl Default for CloudConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     pub backend: StorageBackend,
     pub local: LocalConfig,
@@ -79,7 +73,7 @@ impl Default for Config {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct PartialConfig {
     backend: Option<String>,
     local: Option<PartialLocalConfig>,
@@ -87,12 +81,12 @@ struct PartialConfig {
     qdrant_url: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct PartialLocalConfig {
     path: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct PartialCloudConfig {
     url: Option<String>,
     namespace: Option<String>,
@@ -103,11 +97,11 @@ struct PartialCloudConfig {
 }
 
 impl Config {
-    pub fn load(cli_backend: Option<&str>) -> Result<Self> {
+    pub fn load(cli_backend: Option<&str>) -> anyhow::Result<Self> {
         Self::load_from_path(cli_backend, &Self::config_file_path())
     }
 
-    fn load_from_path(cli_backend: Option<&str>, config_path: &Path) -> Result<Self> {
+    fn load_from_path(cli_backend: Option<&str>, config_path: &std::path::Path) -> anyhow::Result<Self> {
         let mut config = Self::default();
         config.apply_config_file(config_path)?;
         config.apply_env_overrides()?;
@@ -115,12 +109,12 @@ impl Config {
         Ok(config)
     }
 
-    pub fn config_file_path() -> PathBuf {
-        let base = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+    pub fn config_file_path() -> std::path::PathBuf {
+        let base = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
         base.join(".config").join("dunno").join("config.toml")
     }
 
-    pub fn local_data_path(&self) -> PathBuf {
+    pub fn local_data_path(&self) -> std::path::PathBuf {
         expand_tilde_path(&self.local.path)
     }
 
@@ -146,36 +140,34 @@ impl Config {
         })
     }
 
-    fn apply_config_file(&mut self, path: &Path) -> Result<()> {
+    fn apply_config_file(&mut self, path: &std::path::Path) -> anyhow::Result<()> {
         if !path.exists() {
             return Ok(());
         }
-        let raw = fs::read_to_string(path)
-            .with_context(|| format!("Failed to read config file at {}", path.display()))?;
-        let parsed: PartialConfig = toml::from_str(&raw)
-            .with_context(|| format!("Failed to parse TOML at {}", path.display()))?;
+        let raw = anyhow::Context::context(std::fs::read_to_string(path), format!("Failed to read config file at {}", path.display()))?;
+        let parsed: PartialConfig = anyhow::Context::context(toml::from_str(&raw), format!("Failed to parse TOML at {}", path.display()))?;
         self.merge_partial(parsed)?;
         Ok(())
     }
 
-    fn apply_env_overrides(&mut self) -> Result<()> {
+    fn apply_env_overrides(&mut self) -> anyhow::Result<()> {
         let pairs = [
-            ("DUNNO_BACKEND", env::var("DUNNO_BACKEND").ok()),
-            ("DUNNO_LOCAL_PATH", env::var("DUNNO_LOCAL_PATH").ok()),
-            ("DUNNO_CLOUD_URL", env::var("DUNNO_CLOUD_URL").ok()),
-            ("DUNNO_CLOUD_NS", env::var("DUNNO_CLOUD_NS").ok()),
-            ("DUNNO_CLOUD_DB", env::var("DUNNO_CLOUD_DB").ok()),
-            ("DUNNO_CLOUD_USER", env::var("DUNNO_CLOUD_USER").ok()),
-            ("DUNNO_CLOUD_PASS", env::var("DUNNO_CLOUD_PASS").ok()),
+            ("DUNNO_BACKEND", std::env::var("DUNNO_BACKEND").ok()),
+            ("DUNNO_LOCAL_PATH", std::env::var("DUNNO_LOCAL_PATH").ok()),
+            ("DUNNO_CLOUD_URL", std::env::var("DUNNO_CLOUD_URL").ok()),
+            ("DUNNO_CLOUD_NS", std::env::var("DUNNO_CLOUD_NS").ok()),
+            ("DUNNO_CLOUD_DB", std::env::var("DUNNO_CLOUD_DB").ok()),
+            ("DUNNO_CLOUD_USER", std::env::var("DUNNO_CLOUD_USER").ok()),
+            ("DUNNO_CLOUD_PASS", std::env::var("DUNNO_CLOUD_PASS").ok()),
             (
                 "DUNNO_CLOUD_AUTH_TYPE",
-                env::var("DUNNO_CLOUD_AUTH_TYPE").ok(),
+                std::env::var("DUNNO_CLOUD_AUTH_TYPE").ok(),
             ),
         ];
         self.apply_env_override_pairs(pairs)
     }
 
-    fn apply_env_override_pairs<I>(&mut self, pairs: I) -> Result<()>
+    fn apply_env_override_pairs<I>(&mut self, pairs: I) -> anyhow::Result<()>
     where
         I: IntoIterator<Item = (&'static str, Option<String>)>,
     {
@@ -213,14 +205,14 @@ impl Config {
         Ok(())
     }
 
-    fn apply_cli_overrides(&mut self, cli_backend: Option<&str>) -> Result<()> {
+    fn apply_cli_overrides(&mut self, cli_backend: Option<&str>) -> anyhow::Result<()> {
         if let Some(value) = cli_backend {
             self.backend = StorageBackend::parse(value)?;
         }
         Ok(())
     }
 
-    fn merge_partial(&mut self, partial: PartialConfig) -> Result<()> {
+    fn merge_partial(&mut self, partial: PartialConfig) -> anyhow::Result<()> {
         if let Some(backend) = partial.backend {
             self.backend = StorageBackend::parse(&backend)?;
         }
@@ -256,16 +248,16 @@ impl Config {
     }
 }
 
-fn expand_tilde_path(raw: &str) -> PathBuf {
+fn expand_tilde_path(raw: &str) -> std::path::PathBuf {
     if raw == "~" {
-        return dirs::home_dir().unwrap_or_else(|| PathBuf::from(raw));
+        return dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from(raw));
     }
     if let Some(rest) = raw.strip_prefix("~/")
         && let Some(home) = dirs::home_dir()
     {
         return home.join(rest);
     }
-    Path::new(raw).to_path_buf()
+    std::path::Path::new(raw).to_path_buf()
 }
 
 #[cfg(test)]
@@ -309,7 +301,7 @@ mod tests {
 
     #[test]
     fn test_load_defaults_when_file_missing() {
-        let missing = PathBuf::from("/tmp/definitely-missing-dunno-config.toml");
+        let missing = std::path::PathBuf::from("/tmp/definitely-missing-dunno-config.toml");
         let config = Config::load_from_path(None, &missing).expect("load should succeed");
         assert!(matches!(config.backend, StorageBackend::Local));
         assert_eq!(config.qdrant_url, "mem://");
@@ -351,12 +343,12 @@ database = "dunno"
 username = "user"
 password = "pass"
 "#;
-        fs::write(&tmp_path, raw).expect("should write temp config");
+        std::fs::write(&tmp_path, raw).expect("should write temp config");
 
         let loaded = Config::load_from_path(Some("local"), &tmp_path).expect("load should succeed");
         assert!(matches!(loaded.backend, StorageBackend::Local));
 
-        let _ = fs::remove_file(tmp_path);
+        let _ = std::fs::remove_file(tmp_path);
     }
 
     #[test]

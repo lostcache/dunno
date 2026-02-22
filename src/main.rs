@@ -1,16 +1,4 @@
 use clap::Parser;
-use clap::error::ErrorKind;
-use dunno::args::{
-    Args, Commands, ConfigCommands, FileCommands, ModuleCommands, ProjectCommands,
-    SubmoduleCommands, SubtaskCommands, TaskCommands, TodoCommands,
-};
-use dunno::config::Config;
-use dunno::context::{get_file_context, get_subtask_context, get_task_context};
-use dunno::db::DB;
-use dunno::ingest::add_knowledge;
-use dunno::models::Project;
-use serde_json::json;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[tokio::main]
 async fn main() {
@@ -18,12 +6,12 @@ async fn main() {
         .install_default()
         .ok();
 
-    let args = match Args::try_parse() {
+    let args = match dunno::args::Args::try_parse() {
         Ok(args) => args,
         Err(err) => {
             if matches!(
                 err.kind(),
-                ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
+                clap::error::ErrorKind::DisplayHelp | clap::error::ErrorKind::DisplayVersion
             ) {
                 print!("{}", err);
                 return;
@@ -39,85 +27,85 @@ async fn main() {
     }
 }
 
-async fn run(args: Args) -> anyhow::Result<()> {
-    let config = Config::load(args.backend.as_deref())?;
-    if let Commands::Config { command } = &args.command {
+async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
+    let config = dunno::config::Config::load(args.backend.as_deref())?;
+    if let dunno::args::Commands::Config { command } = &args.command {
         match command {
-            ConfigCommands::Show => {
+            dunno::args::ConfigCommands::Show => {
                 println!("{}", config.redacted_json());
             }
         }
         return Ok(());
     }
 
-    let db = DB::from_config(&config).await?;
+    let db = dunno::db::DB::from_config(&config).await?;
 
     match args.command {
-        Commands::Add {
+        dunno::args::Commands::Add {
             kind,
             content,
             link_to,
         } => {
-            add_knowledge(kind, content, link_to, &db).await?;
-            println!("{}", json!({ "status": "ok" }));
+            dunno::ingest::add_knowledge(kind, content, link_to, &db).await?;
+            println!("{}", serde_json::json!({ "status": "ok" }));
         }
-        Commands::Project { command } => match command {
-            ProjectCommands::Create { name, description } => {
-                let project = Project {
+        dunno::args::Commands::Project { command } => match command {
+            dunno::args::ProjectCommands::Create { name, description } => {
+                let project = dunno::models::Project {
                     id: None,
                     name,
                     description,
                 };
                 let created = db.create_project(&project).await?;
-                println!("{}", json!(created));
+                println!("{}", serde_json::json!(created));
             }
-            ProjectCommands::List => {
+            dunno::args::ProjectCommands::List => {
                 let projects = db.list_projects().await?;
-                println!("{}", json!(projects));
+                println!("{}", serde_json::json!(projects));
             }
         },
-        Commands::Module { command } => match command {
-            ModuleCommands::Create {
+        dunno::args::Commands::Module { command } => match command {
+            dunno::args::ModuleCommands::Create {
                 project_id,
                 name,
                 description,
             } => {
                 let created = db.create_module(&name, &description, &project_id).await?;
-                println!("{}", json!(created));
+                println!("{}", serde_json::json!(created));
             }
-            ModuleCommands::List => {
+            dunno::args::ModuleCommands::List => {
                 let modules = db.list_modules().await?;
-                println!("{}", json!(modules));
+                println!("{}", serde_json::json!(modules));
             }
         },
-        Commands::Submodule { command } => match command {
-            SubmoduleCommands::Create {
+        dunno::args::Commands::Submodule { command } => match command {
+            dunno::args::SubmoduleCommands::Create {
                 module_id,
                 name,
                 description,
             } => {
                 let created = db.create_submodule(&name, &description, &module_id).await?;
-                println!("{}", json!(created));
+                println!("{}", serde_json::json!(created));
             }
-            SubmoduleCommands::List { module_id } => {
+            dunno::args::SubmoduleCommands::List { module_id } => {
                 let submodules = if let Some(mid) = module_id {
                     db.list_submodules_by_module(&mid).await?
                 } else {
                     db.list_submodules().await?
                 };
-                println!("{}", json!(submodules));
+                println!("{}", serde_json::json!(submodules));
             }
         },
-        Commands::File { command } => match command {
-            FileCommands::Create {
+        dunno::args::Commands::File { command } => match command {
+            dunno::args::FileCommands::Create {
                 parent_id,
                 name,
                 path,
             } => {
                 let created = db.create_file(&name, &path, &parent_id).await?;
-                println!("{}", json!(created));
+                println!("{}", serde_json::json!(created));
             }
-            FileCommands::List {
+            dunno::args::FileCommands::List {
                 module_id,
                 submodule_id,
             } => {
@@ -128,20 +116,20 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 } else {
                     db.list_files().await?
                 };
-                println!("{}", json!(files));
+                println!("{}", serde_json::json!(files));
             }
         },
-        Commands::Task { command } => match command {
-            TaskCommands::Create {
+        dunno::args::Commands::Task { command } => match command {
+            dunno::args::TaskCommands::Create {
                 module_id,
                 project_id,
                 name,
                 description,
             } => {
                 let created = db.create_task(&name, &description, &module_id, &project_id).await?;
-                println!("{}", json!(created));
+                println!("{}", serde_json::json!(created));
             }
-            TaskCommands::Update {
+            dunno::args::TaskCommands::Update {
                 task_id,
                 name,
                 description,
@@ -162,97 +150,97 @@ async fn run(args: Args) -> anyhow::Result<()> {
                     .update_task(&task_id, name, description, parsed_status)
                     .await?;
                 if let Some(task) = updated {
-                    println!("{}", json!(task));
+                    println!("{}", serde_json::json!(task));
                 } else {
                     return Err(anyhow::anyhow!("Task not found: {}", task_id));
                 }
             }
-            TaskCommands::AppendUpdate { task_id, content } => {
+            dunno::args::TaskCommands::AppendUpdate { task_id, content } => {
                 if db.get_task(&task_id).await?.is_none() {
                     return Err(anyhow::anyhow!("Task not found: {}", task_id));
                 }
 
-                let created_at_ms = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .map_err(|_| anyhow::anyhow!("System clock is before UNIX_EPOCH"))?
+                let created_at_ms = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_err(|_| anyhow::anyhow!("System clock is before std::time::UNIX_EPOCH"))?
                     .as_millis() as i64;
 
                 let created = db
                     .create_task_update(&content, created_at_ms, &task_id)
                     .await?;
-                println!("{}", json!(created));
+                println!("{}", serde_json::json!(created));
             }
-            TaskCommands::UpdateEntry { update_id, content } => {
-                let updated_at_ms = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .map_err(|_| anyhow::anyhow!("System clock is before UNIX_EPOCH"))?
+            dunno::args::TaskCommands::UpdateEntry { update_id, content } => {
+                let updated_at_ms = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_err(|_| anyhow::anyhow!("System clock is before std::time::UNIX_EPOCH"))?
                     .as_millis() as i64;
                 let edited = db
                     .update_task_update(&update_id, content, updated_at_ms)
                     .await?;
                 if let Some(update) = edited {
-                    println!("{}", json!(update));
+                    println!("{}", serde_json::json!(update));
                 } else {
                     return Err(anyhow::anyhow!("Task update not found: {}", update_id));
                 }
             }
-            TaskCommands::ListUpdates { task_id } => {
+            dunno::args::TaskCommands::ListUpdates { task_id } => {
                 let updates = db.list_task_updates(&task_id).await?;
-                println!("{}", json!(updates));
+                println!("{}", serde_json::json!(updates));
             }
-            TaskCommands::List => {
+            dunno::args::TaskCommands::List => {
                 let tasks = db.list_tasks().await?;
-                println!("{}", json!(tasks));
+                println!("{}", serde_json::json!(tasks));
             }
         },
-        Commands::Subtask { command } => match command {
-            SubtaskCommands::Create {
+        dunno::args::Commands::Subtask { command } => match command {
+            dunno::args::SubtaskCommands::Create {
                 task_id,
                 name,
                 description,
             } => {
                 let created = db.create_subtask(&name, &description, &task_id).await?;
-                println!("{}", json!(created));
+                println!("{}", serde_json::json!(created));
             }
-            SubtaskCommands::List { task_id } => {
+            dunno::args::SubtaskCommands::List { task_id } => {
                 let subtasks = db.list_subtasks_by_task(&task_id).await?;
-                println!("{}", json!(subtasks));
+                println!("{}", serde_json::json!(subtasks));
             }
         },
-        Commands::Todo { command } => match command {
-            TodoCommands::Create {
+        dunno::args::Commands::Todo { command } => match command {
+            dunno::args::TodoCommands::Create {
                 project_id,
                 content,
             } => {
                 let created = db.create_todo(&content, &project_id).await?;
-                println!("{}", json!(created));
+                println!("{}", serde_json::json!(created));
             }
-            TodoCommands::List { project_id } => {
+            dunno::args::TodoCommands::List { project_id } => {
                 let todos = db.list_todos_by_project(&project_id).await?;
-                println!("{}", json!(todos));
+                println!("{}", serde_json::json!(todos));
             }
         },
-        Commands::Context {
+        dunno::args::Commands::Context {
             task_id,
             file_id,
             subtask_id,
         } => {
             if let Some(t_id) = task_id {
-                let results = get_task_context(&t_id, &db).await?;
-                println!("{}", json!({ "results": results }));
+                let results = dunno::context::get_task_context(&t_id, &db).await?;
+                println!("{}", serde_json::json!({ "results": results }));
             } else if let Some(f_id) = file_id {
-                let results = get_file_context(&f_id, &db).await?;
-                println!("{}", json!({ "results": results }));
+                let results = dunno::context::get_file_context(&f_id, &db).await?;
+                println!("{}", serde_json::json!({ "results": results }));
             } else if let Some(st_id) = subtask_id {
-                let results = get_subtask_context(&st_id, &db).await?;
-                println!("{}", json!({ "results": results }));
+                let results = dunno::context::get_subtask_context(&st_id, &db).await?;
+                println!("{}", serde_json::json!({ "results": results }));
             } else {
                 return Err(anyhow::anyhow!(
                     "One of --task-id, --file-id, or --subtask-id must be provided"
                 ));
             }
         }
-        Commands::Config { .. } => {
+        dunno::args::Commands::Config { .. } => {
             unreachable!("config command returns before DB init")
         }
     }
@@ -263,7 +251,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
 fn print_error_json(kind: &str, message: String) {
     println!(
         "{}",
-        json!({
+        serde_json::json!({
             "status": "error",
             "kind": kind,
             "error": message
