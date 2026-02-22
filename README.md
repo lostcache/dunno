@@ -20,13 +20,12 @@ The knowledge graph has two parallel structural paths:
 - **SecurityDetail:** Security constraints and audit notes.
 
 ### Supporting Entities
-- **Todo:** A project-level work queue item that can map to a task.
-- **TaskUpdate:** Append-only log entries on a task.
+- **Todo:** A project-level work queue item.
 
 ## Retrieval Strategy
 
 Retrieval is purely deterministic and graph-based:
-1. Provide a `task_id` or `file_id`.
+1. Provide a `task_id`, `file_id`, or `subtask_id`.
 2. **Task path:** Traverses Task -> Module -> Project, collecting all linked knowledge at each level.
 3. **File path:** Traverses File -> Submodule (if any) -> Module -> Project, collecting all linked knowledge at each level.
 4. All unique knowledge nodes (Mistakes, Style Rules, Security Details) are deduplicated and returned as JSON.
@@ -34,7 +33,7 @@ Retrieval is purely deterministic and graph-based:
 ## Prerequisites
 
 - Rust toolchain (stable) with `cargo`.
-- Optional: SurrealDB Cloud credentials if using the cloud backend. Supports `root`, `namespace`, and `database` authentication scopes via the `auth_type` config field.
+- Optional: SurrealDB Cloud credentials if using the cloud backend.
 
 ## Build
 
@@ -46,8 +45,8 @@ Binary path: `target/release/dunno`
 
 ## Configuration
 
-The CLI resolves configuration from:
-1. CLI flags
+The CLI resolves configuration from (highest to lowest precedence):
+1. CLI flags (`--backend`)
 2. Environment variables
 3. `~/.config/dunno/config.toml`
 4. Built-in defaults
@@ -82,28 +81,6 @@ auth_type = "root" # "root" | "namespace" | "database"
 - `DUNNO_CLOUD_PASS`
 - `DUNNO_CLOUD_AUTH_TYPE`
 
-### Backend examples
-
-```bash
-# Default local embedded mode (no config file needed)
-dunno project list
-
-# Force local mode for one command
-dunno --backend local project list
-
-# Cloud mode via env vars
-DUNNO_BACKEND=cloud \
-DUNNO_CLOUD_URL="wss://YOUR_INSTANCE.surrealdb.com" \
-DUNNO_CLOUD_NS="dunno" \
-DUNNO_CLOUD_DB="dunno" \
-DUNNO_CLOUD_USER="YOUR_USER" \
-DUNNO_CLOUD_PASS="YOUR_PASS" \
-dunno project list
-
-# Inspect fully resolved config (password redacted)
-dunno config show
-```
-
 ## Quick Start
 
 ### 1. Initialize your hierarchy
@@ -111,32 +88,37 @@ dunno config show
 ```bash
 # Create a project
 dunno project create "My App" "A web application"
-# Returns project:abc
+# Returns: {"id":"project:abc","name":"My App","description":"A web application"}
 
 # Create a module within the project
 dunno module create --project-id project:abc "Auth" "Authentication system"
-# Returns module:def
+# Returns: {"id":"module:def", ...}
 
 # (Optional) Create a submodule within the module
 dunno submodule create --module-id module:def "OAuth" "OAuth2 providers"
-# Returns submodule:xyz
 
 # Register a file under the module (or submodule)
 dunno file create --parent-id module:def "oauth.rs" "src/auth/oauth.rs"
-# Or use submodule as parent:
-dunno file create --parent-id submodule:xyz "oauth.rs" "src/auth/oauth.rs"
-# Returns file:456
 
 # Create a task within the module
-dunno task create --module-id module:def "Implement JWT" "Add token support"
-# Returns task:ghi
+dunno task create --module-id module:def --project-id project:abc "Implement JWT" "Add token support"
+# Returns: {"id":"task:ghi", ...}
 
 # (Optional) Create a subtask within the task
 dunno subtask create --task-id task:ghi "Write tests" "Add unit tests"
-# Returns subtask:stu
 ```
 
-### 2. Link knowledge
+### 2. Track task progress
+
+```bash
+# Update a task's status
+dunno task update task:ghi --status started
+
+# Edit a task in-place
+dunno task update task:ghi --description "Add JWT token support with refresh"
+```
+
+### 3. Link knowledge
 
 ```bash
 # Add a style rule to the project
@@ -149,7 +131,7 @@ dunno add --type mistake --content "Do not log raw passwords" --link-to task:ghi
 dunno add --type security --content "Validate all user inputs" --link-to module:def
 ```
 
-### 3. Retrieve context
+### 4. Retrieve context
 
 ```bash
 # By task (traverses Task -> Module -> Project)
@@ -157,111 +139,76 @@ dunno context --task-id task:ghi
 
 # By file (traverses File -> Submodule -> Module -> Project)
 dunno context --file-id file:456
+
+# By subtask
+dunno context --subtask-id subtask:stu
 ```
 
-**Expected output:**
-A JSON object containing all linked knowledge (style rules, mistakes, security details) aggregated from the node and its ancestors.
+Returns a JSON object containing all linked knowledge (style rules, mistakes, security details) aggregated from the node and its ancestors.
 
-## CLI Commands
+## CLI Reference
 
 ### Knowledge Management
-- `dunno add --type <mistake|style|security> --content <CONTENT> [--link-to <ID>]`: Add a knowledge entry and optionally link it to a structural node.
-- `dunno context --task-id <ID>`: Retrieve aggregated context for a task.
-- `dunno context --file-id <ID>`: Retrieve aggregated context for a file.
-- `dunno context --subtask-id <ID>`: Retrieve aggregated context for a subtask.
+- `dunno add --type <mistake|style|security> --content <CONTENT> [--link-to <ID>]`
+- `dunno context --task-id <ID>`
+- `dunno context --file-id <ID>`
+- `dunno context --subtask-id <ID>`
 
 ### Hierarchy Management
 - `dunno project create <NAME> <DESC>` / `list`
 - `dunno module create --project-id <ID> <NAME> <DESC>` / `list`
-- `dunno submodule create --module-id <ID> <NAME> <DESC>` / `list`
+- `dunno submodule create --module-id <ID> <NAME> <DESC>` / `list [--module-id <ID>]`
 - `dunno file create --parent-id <ID> <NAME> <PATH>` / `list [--module-id <ID>] [--submodule-id <ID>]`
-- `dunno task create --module-id <ID> <NAME> <DESC>` / `list`
+- `dunno task create --module-id <ID> --project-id <ID> <NAME> <DESC>` / `list`
 - `dunno task update <TASK_ID> [--name <NAME>] [--description <DESC>] [--status <not_started|started|finished>]`
-- `dunno task append-update <TASK_ID> <CONTENT>`
-- `dunno task update-entry <UPDATE_ID> <CONTENT>`
-- `dunno task list-updates <TASK_ID>`
 - `dunno subtask create --task-id <ID> <NAME> <DESC>` / `list --task-id <ID>`
 
 ### Work Queue
 - `dunno todo create --project-id <ID> <CONTENT>` / `list --project-id <ID>`
 
 ### Config
-- `dunno config show`: Print resolved config with secrets redacted.
-- `dunno --backend <local|cloud> ...`: Override backend for a single command run.
+- `dunno config show`
+- `dunno --backend <local|cloud> ...`
 
 ## Output Contract
 
-All commands return structured JSON for easy consumption by agents:
-
-```json
-{"status":"ok"}
-```
-
-```json
-{"results": [...]}
-```
-
-Task statuses are strictly one of:
-
-```json
-["not_started", "started", "finished"]
-```
-
-Errors are also returned as JSON:
+All commands return structured JSON. Successful operations return the created/updated object or a list. Errors return:
 
 ```json
 {"status":"error","kind":"runtime_error","error":"Task not found: task:123"}
 ```
 
+Task statuses are strictly one of: `not_started`, `started`, `finished`.
+
+## Graph Schema
+
+The database uses SurrealDB with explicit graph relation types for visualization in Surrealist:
+
+| Edge | From | To |
+|------|------|----|
+| `contains` | project, module, submodule, task | module, submodule, file, task, subtask |
+| `has_task` | project | task |
+| `belongs_to_project` | task | project |
+| `belongs_to_module` | task | module |
+| `has_context` | task, module | mistake, style_rule, security_detail |
+| `has_todo` | project | todo_item |
+
 ## Development
 
-### Unit & Integration Tests
+### Tests
 
 ```bash
 cargo test
 ```
 
-Unit and integration tests run against in-memory backends (`mem://`) and do not require a separate SurrealDB server or config file.
+Tests run against in-memory backends (`mem://`) and do not require a separate SurrealDB server.
 
-### Shell Tests (Local Persistence)
-
-End-to-end shell tests verify the full CLI against a locally persistent embedded SurrealDB instance. They cover all three configuration methods.
+### Shell Tests
 
 ```bash
-# Run all suites
+# Run all local suites
 ./tests/sh/run_all.sh
 
-# Run specific suites
-./tests/sh/run_all.sh env config cli
-
-# Run a single suite directly
-./tests/sh/test_local_env_vars.sh
-```
-
-| Suite | File | What it tests |
-|-------|------|---------------|
-| `env` | `test_local_env_vars.sh` | Full Phase-6 flow using `DUNNO_BACKEND` + `DUNNO_LOCAL_PATH` |
-| `config` | `test_local_config_file.sh` | Full Phase-6 flow using `~/.config/dunno/config.toml` |
-| `cli` | `test_local_cli_flags.sh` | Full Phase-6 flow using `--backend local` CLI flag |
-| `precedence` | `test_local_precedence.sh` | Config precedence: defaults → file → env → CLI |
-| `cross` | `test_local_cross_method.sh` | Data created via one config method readable via another |
-
-Each script is self-contained: builds the binary, creates isolated test DBs, backs up and restores any existing config file, and cleans up on exit.
-
-### Shell Tests (Cloud)
-
-Cloud end-to-end tests verify the full CLI against a live SurrealDB Cloud instance. They require a valid `~/.config/dunno/config.toml` with `backend = "cloud"` (for the config test) or `DUNNO_CLOUD_URL` env var (for env/cli tests).
-
-```bash
 # Run all cloud suites
 ./tests/sh/run_cloud.sh
-
-# Run a specific cloud suite
-./tests/sh/run_cloud.sh config
 ```
-
-| Suite | File | What it tests |
-|-------|------|---------------|
-| `env` | `test_cloud_env_vars.sh` | Full Phase-6 flow using `DUNNO_CLOUD_*` env vars |
-| `config` | `test_cloud_config_file.sh` | Full Phase-6 flow using `~/.config/dunno/config.toml` only |
-| `cli` | `test_cloud_cli_flags.sh` | Full Phase-6 flow using `--backend cloud` CLI flag |
