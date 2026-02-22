@@ -19,7 +19,9 @@ impl DB {
                 .await?;
         }
         client.use_ns("dunno").use_db("dunno").await?;
-        Ok(Self { client })
+        let db = Self { client };
+        db.define_schema().await?;
+        Ok(db)
     }
 
     /// Creates a DB client from runtime config (local embedded or cloud).
@@ -80,7 +82,9 @@ impl DB {
                 .await?;
         }
         client.use_ns(namespace).use_db(database).await?;
-        Ok(Self { client })
+        let db = Self { client };
+        db.define_schema().await?;
+        Ok(db)
     }
 
     async fn connect_cloud(cloud: &crate::config::CloudConfig) -> anyhow::Result<Self> {
@@ -120,7 +124,9 @@ impl DB {
             }
         }
 
-        Ok(Self { client })
+        let db = Self { client };
+        db.define_schema().await?;
+        Ok(db)
     }
 
     // --- Project Operations ---
@@ -413,7 +419,7 @@ impl DB {
         }
     }
 
-    /// Gets full context for a task including subtasks, updates, files, and linked knowledge.
+    /// Gets full context for a task including subtasks, files, and linked knowledge.
     pub async fn get_task_context(&self, task_id: &str) -> anyhow::Result<crate::models::TaskContext> {
         let task = self
             .get_task(task_id)
@@ -421,7 +427,6 @@ impl DB {
             .ok_or_else(|| anyhow::anyhow!("crate::models::Task not found: {}", task_id))?;
 
         let subtasks = self.list_subtasks_by_task(task_id).await?;
-        let updates = self.list_task_updates(task_id).await?;
 
         let hierarchy = self.get_task_hierarchy(task_id).await?;
 
@@ -440,7 +445,6 @@ impl DB {
         Ok(crate::models::TaskContext {
             task,
             subtasks,
-            updates,
             files,
             mistakes,
             style_rules,
@@ -649,79 +653,6 @@ impl DB {
         .await
     }
 
-    // --- crate::models::TaskUpdate Operations ---
-
-    /// Creates a task update and RELATEs it to its parent task via `has_update`.
-    pub async fn create_task_update(
-        &self,
-        content: &str,
-        created_at_ms: i64,
-        task_id: &str,
-    ) -> anyhow::Result<crate::models::TaskUpdate> {
-        let update = crate::models::TaskUpdate {
-            id: None,
-            content: content.to_string(),
-            created_at_ms,
-            updated_at_ms: None,
-        };
-        let json = serde_json::to_value(&update)?;
-        let value = json_to_surreal(json);
-        let created: Option<surrealdb::types::Value> = self.client.create("task_update").content(value).await?;
-        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create task update"))?;
-        let result: crate::models::TaskUpdate = serde_json::from_value(surreal_to_json(val))?;
-        let update_id = result
-            .id
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("crate::models::TaskUpdate missing id after create"))?;
-
-        self.relate(task_id, "has_update", update_id).await?;
-        Ok(result)
-    }
-
-    /// Lists task updates for a task via graph traversal.
-    pub async fn list_task_updates(&self, task_id: &str) -> anyhow::Result<Vec<crate::models::TaskUpdate>> {
-        let mut updates: Vec<crate::models::TaskUpdate> = self
-            .query_graph_list(
-                "SELECT ->has_update->task_update.* AS items FROM ONLY type::record($tid)",
-                "tid",
-                task_id.to_string(),
-                "items",
-            )
-            .await?;
-        updates.sort_by_key(|u| u.created_at_ms);
-        Ok(updates)
-    }
-
-    /// Edits a task update's content.
-    pub async fn update_task_update(
-        &self,
-        update_id: &str,
-        content: String,
-        updated_at_ms: i64,
-    ) -> anyhow::Result<Option<crate::models::TaskUpdate>> {
-        let key = update_id
-            .split_once(':')
-            .map(|(_, key)| key)
-            .unwrap_or(update_id);
-        let mut patch = serde_json::Map::new();
-        patch.insert("content".to_string(), serde_json::Value::String(content));
-        patch.insert(
-            "updated_at_ms".to_string(),
-            serde_json::Value::Number(updated_at_ms.into()),
-        );
-        let updated: Option<surrealdb::types::Value> = self
-            .client
-            .update(("task_update", key))
-            .merge(json_to_surreal(serde_json::Value::Object(patch)))
-            .await?;
-        if let Some(val) = updated {
-            let json = surreal_to_json(val);
-            Ok(Some(serde_json::from_value(json)?))
-        } else {
-            Ok(None)
-        }
-    }
-
     // --- Todo Operations ---
 
     /// Creates a todo item and RELATEs it to a project via `has_todo`.
@@ -829,6 +760,54 @@ impl DB {
     /// Creates a `has_context` edge from a structural node to a knowledge node.
     pub async fn link_context(&self, from_id: &str, to_id: &str) -> anyhow::Result<()> {
         self.relate(from_id, "has_context", to_id).await?;
+        Ok(())
+    }
+
+    // --- Maintenance Operations ---
+
+    /// Deletes all records from all tables.
+    pub async fn purge_database(&self) -> anyhow::Result<()> {
+        let tables = [
+            "project",
+            "module",
+            "submodule",
+            "file",
+            "task",
+            "subtask",
+            "todo_item",
+            "mistake",
+            "style_rule",
+            "security_detail",
+        ];
+
+        for table in tables {
+            let sql = format!("DELETE {}", table);
+            self.client.query(&sql).await?;
+        }
+        Ok(())
+    }
+
+    /// Defines relation table schemas so Surrealist can visualize graph edges.
+    async fn define_schema(&self) -> anyhow::Result<()> {
+        self.client
+            .query(
+                "\
+                DEFINE TABLE IF NOT EXISTS contains TYPE RELATION \
+                    IN project|module|submodule|task \
+                    OUT module|submodule|file|task|subtask;\
+                DEFINE TABLE IF NOT EXISTS has_task TYPE RELATION \
+                    IN project OUT task;\
+                DEFINE TABLE IF NOT EXISTS belongs_to_project TYPE RELATION \
+                    IN task OUT project;\
+                DEFINE TABLE IF NOT EXISTS belongs_to_module TYPE RELATION \
+                    IN task OUT module;\
+                DEFINE TABLE IF NOT EXISTS has_context TYPE RELATION \
+                    IN task|module OUT mistake|style_rule|security_detail;\
+                DEFINE TABLE IF NOT EXISTS has_todo TYPE RELATION \
+                    IN project OUT todo_item;\
+                ",
+            )
+            .await?;
         Ok(())
     }
 
@@ -1100,74 +1079,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_task_update_and_append_log() {
-        let db = DB::new("mem://").await.expect("Failed to init DB");
-
-        let project = db
-            .create_project(&crate::models::Project {
-                id: None,
-                name: "Test".to_string(),
-                description: "Test project".to_string(),
-            })
-            .await
-            .expect("Failed to create project");
-        let project_id = project.id.expect("crate::models::Project id should exist");
-
-        let module = db
-            .create_module("crate::models::Module", "crate::models::Module desc", &project_id)
-            .await
-            .expect("Failed to create module");
-        let module_id = module.id.expect("crate::models::Module id should exist");
-
-        let task = db
-            .create_task("crate::models::Task", "Initial", &module_id, &project_id)
-            .await
-            .expect("Failed to create task");
-        let task_id = task.id.expect("crate::models::Task id should exist");
-
-        let updated = db
-            .update_task(
-                &task_id,
-                None,
-                Some("Updated description".to_string()),
-                Some(crate::models::TaskStatus::Started),
-            )
-            .await
-            .expect("Failed to update task")
-            .expect("crate::models::Task should exist");
-        assert_eq!(updated.description, "Updated description");
-        assert_eq!(updated.status, crate::models::TaskStatus::Started);
-
-        db.create_task_update("First update", 1, &task_id)
-            .await
-            .expect("Failed to append first update");
-        db.create_task_update("Second update", 2, &task_id)
-            .await
-            .expect("Failed to append second update");
-
-        let updates = db
-            .list_task_updates(&task_id)
-            .await
-            .expect("Failed to list updates");
-        assert_eq!(updates.len(), 2);
-        assert_eq!(updates[0].content, "First update");
-        assert_eq!(updates[1].content, "Second update");
-
-        let first_update_id = updates[0]
-            .id
-            .as_ref()
-            .expect("First update should have id")
-            .clone();
-        let edited = db
-            .update_task_update(&first_update_id, "First update (edited)".to_string(), 3)
-            .await
-            .expect("Failed to edit task update")
-            .expect("crate::models::Task update should exist");
-        assert_eq!(edited.content, "First update (edited)");
-        assert_eq!(edited.updated_at_ms, Some(3));
-    }
-
-    #[tokio::test]
     async fn test_link_context() {
         let db = DB::new("mem://").await.expect("Failed to init DB");
 
@@ -1326,11 +1237,6 @@ mod tests {
             .await
             .expect("Failed to create subtask");
 
-        let _update = db
-            .create_task_update("Started working", 1000, &task_id)
-            .await
-            .expect("Failed to create update");
-
         let mistake = db
             .create_mistake(&crate::models::Mistake {
                 id: None,
@@ -1346,7 +1252,6 @@ mod tests {
 
         assert_eq!(context.task.name, "Login");
         assert_eq!(context.subtasks.len(), 1);
-        assert_eq!(context.updates.len(), 1);
         assert_eq!(context.mistakes.len(), 1);
         assert_eq!(context.hierarchy.project_name, "Testcrate::models::Project");
         assert_eq!(context.hierarchy.module_name, "Auth");
@@ -1453,7 +1358,6 @@ mod tests {
 
         assert_eq!(context.task.name, "Login");
         assert!(context.subtasks.is_empty());
-        assert!(context.updates.is_empty());
         assert!(context.mistakes.is_empty());
         assert!(context.style_rules.is_empty());
         assert!(context.security_details.is_empty());
@@ -1754,50 +1658,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_task_update_operations() {
-        let db = DB::new("mem://").await.expect("Failed to init DB");
-
-        let project = db
-            .create_project(&crate::models::Project {
-                id: None,
-                name: "Testcrate::models::Project".to_string(),
-                description: "Test".to_string(),
-            })
-            .await
-            .expect("Failed to create project");
-        let project_id = project.id.expect("project id");
-
-        let module = db
-            .create_module("Auth", "Auth module", &project_id)
-            .await
-            .expect("Failed to create module");
-        let module_id = module.id.expect("module id");
-
-        let task = db
-            .create_task("Login", "Implement login", &module_id, &project_id)
-            .await
-            .expect("Failed to create task");
-        let task_id = task.id.expect("task id");
-
-        let update = db
-            .create_task_update("Started working", 1000, &task_id)
-            .await
-            .expect("Failed to create update");
-        let update_id = update.id.expect("update id");
-
-        let edited = db
-            .update_task_update(&update_id, "Finished working".to_string(), 2000)
-            .await
-            .expect("update_task_update failed")
-            .expect("update should exist");
-        assert_eq!(edited.content, "Finished working");
-        assert_eq!(edited.updated_at_ms, Some(2000));
-
-        let updates = db.list_task_updates(&task_id).await.expect("list_task_updates failed");
-        assert_eq!(updates.len(), 1);
-    }
-
-    #[tokio::test]
     async fn test_list_tasks_by_module() {
         let db = DB::new("mem://").await.expect("Failed to init DB");
 
@@ -1891,5 +1751,27 @@ mod tests {
 
         let details = db.list_security_details().await.expect("list_security_details failed");
         assert_eq!(details.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_purge_database() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "Purge Test".to_string(),
+                description: "To be purged".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        
+        let projects_before = db.list_projects().await.expect("List projects");
+        assert_eq!(projects_before.len(), 1);
+
+        db.purge_database().await.expect("Failed to purge database");
+
+        let projects_after = db.list_projects().await.expect("List projects after purge");
+        assert_eq!(projects_after.len(), 0);
     }
 }

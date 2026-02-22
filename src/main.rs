@@ -155,39 +155,6 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
                     return Err(anyhow::anyhow!("Task not found: {}", task_id));
                 }
             }
-            dunno::args::TaskCommands::AppendUpdate { task_id, content } => {
-                if db.get_task(&task_id).await?.is_none() {
-                    return Err(anyhow::anyhow!("Task not found: {}", task_id));
-                }
-
-                let created_at_ms = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map_err(|_| anyhow::anyhow!("System clock is before std::time::UNIX_EPOCH"))?
-                    .as_millis() as i64;
-
-                let created = db
-                    .create_task_update(&content, created_at_ms, &task_id)
-                    .await?;
-                println!("{}", serde_json::json!(created));
-            }
-            dunno::args::TaskCommands::UpdateEntry { update_id, content } => {
-                let updated_at_ms = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map_err(|_| anyhow::anyhow!("System clock is before std::time::UNIX_EPOCH"))?
-                    .as_millis() as i64;
-                let edited = db
-                    .update_task_update(&update_id, content, updated_at_ms)
-                    .await?;
-                if let Some(update) = edited {
-                    println!("{}", serde_json::json!(update));
-                } else {
-                    return Err(anyhow::anyhow!("Task update not found: {}", update_id));
-                }
-            }
-            dunno::args::TaskCommands::ListUpdates { task_id } => {
-                let updates = db.list_task_updates(&task_id).await?;
-                println!("{}", serde_json::json!(updates));
-            }
             dunno::args::TaskCommands::List => {
                 let tasks = db.list_tasks().await?;
                 println!("{}", serde_json::json!(tasks));
@@ -239,6 +206,10 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
                     "One of --task-id, --file-id, or --subtask-id must be provided"
                 ));
             }
+        }
+        dunno::args::Commands::Purge => {
+            db.purge_database().await?;
+            println!("{}", serde_json::json!({ "status": "ok", "message": "Database purged successfully" }));
         }
         dunno::args::Commands::Config { .. } => {
             unreachable!("config command returns before DB init")

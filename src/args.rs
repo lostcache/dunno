@@ -103,6 +103,13 @@ pub enum Commands {
         #[arg(long, value_name = "SUBTASK_ID", conflicts_with_all = ["task_id", "file_id"])]
         subtask_id: Option<String>,
     },
+
+    #[command(
+        about = "Purge the database (DANGER).",
+        long_about = "Delete all records from the database. This action is irreversible.",
+        hide = true
+    )]
+    Purge,
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -175,17 +182,6 @@ pub enum TaskCommands {
             help = "One of: not_started, started, finished"
         )]
         status: Option<String>,
-    },
-    AppendUpdate {
-        task_id: String,
-        content: String,
-    },
-    UpdateEntry {
-        update_id: String,
-        content: String,
-    },
-    ListUpdates {
-        task_id: String,
     },
     List,
 }

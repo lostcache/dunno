@@ -72,16 +72,6 @@ pub struct Subtask {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct TaskUpdate {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-    pub content: String,
-    pub created_at_ms: i64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub updated_at_ms: Option<i64>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct TodoItem {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -132,7 +122,6 @@ pub struct TaskHierarchy {
 pub struct TaskContext {
     pub task: Task,
     pub subtasks: Vec<Subtask>,
-    pub updates: Vec<TaskUpdate>,
     pub files: Vec<String>,
     pub mistakes: Vec<Mistake>,
     pub style_rules: Vec<StyleRule>,
@@ -215,18 +204,6 @@ mod tests {
         let json = to_string(&subtask).expect("Failed to serialize Subtask");
         assert!(json.contains("Write unit tests"));
         assert!(json.contains("\"status\":\"not_started\""));
-    }
-
-    #[test]
-    fn test_task_update_model() {
-        let update = TaskUpdate {
-            id: None,
-            content: "Implemented initial endpoint wiring".to_string(),
-            created_at_ms: 1_739_000_000_000,
-            updated_at_ms: None,
-        };
-        let json = to_string(&update).expect("Failed to serialize TaskUpdate");
-        assert!(json.contains("endpoint wiring"));
     }
 
     #[test]
