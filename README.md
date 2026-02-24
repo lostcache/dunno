@@ -208,7 +208,9 @@ The database uses SurrealDB with explicit graph relation types for visualization
 | `belongs_to_module` | task | module |
 | `has_subtask` | task | subtask |
 | `belongs_to_task` | subtask | task |
-| `has_context` | project, task, module, submodule, subtask | mistake, style_rule, security_detail |
+| `has_mistake` | project, task, module, submodule, subtask | mistake |
+| `has_style` | project, task, module, submodule, subtask | style_rule |
+| `has_security_detail` | project, task, module, submodule, subtask | security_detail |
 | `has_todo` | project | todo_item |
 
 ## Development
@@ -217,9 +219,9 @@ The database uses SurrealDB with explicit graph relation types for visualization
 
 Task, file, and subtask context are implemented in `src/context.rs` as single SurrealQL queries:
 
-- **Task context:** Task `->belongs_to_module->` Module, Task `->belongs_to_project->` Project; collect `->has_context->` at each level.
-- **File context:** File `<-contains<-` Submodule (if any) `<-contains<-` Module `<-contains<-` Project.
-- **Subtask context:** Subtask `->belongs_to_task->` Task `->belongs_to_module->` Module `->belongs_to_project->` Project; collect `->has_context->` at each level.
+- **Task context:** Task `->belongs_to_module->` Module, Task `->belongs_to_project->` Project; collect `->has_mistake->`, `->has_style->`, `->has_security_detail->` at each level.
+- **File context:** File `<-contains<-` Submodule (if any) `<-contains<-` Module `<-contains<-` Project; collect has_mistake, has_style, has_security_detail at each level.
+- **Subtask context:** Subtask `->belongs_to_task->` Task `->belongs_to_module->` Module `->belongs_to_project->` Project; collect has_mistake, has_style, has_security_detail at each level.
 
 Results are flattened, tagged with `node_type`, and deduplicated by id.
 

@@ -572,10 +572,15 @@ impl DB {
         table: &str,
     ) -> anyhow::Result<Vec<T>> {
         let key = task_id.split_once(':').map(|(_, k)| k).unwrap_or(task_id);
-
+        let edge = match table {
+            "mistake" => "has_mistake",
+            "style_rule" => "has_style",
+            "security_detail" => "has_security_detail",
+            _ => return Err(anyhow::anyhow!("get_linked_knowledge: unknown table {}", table)),
+        };
         let query = format!(
-            "SELECT ->has_context->{}.* AS items FROM ONLY type::record('task', $key)",
-            table
+            "SELECT ->{}->{}.* AS items FROM ONLY type::record('task', $key)",
+            edge, table
         );
 
         let mut response = self
@@ -757,9 +762,22 @@ impl DB {
 
     // --- Graph Edge Operations ---
 
-    /// Creates a `has_context` edge from a structural node to a knowledge node.
+    /// Creates a knowledge edge from a structural node to a knowledge node.
+    /// Uses has_mistake, has_style, or has_security_detail based on to_id prefix.
     pub async fn link_context(&self, from_id: &str, to_id: &str) -> anyhow::Result<()> {
-        self.relate(from_id, "has_context", to_id).await?;
+        let edge = if to_id.starts_with("mistake:") {
+            "has_mistake"
+        } else if to_id.starts_with("style_rule:") {
+            "has_style"
+        } else if to_id.starts_with("security_detail:") {
+            "has_security_detail"
+        } else {
+            return Err(anyhow::anyhow!(
+                "link_context: to_id must be mistake:, style_rule:, or security_detail: record; got {:?}",
+                to_id
+            ));
+        };
+        self.relate(from_id, edge, to_id).await?;
         Ok(())
     }
 
@@ -805,8 +823,12 @@ impl DB {
                     IN task OUT subtask;\
                 DEFINE TABLE IF NOT EXISTS belongs_to_task TYPE RELATION \
                     IN subtask OUT task;\
-                DEFINE TABLE IF NOT EXISTS has_context TYPE RELATION \
-                    IN project|task|module|submodule|subtask OUT mistake|style_rule|security_detail;\
+                DEFINE TABLE IF NOT EXISTS has_mistake TYPE RELATION \
+                    IN project|task|module|submodule|subtask OUT mistake;\
+                DEFINE TABLE IF NOT EXISTS has_style TYPE RELATION \
+                    IN project|task|module|submodule|subtask OUT style_rule;\
+                DEFINE TABLE IF NOT EXISTS has_security_detail TYPE RELATION \
+                    IN project|task|module|submodule|subtask OUT security_detail;\
                 DEFINE TABLE IF NOT EXISTS has_todo TYPE RELATION \
                     IN project OUT todo_item;\
                 ",

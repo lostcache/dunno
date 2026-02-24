@@ -3,7 +3,7 @@
 /// Retrieves hierarchical context for a task.
 ///
 /// Traverses: Task ->belongs_to_module-> Module, Task ->belongs_to_project-> Project.
-/// Collects has_context knowledge nodes at each level.
+/// Collects has_mistake, has_style, has_security_detail knowledge nodes at each level.
 pub async fn get_task_context(task_id: &str, db: &crate::db::DB) -> anyhow::Result<Vec<serde_json::Value>> {
     let sql = r#"
         LET $t = type::record($tid);
@@ -13,19 +13,19 @@ pub async fn get_task_context(task_id: &str, db: &crate::db::DB) -> anyhow::Resu
         LET $project = $projects[0];
 
         LET $t_ctx = (SELECT
-            ->has_context->mistake.*,
-            ->has_context->style_rule.*,
-            ->has_context->security_detail.*
+            ->has_mistake->mistake.*,
+            ->has_style->style_rule.*,
+            ->has_security_detail->security_detail.*
         FROM ONLY $t);
         LET $m_ctx = (SELECT
-            ->has_context->mistake.*,
-            ->has_context->style_rule.*,
-            ->has_context->security_detail.*
+            ->has_mistake->mistake.*,
+            ->has_style->style_rule.*,
+            ->has_security_detail->security_detail.*
         FROM ONLY $module);
         LET $p_ctx = (SELECT
-            ->has_context->mistake.*,
-            ->has_context->style_rule.*,
-            ->has_context->security_detail.*
+            ->has_mistake->mistake.*,
+            ->has_style->style_rule.*,
+            ->has_security_detail->security_detail.*
         FROM ONLY $project);
 
         RETURN [$t_ctx, $m_ctx, $p_ctx];
@@ -60,24 +60,24 @@ pub async fn get_file_context(file_id: &str, db: &crate::db::DB) -> anyhow::Resu
         LET $project = $projects[0];
 
         LET $f_ctx = (SELECT
-            ->has_context->mistake.*,
-            ->has_context->style_rule.*,
-            ->has_context->security_detail.*
+            ->has_mistake->mistake.*,
+            ->has_style->style_rule.*,
+            ->has_security_detail->security_detail.*
         FROM ONLY $f);
         LET $s_ctx = (SELECT
-            ->has_context->mistake.*,
-            ->has_context->style_rule.*,
-            ->has_context->security_detail.*
+            ->has_mistake->mistake.*,
+            ->has_style->style_rule.*,
+            ->has_security_detail->security_detail.*
         FROM ONLY $submodule);
         LET $m_ctx = (SELECT
-            ->has_context->mistake.*,
-            ->has_context->style_rule.*,
-            ->has_context->security_detail.*
+            ->has_mistake->mistake.*,
+            ->has_style->style_rule.*,
+            ->has_security_detail->security_detail.*
         FROM ONLY $module);
         LET $p_ctx = (SELECT
-            ->has_context->mistake.*,
-            ->has_context->style_rule.*,
-            ->has_context->security_detail.*
+            ->has_mistake->mistake.*,
+            ->has_style->style_rule.*,
+            ->has_security_detail->security_detail.*
         FROM ONLY $project);
 
         RETURN [$f_ctx, $s_ctx, $m_ctx, $p_ctx];
@@ -103,24 +103,24 @@ pub async fn get_subtask_context(subtask_id: &str, db: &crate::db::DB) -> anyhow
         LET $project = $projects[0];
 
         LET $st_ctx = (SELECT
-            ->has_context->mistake.*,
-            ->has_context->style_rule.*,
-            ->has_context->security_detail.*
+            ->has_mistake->mistake.*,
+            ->has_style->style_rule.*,
+            ->has_security_detail->security_detail.*
         FROM ONLY $st);
         LET $t_ctx = (SELECT
-            ->has_context->mistake.*,
-            ->has_context->style_rule.*,
-            ->has_context->security_detail.*
+            ->has_mistake->mistake.*,
+            ->has_style->style_rule.*,
+            ->has_security_detail->security_detail.*
         FROM ONLY $task);
         LET $m_ctx = (SELECT
-            ->has_context->mistake.*,
-            ->has_context->style_rule.*,
-            ->has_context->security_detail.*
+            ->has_mistake->mistake.*,
+            ->has_style->style_rule.*,
+            ->has_security_detail->security_detail.*
         FROM ONLY $module);
         LET $p_ctx = (SELECT
-            ->has_context->mistake.*,
-            ->has_context->style_rule.*,
-            ->has_context->security_detail.*
+            ->has_mistake->mistake.*,
+            ->has_style->style_rule.*,
+            ->has_security_detail->security_detail.*
         FROM ONLY $project);
 
         RETURN [$st_ctx, $t_ctx, $m_ctx, $p_ctx];
@@ -148,52 +148,59 @@ pub(crate) fn flatten_context_result(raw: serde_json::Value) -> Vec<serde_json::
             _ => continue,
         };
 
-        // Find the has_context object (key contains "has_context")
-        let ctx_obj = match level_obj.iter().find(|(k, _)| k.contains("has_context")) {
-            Some((_, serde_json::Value::Object(m))) => m,
-            _ => continue,
+        // Find context object: has_context (legacy) or has_mistake / has_style / has_security_detail
+        let is_ctx_key = |k: &str| {
+            k.contains("has_context")
+                || k.contains("has_mistake")
+                || k.contains("has_style")
+                || k.contains("has_security_detail")
         };
-
-        // Iterate over knowledge types in ctx_obj
-        for (key, val) in ctx_obj.iter() {
-            let node_type = if key.contains("mistake") {
-                "mistake"
-            } else if key.contains("style_rule") {
-                "style_rule"
-            } else if key.contains("security_detail") {
-                "security_detail"
-            } else {
-                continue;
+        for (_key, level_val) in level_obj.iter().filter(|(k, _)| is_ctx_key(k)) {
+            let ctx_obj = match level_val {
+                serde_json::Value::Object(m) => m,
+                _ => continue,
             };
+            // Iterate over knowledge types in ctx_obj (mistake, style_rule, security_detail)
+            for (key, val) in ctx_obj.iter() {
+                let node_type = if key.contains("mistake") {
+                    "mistake"
+                } else if key.contains("style_rule") {
+                    "style_rule"
+                } else if key.contains("security_detail") {
+                    "security_detail"
+                } else {
+                    continue;
+                };
 
-            if let serde_json::Value::Array(items) = val {
-                for inner in items {
-                    match inner {
-                        serde_json::Value::Array(nested) => {
-                            for item in nested {
-                                if let serde_json::Value::Object(_) = item {
-                                    let mut node = item.clone();
-                                    if let serde_json::Value::Object(ref mut m) = node {
-                                        m.insert(
-                                            "node_type".to_string(),
-                                            serde_json::Value::String(node_type.to_string()),
-                                        );
+                if let serde_json::Value::Array(items) = val {
+                    for inner in items {
+                        match inner {
+                            serde_json::Value::Array(nested) => {
+                                for item in nested {
+                                    if let serde_json::Value::Object(_) = item {
+                                        let mut node = item.clone();
+                                        if let serde_json::Value::Object(ref mut m) = node {
+                                            m.insert(
+                                                "node_type".to_string(),
+                                                serde_json::Value::String(node_type.to_string()),
+                                            );
+                                        }
+                                        nodes.push(node);
                                     }
-                                    nodes.push(node);
                                 }
                             }
-                        }
-                        serde_json::Value::Object(_) => {
-                            let mut node = inner.clone();
-                            if let serde_json::Value::Object(ref mut m) = node {
-                                m.insert(
-                                    "node_type".to_string(),
-                                    serde_json::Value::String(node_type.to_string()),
-                                );
+                            serde_json::Value::Object(_) => {
+                                let mut node = inner.clone();
+                                if let serde_json::Value::Object(ref mut m) = node {
+                                    m.insert(
+                                        "node_type".to_string(),
+                                        serde_json::Value::String(node_type.to_string()),
+                                    );
+                                }
+                                nodes.push(node);
                             }
-                            nodes.push(node);
+                            _ => {}
                         }
-                        _ => {}
                     }
                 }
             }
@@ -258,5 +265,25 @@ mod tests {
         let style_node = nodes.iter().find(|n| n.get("node_type").and_then(|v| v.as_str()) == Some("style_rule")).expect("one style_rule node");
         assert_eq!(style_node["description"], "Use match");
         assert_eq!(style_node["id"], "style_rule:1");
+    }
+
+    #[test]
+    fn test_flatten_context_result_individual_edges() {
+        let raw = serde_json::json!([
+            {
+                "has_mistake": { "mistake": [[{ "id": "mistake:2", "content": "Avoid unwrap" }]] },
+                "has_style": { "style_rule": [] },
+                "has_security_detail": { "security_detail": [] }
+            },
+            {
+                "has_mistake": { "mistake": [] },
+                "has_style": { "style_rule": [[{ "id": "style_rule:2", "description": "Use Option", "example": "?" }]] },
+                "has_security_detail": { "security_detail": [] }
+            }
+        ]);
+        let nodes = flatten_context_result(raw);
+        assert_eq!(nodes.len(), 2);
+        assert!(nodes.iter().any(|n| n.get("node_type").and_then(|v| v.as_str()) == Some("mistake") && n["content"] == "Avoid unwrap"));
+        assert!(nodes.iter().any(|n| n.get("node_type").and_then(|v| v.as_str()) == Some("style_rule") && n["description"] == "Use Option"));
     }
 }
