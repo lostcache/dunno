@@ -134,7 +134,7 @@ pub async fn get_subtask_context(subtask_id: &str, db: &crate::db::DB) -> anyhow
 
 /// Flattens the raw SurrealQL context result into a deduplicated list of
 /// knowledge node JSON objects, each tagged with a `node_type` field.
-fn flatten_context_result(raw: serde_json::Value) -> Vec<serde_json::Value> {
+pub(crate) fn flatten_context_result(raw: serde_json::Value) -> Vec<serde_json::Value> {
     let mut nodes = Vec::new();
 
     let levels = match raw {
@@ -213,4 +213,50 @@ fn flatten_context_result(raw: serde_json::Value) -> Vec<serde_json::Value> {
     });
 
     nodes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_flatten_context_result() {
+        let raw = serde_json::json!([
+            {
+                "has_context": {
+                    "mistake": [[
+                        { "id": "mistake:1", "content": "Avoid unwrap" }
+                    ]],
+                    "style_rule": [],
+                    "security_detail": []
+                }
+            },
+            {
+                "has_context": {
+                    "mistake": [],
+                    "style_rule": [[
+                        { "id": "style_rule:1", "description": "Use match", "example": "match x {}" }
+                    ]],
+                    "security_detail": []
+                }
+            },
+            {
+                "has_context": {
+                    "mistake": [[
+                        { "id": "mistake:1", "content": "Avoid unwrap" }
+                    ]],
+                    "style_rule": [],
+                    "security_detail": []
+                }
+            }
+        ]);
+        let nodes = flatten_context_result(raw);
+        assert_eq!(nodes.len(), 2, "dedup by id should yield 2 unique nodes");
+        let mistake_node = nodes.iter().find(|n| n.get("node_type").and_then(|v| v.as_str()) == Some("mistake")).expect("one mistake node");
+        assert_eq!(mistake_node["content"], "Avoid unwrap");
+        assert_eq!(mistake_node["id"], "mistake:1");
+        let style_node = nodes.iter().find(|n| n.get("node_type").and_then(|v| v.as_str()) == Some("style_rule")).expect("one style_rule node");
+        assert_eq!(style_node["description"], "Use match");
+        assert_eq!(style_node["id"], "style_rule:1");
+    }
 }

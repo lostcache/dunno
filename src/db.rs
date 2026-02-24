@@ -802,7 +802,7 @@ impl DB {
                 DEFINE TABLE IF NOT EXISTS belongs_to_module TYPE RELATION \
                     IN task OUT module;\
                 DEFINE TABLE IF NOT EXISTS has_context TYPE RELATION \
-                    IN task|module OUT mistake|style_rule|security_detail;\
+                    IN project|task|module|submodule|subtask OUT mistake|style_rule|security_detail;\
                 DEFINE TABLE IF NOT EXISTS has_todo TYPE RELATION \
                     IN project OUT todo_item;\
                 ",
@@ -1110,6 +1110,121 @@ mod tests {
         db.link_context(&module_id, &mistake_id)
             .await
             .expect("link_context should succeed");
+    }
+
+    #[tokio::test]
+    async fn test_link_context_all_levels() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "P".to_string(),
+                description: "d".to_string(),
+            })
+            .await
+            .expect("create project");
+        let project_id = project.id.expect("id");
+
+        let module = db
+            .create_module("M", "d", &project_id)
+            .await
+            .expect("create module");
+        let module_id = module.id.expect("id");
+
+        let task = db
+            .create_task("T", "d", &module_id, &project_id)
+            .await
+            .expect("create task");
+        let task_id = task.id.expect("id");
+
+        let subtask = db
+            .create_subtask("ST", "d", &task_id)
+            .await
+            .expect("create subtask");
+        let subtask_id = subtask.id.expect("id");
+
+        let submodule = db
+            .create_submodule("SM", "d", &module_id)
+            .await
+            .expect("create submodule");
+        let submodule_id = submodule.id.expect("id");
+
+        let file = db
+            .create_file("f.rs", "src/f.rs", &submodule_id)
+            .await
+            .expect("create file");
+        let file_id = file.id.expect("id");
+
+        let project_mistake = db
+            .create_mistake(&crate::models::Mistake {
+                id: None,
+                content: "Project Level Mistake".to_string(),
+            })
+            .await
+            .expect("create mistake");
+        db.link_context(&project_id, project_mistake.id.as_ref().unwrap())
+            .await
+            .expect("link project mistake");
+
+        let submodule_mistake = db
+            .create_mistake(&crate::models::Mistake {
+                id: None,
+                content: "Submodule Level Mistake".to_string(),
+            })
+            .await
+            .expect("create mistake");
+        db.link_context(&submodule_id, submodule_mistake.id.as_ref().unwrap())
+            .await
+            .expect("link submodule mistake");
+
+        let subtask_mistake = db
+            .create_mistake(&crate::models::Mistake {
+                id: None,
+                content: "Subtask Level Mistake".to_string(),
+            })
+            .await
+            .expect("create mistake");
+        db.link_context(&subtask_id, subtask_mistake.id.as_ref().unwrap())
+            .await
+            .expect("link subtask mistake");
+
+        let task_ctx = crate::context::get_task_context(&task_id, &db)
+            .await
+            .expect("get_task_context");
+        assert!(
+            task_ctx.iter().any(|v| v["content"] == "Project Level Mistake"),
+            "task context should include project-level mistake: {:?}",
+            task_ctx
+        );
+
+        let file_ctx = crate::context::get_file_context(&file_id, &db)
+            .await
+            .expect("get_file_context");
+        assert!(
+            file_ctx.iter().any(|v| v["content"] == "Submodule Level Mistake"),
+            "file context should include submodule-level mistake: {:?}",
+            file_ctx
+        );
+        assert!(
+            file_ctx.iter().any(|v| v["content"] == "Project Level Mistake"),
+            "file context should include project-level mistake: {:?}",
+            file_ctx
+        );
+
+        let subtask_ctx = crate::context::get_subtask_context(&subtask_id, &db)
+            .await
+            .expect("get_subtask_context");
+        assert!(
+            subtask_ctx.iter().any(|v| v["content"] == "Subtask Level Mistake"),
+            "subtask context should include subtask-level mistake: {:?}",
+            subtask_ctx
+        );
+        assert!(
+            subtask_ctx.iter().any(|v| v["content"] == "Project Level Mistake"),
+            "subtask context should include project-level mistake: {:?}",
+            subtask_ctx
+        );
     }
 
     #[tokio::test]
@@ -1757,7 +1872,7 @@ mod tests {
     async fn test_purge_database() {
         let db = DB::new("mem://").await.expect("Failed to init DB");
 
-        let project = db
+        let _project = db
             .create_project(&crate::models::Project {
                 id: None,
                 name: "Purge Test".to_string(),

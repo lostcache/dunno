@@ -19,6 +19,8 @@ The knowledge graph has two parallel structural paths:
 - **StyleRule:** Coding style rules with examples.
 - **SecurityDetail:** Security constraints and audit notes.
 
+Context can be linked to **any** structural node: project, module, submodule, task, or subtask. Retrieval aggregates knowledge from the given node and all its ancestors.
+
 ### Supporting Entities
 - **Todo:** A project-level work queue item.
 
@@ -129,6 +131,12 @@ dunno add --type mistake --content "Do not log raw passwords" --link-to task:ghi
 
 # Add a security note to a module
 dunno add --type security --content "Validate all user inputs" --link-to module:def
+
+# Link to submodule (e.g. submodule:xyz from submodule create)
+dunno add --type style --content "Submodule convention" --link-to submodule:xyz
+
+# Link to subtask (e.g. subtask:stu from subtask create)
+dunno add --type mistake --content "Subtask pitfall" --link-to subtask:stu
 ```
 
 ### 4. Retrieve context
@@ -144,15 +152,23 @@ dunno context --file-id file:456
 dunno context --subtask-id subtask:stu
 ```
 
-Returns a JSON object containing all linked knowledge (style rules, mistakes, security details) aggregated from the node and its ancestors.
+Returns a JSON array of all linked knowledge (style rules, mistakes, security details) aggregated from the node and all its ancestors.
+
+#### Context at every level
+
+You can link knowledge at project, module, submodule, task, or subtask. Context retrieval then aggregates from the requested node up the hierarchy:
+
+- **`dunno context --task-id task:xyz`** — returns context from that task, its module, and the project.
+- **`dunno context --file-id file:xyz`** — returns context from the file, its submodule (if any), module, and project.
+- **`dunno context --subtask-id subtask:xyz`** — returns context from the subtask, its task, module, and project.
 
 ## CLI Reference
 
 ### Knowledge Management
-- `dunno add --type <mistake|style|security> --content <CONTENT> [--link-to <ID>]`
-- `dunno context --task-id <ID>`
-- `dunno context --file-id <ID>`
-- `dunno context --subtask-id <ID>`
+- `dunno add --type <mistake|style|security> --content <CONTENT> [--link-to <ID>]` — `<ID>` can be `project:...`, `module:...`, `submodule:...`, `task:...`, or `subtask:...`.
+- `dunno context --task-id <ID>` — aggregate context for a task (task + module + project).
+- `dunno context --file-id <ID>` — aggregate context for a file (file + submodule if any + module + project).
+- `dunno context --subtask-id <ID>` — aggregate context for a subtask (subtask + task + module + project).
 
 ### Hierarchy Management
 - `dunno project create <NAME> <DESC>` / `list`
@@ -190,10 +206,20 @@ The database uses SurrealDB with explicit graph relation types for visualization
 | `has_task` | project | task |
 | `belongs_to_project` | task | project |
 | `belongs_to_module` | task | module |
-| `has_context` | task, module | mistake, style_rule, security_detail |
+| `has_context` | project, task, module, submodule, subtask | mistake, style_rule, security_detail |
 | `has_todo` | project | todo_item |
 
 ## Development
+
+### Context retrieval (implementation)
+
+Task, file, and subtask context are implemented in `src/context.rs` as single SurrealQL queries. Each path traverses `<-contains<-` upward and collects `->has_context->` (mistake, style_rule, security_detail) at every level:
+
+- **Task context:** Task `<-contains<-` Module `<-contains<-` Project.
+- **File context:** File `<-contains<-` Submodule (if any) `<-contains<-` Module `<-contains<-` Project.
+- **Subtask context:** Subtask `<-contains<-` Task `<-contains<-` Module `<-contains<-` Project.
+
+Results are flattened, tagged with `node_type`, and deduplicated by id.
 
 ### Tests
 
