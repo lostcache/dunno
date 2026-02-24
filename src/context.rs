@@ -2,14 +2,14 @@
 
 /// Retrieves hierarchical context for a task.
 ///
-/// Traverses: Task <-contains<- Module <-contains<- Project
+/// Traverses: Task ->belongs_to_module-> Module, Task ->belongs_to_project-> Project.
 /// Collects has_context knowledge nodes at each level.
 pub async fn get_task_context(task_id: &str, db: &crate::db::DB) -> anyhow::Result<Vec<serde_json::Value>> {
     let sql = r#"
         LET $t = type::record($tid);
-        LET $modules = (SELECT <-contains<-module AS m FROM ONLY $t).m;
+        LET $modules = (SELECT ->belongs_to_module->module AS m FROM ONLY $t).m;
         LET $module = $modules[0];
-        LET $projects = (SELECT <-contains<-project AS p FROM ONLY $module).p;
+        LET $projects = (SELECT ->belongs_to_project->project AS p FROM ONLY $t).p;
         LET $project = $projects[0];
 
         LET $t_ctx = (SELECT
@@ -91,15 +91,15 @@ pub async fn get_file_context(file_id: &str, db: &crate::db::DB) -> anyhow::Resu
 
 /// Retrieves hierarchical context for a subtask.
 ///
-/// Traverses: Subtask <-contains<- Task <-contains<- Module <-contains<- Project
+/// Traverses: Subtask ->belongs_to_task-> Task ->belongs_to_module-> Module ->belongs_to_project-> Project (via task).
 pub async fn get_subtask_context(subtask_id: &str, db: &crate::db::DB) -> anyhow::Result<Vec<serde_json::Value>> {
     let sql = r#"
         LET $st = type::record($stid);
-        LET $tasks = (SELECT <-contains<-task AS t FROM ONLY $st).t;
+        LET $tasks = (SELECT ->belongs_to_task->task AS t FROM ONLY $st).t;
         LET $task = $tasks[0];
-        LET $modules = (SELECT <-contains<-module AS m FROM ONLY $task).m;
+        LET $modules = (SELECT ->belongs_to_module->module AS m FROM ONLY $task).m;
         LET $module = $modules[0];
-        LET $projects = (SELECT <-contains<-project AS p FROM ONLY $module).p;
+        LET $projects = (SELECT ->belongs_to_project->project AS p FROM ONLY $task).p;
         LET $project = $projects[0];
 
         LET $st_ctx = (SELECT

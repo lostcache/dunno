@@ -335,7 +335,6 @@ impl DB {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("crate::models::Task missing id after create"))?;
 
-        self.relate(module_id, "contains", task_id).await?;
         self.relate(project_id, "has_task", task_id).await?;
         self.relate(task_id, "belongs_to_project", project_id).await?;
         self.relate(task_id, "belongs_to_module", module_id).await?;
@@ -352,10 +351,10 @@ impl DB {
         self.list_records("task").await
     }
 
-    /// Lists tasks under a module via graph traversal.
+    /// Lists tasks under a module via graph traversal (tasks that belong to this module).
     pub async fn list_tasks_by_module(&self, module_id: &str) -> anyhow::Result<Vec<crate::models::Task>> {
         self.query_graph_list(
-            "SELECT ->contains->task.* AS items FROM ONLY type::record($mid)",
+            "SELECT <-belongs_to_module<-task.* AS items FROM ONLY type::record($mid)",
             "mid",
             module_id.to_string(),
             "items",
@@ -633,7 +632,8 @@ impl DB {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("crate::models::Subtask missing id after create"))?;
 
-        self.relate(task_id, "contains", subtask_id).await?;
+        self.relate(task_id, "has_subtask", subtask_id).await?;
+        self.relate(subtask_id, "belongs_to_task", task_id).await?;
         Ok(result)
     }
 
@@ -642,10 +642,10 @@ impl DB {
         self.get_record("subtask", id).await
     }
 
-    /// Lists subtasks under a task via graph traversal.
+    /// Lists subtasks under a task via has_subtask relationship.
     pub async fn list_subtasks_by_task(&self, task_id: &str) -> anyhow::Result<Vec<crate::models::Subtask>> {
         self.query_graph_list(
-            "SELECT ->contains->subtask.* AS items FROM ONLY type::record($tid)",
+            "SELECT ->has_subtask->subtask.* AS items FROM ONLY type::record($tid)",
             "tid",
             task_id.to_string(),
             "items",
@@ -793,14 +793,18 @@ impl DB {
             .query(
                 "\
                 DEFINE TABLE IF NOT EXISTS contains TYPE RELATION \
-                    IN project|module|submodule|task \
-                    OUT module|submodule|file|task|subtask;\
+                    IN project|module|submodule \
+                    OUT module|submodule|file;\
                 DEFINE TABLE IF NOT EXISTS has_task TYPE RELATION \
                     IN project OUT task;\
                 DEFINE TABLE IF NOT EXISTS belongs_to_project TYPE RELATION \
                     IN task OUT project;\
                 DEFINE TABLE IF NOT EXISTS belongs_to_module TYPE RELATION \
                     IN task OUT module;\
+                DEFINE TABLE IF NOT EXISTS has_subtask TYPE RELATION \
+                    IN task OUT subtask;\
+                DEFINE TABLE IF NOT EXISTS belongs_to_task TYPE RELATION \
+                    IN subtask OUT task;\
                 DEFINE TABLE IF NOT EXISTS has_context TYPE RELATION \
                     IN project|task|module|submodule|subtask OUT mistake|style_rule|security_detail;\
                 DEFINE TABLE IF NOT EXISTS has_todo TYPE RELATION \

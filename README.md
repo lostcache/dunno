@@ -202,10 +202,12 @@ The database uses SurrealDB with explicit graph relation types for visualization
 
 | Edge | From | To |
 |------|------|----|
-| `contains` | project, module, submodule, task | module, submodule, file, task, subtask |
+| `contains` | project, module, submodule | module, submodule, file |
 | `has_task` | project | task |
 | `belongs_to_project` | task | project |
 | `belongs_to_module` | task | module |
+| `has_subtask` | task | subtask |
+| `belongs_to_task` | subtask | task |
 | `has_context` | project, task, module, submodule, subtask | mistake, style_rule, security_detail |
 | `has_todo` | project | todo_item |
 
@@ -213,11 +215,11 @@ The database uses SurrealDB with explicit graph relation types for visualization
 
 ### Context retrieval (implementation)
 
-Task, file, and subtask context are implemented in `src/context.rs` as single SurrealQL queries. Each path traverses `<-contains<-` upward and collects `->has_context->` (mistake, style_rule, security_detail) at every level:
+Task, file, and subtask context are implemented in `src/context.rs` as single SurrealQL queries:
 
-- **Task context:** Task `<-contains<-` Module `<-contains<-` Project.
+- **Task context:** Task `->belongs_to_module->` Module, Task `->belongs_to_project->` Project; collect `->has_context->` at each level.
 - **File context:** File `<-contains<-` Submodule (if any) `<-contains<-` Module `<-contains<-` Project.
-- **Subtask context:** Subtask `<-contains<-` Task `<-contains<-` Module `<-contains<-` Project.
+- **Subtask context:** Subtask `->belongs_to_task->` Task `->belongs_to_module->` Module `->belongs_to_project->` Project; collect `->has_context->` at each level.
 
 Results are flattened, tagged with `node_type`, and deduplicated by id.
 
