@@ -204,10 +204,10 @@ The database uses SurrealDB with explicit graph relation types for visualization
 |------|------|----|
 | `contains` | project, module, submodule | module, submodule, file |
 | `has_task` | project | task |
-| `belongs_to_project` | task | project |
-| `belongs_to_module` | task | module |
+| `belongs_to_project` | task, mistake, style_rule, security_detail | project |
+| `belongs_to_module` | task, mistake, style_rule, security_detail | module |
 | `has_subtask` | task | subtask |
-| `belongs_to_task` | subtask | task |
+| `belongs_to_task` | subtask, mistake, style_rule, security_detail | task |
 | `has_mistake` | project, task, module, submodule, subtask | mistake |
 | `has_style` | project, task, module, submodule, subtask | style_rule |
 | `has_security_detail` | project, task, module, submodule, subtask | security_detail |
@@ -224,6 +224,8 @@ Task, file, and subtask context are implemented in `src/context.rs` as single Su
 - **Subtask context:** Subtask `->belongs_to_task->` Task `->belongs_to_module->` Module `->belongs_to_project->` Project; collect has_mistake, has_style, has_security_detail at each level.
 
 Results are flattened, tagged with `node_type`, and deduplicated by id.
+
+Knowledge links are **bidirectional**: when you link a mistake, style rule, or security detail to a structural node, the graph stores the forward edge (e.g. `task -> has_mistake -> mistake`) and reverse edges using the same relation names as tasks: `belongs_to_project`, `belongs_to_module`, and `belongs_to_task` (e.g. `mistake -> belongs_to_project -> project`, `mistake -> belongs_to_module -> module`, `mistake -> belongs_to_task -> task`). This keeps “what belongs to what” explicit and consistent with the task hierarchy.
 
 ### Tests
 

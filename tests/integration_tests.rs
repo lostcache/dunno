@@ -98,6 +98,86 @@ async fn test_task_hierarchy_context() {
 }
 
 #[tokio::test]
+async fn test_belongs_to_reverse_edges() {
+    let db = setup_db().await;
+    let project = db
+        .create_project(&dunno::models::Project {
+            id: None,
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    let module = db
+        .create_module("M", "d", &project_id)
+        .await
+        .expect("create module");
+    let module_id = module.id.expect("id");
+
+    let task = db
+        .create_task("T", "d", &module_id, &project_id)
+        .await
+        .expect("create task");
+    let task_id = task.id.expect("id");
+
+    let project_mistake = db
+        .create_mistake(&dunno::models::Mistake {
+            id: None,
+            content: "project mistake".to_string(),
+        })
+        .await
+        .expect("create mistake");
+    let project_mistake_id = project_mistake.id.as_ref().unwrap().clone();
+    db.link_context(&project_id, &project_mistake_id)
+        .await
+        .expect("link project mistake");
+
+    let task_mistake = db
+        .create_mistake(&dunno::models::Mistake {
+            id: None,
+            content: "task mistake".to_string(),
+        })
+        .await
+        .expect("create mistake");
+    let task_mistake_id = task_mistake.id.as_ref().unwrap().clone();
+    db.link_context(&task_id, &task_mistake_id)
+        .await
+        .expect("link task mistake");
+
+    let project_targets = db
+        .get_belongs_to_targets(&project_mistake_id)
+        .await
+        .expect("get_belongs_to_targets");
+    assert!(
+        project_targets.contains(&project_id),
+        "project-linked mistake should belong_to project: {:?}",
+        project_targets
+    );
+
+    let task_targets = db
+        .get_belongs_to_targets(&task_mistake_id)
+        .await
+        .expect("get_belongs_to_targets");
+    assert!(
+        task_targets.contains(&project_id),
+        "task-linked mistake should belong_to project: {:?}",
+        task_targets
+    );
+    assert!(
+        task_targets.contains(&module_id),
+        "task-linked mistake should belong_to module: {:?}",
+        task_targets
+    );
+    assert!(
+        task_targets.contains(&task_id),
+        "task-linked mistake should belong_to task: {:?}",
+        task_targets
+    );
+}
+
+#[tokio::test]
 async fn test_file_hierarchy_context() {
     let db = setup_db().await;
     let (_project_id, module_id, _task_id) = setup_hierarchy_with_context(&db).await;

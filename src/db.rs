@@ -3,6 +3,16 @@ pub struct DB {
     client: surrealdb::Surreal<surrealdb::engine::any::Any>,
 }
 
+/// Full structural hierarchy for a node (used when creating reverse knowledge edges).
+#[allow(dead_code)]
+struct StructuralHierarchy {
+    project_id: Option<String>,
+    module_id: Option<String>,
+    submodule_id: Option<String>,
+    task_id: Option<String>,
+    subtask_id: Option<String>,
+}
+
 impl DB {
     /// TODO: try and unify new methods.
     /// Creates a new SurrealDB client and selects the default namespace/database.
@@ -517,6 +527,139 @@ impl DB {
         })
     }
 
+    /// Resolves the full structural hierarchy for a structural node (project, module, submodule, task, subtask).
+    /// Used to create reverse belongs_to edges from knowledge nodes to every level in the chain.
+    async fn resolve_structural_hierarchy(&self, from_id: &str) -> anyhow::Result<StructuralHierarchy> {
+        let table = from_id.split_once(':').map(|(t, _)| t).unwrap_or("");
+        match table {
+            "project" => Ok(StructuralHierarchy {
+                project_id: Some(from_id.to_string()),
+                module_id: None,
+                submodule_id: None,
+                task_id: None,
+                subtask_id: None,
+            }),
+            "module" => {
+                let project_id = self
+                    .first_record_id_from_query(
+                        "SELECT <-contains<-project AS p FROM ONLY type::record($mid)",
+                        "mid",
+                        from_id.to_string(),
+                        "p",
+                    )
+                    .await?;
+                Ok(StructuralHierarchy {
+                    project_id: project_id.clone(),
+                    module_id: Some(from_id.to_string()),
+                    submodule_id: None,
+                    task_id: None,
+                    subtask_id: None,
+                })
+            }
+            "submodule" => {
+                let module_id = self
+                    .first_record_id_from_query(
+                        "SELECT <-contains<-module AS m FROM ONLY type::record($sid)",
+                        "sid",
+                        from_id.to_string(),
+                        "m",
+                    )
+                    .await?;
+                let project_id = match &module_id {
+                    Some(mid) => self
+                        .first_record_id_from_query(
+                            "SELECT <-contains<-project AS p FROM ONLY type::record($mid)",
+                            "mid",
+                            mid.clone(),
+                            "p",
+                        )
+                        .await?,
+                    None => None,
+                };
+                Ok(StructuralHierarchy {
+                    project_id,
+                    module_id,
+                    submodule_id: Some(from_id.to_string()),
+                    task_id: None,
+                    subtask_id: None,
+                })
+            }
+            "task" => {
+                let hierarchy = self.get_task_hierarchy(from_id).await?;
+                let submodule_id = hierarchy.submodule.as_ref().map(|s| s.id.clone());
+                Ok(StructuralHierarchy {
+                    project_id: Some(hierarchy.project_id),
+                    module_id: Some(hierarchy.module_id),
+                    submodule_id,
+                    task_id: Some(from_id.to_string()),
+                    subtask_id: None,
+                })
+            }
+            "subtask" => {
+                let task_id = self
+                    .first_record_id_from_query(
+                        "SELECT ->belongs_to_task->task AS t FROM ONLY type::record($stid)",
+                        "stid",
+                        from_id.to_string(),
+                        "t",
+                    )
+                    .await?;
+                let (project_id, module_id, submodule_id) = match &task_id {
+                    Some(tid) => {
+                        let h = self.get_task_hierarchy(tid).await?;
+                        let sub = h.submodule.as_ref().map(|s| s.id.clone());
+                        (
+                            Some(h.project_id),
+                            Some(h.module_id),
+                            sub,
+                        )
+                    }
+                    None => (None, None, None),
+                };
+                Ok(StructuralHierarchy {
+                    project_id,
+                    module_id,
+                    submodule_id,
+                    task_id,
+                    subtask_id: Some(from_id.to_string()),
+                })
+            }
+            _ => Err(anyhow::anyhow!(
+                "resolve_structural_hierarchy: from_id must be project, module, submodule, task, or subtask; got {:?}",
+                table
+            )),
+        }
+    }
+
+    /// Returns the id of the first record in a query result (e.g. first element of alias array).
+    async fn first_record_id_from_query(
+        &self,
+        sql: &str,
+        bind_key: &str,
+        bind_val: String,
+        result_alias: &str,
+    ) -> anyhow::Result<Option<String>> {
+        let mut response = self
+            .client
+            .query(sql)
+            .bind((bind_key.to_string(), bind_val))
+            .await?;
+        let row: Option<surrealdb::types::Value> = response.take(0)?;
+        let row = match row {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+        let json = surreal_to_json(row);
+        let id = json
+            .get(result_alias)
+            .and_then(|v| v.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|obj| obj.get("id"))
+            .and_then(|v| v.as_str())
+            .map(String::from);
+        Ok(id)
+    }
+
     /// Gets the submodule if the task belongs to one.
     async fn get_submodule_under_module(&self, task_id: &str) -> anyhow::Result<Option<crate::models::SubmoduleInfo>> {
         let mut response = self
@@ -764,6 +907,8 @@ impl DB {
 
     /// Creates a knowledge edge from a structural node to a knowledge node.
     /// Uses has_mistake, has_style, or has_security_detail based on to_id prefix.
+    /// Also creates reverse edges from the knowledge node using the same relation names
+    /// as tasks: belongs_to_project, belongs_to_module, belongs_to_task (for each level present).
     pub async fn link_context(&self, from_id: &str, to_id: &str) -> anyhow::Result<()> {
         let edge = if to_id.starts_with("mistake:") {
             "has_mistake"
@@ -778,7 +923,42 @@ impl DB {
             ));
         };
         self.relate(from_id, edge, to_id).await?;
+
+        let hierarchy = self.resolve_structural_hierarchy(from_id).await?;
+        if let Some(id) = hierarchy.project_id {
+            self.relate(to_id, "belongs_to_project", &id).await?;
+        }
+        if let Some(id) = hierarchy.module_id {
+            self.relate(to_id, "belongs_to_module", &id).await?;
+        }
+        if let Some(id) = hierarchy.task_id {
+            self.relate(to_id, "belongs_to_task", &id).await?;
+        }
         Ok(())
+    }
+
+    /// Returns all structural node ids that the given knowledge record points to via
+    /// belongs_to_project, belongs_to_module, and belongs_to_task (same edges as tasks).
+    pub async fn get_belongs_to_targets(&self, knowledge_record_id: &str) -> anyhow::Result<Vec<String>> {
+        let mut out = Vec::new();
+        for (edge, table) in [
+            ("belongs_to_project", "project"),
+            ("belongs_to_module", "module"),
+            ("belongs_to_task", "task"),
+        ] {
+            let id = self
+                .first_record_id_from_query(
+                    &format!("SELECT ->{edge}->{table}.* AS out FROM ONLY type::record($kid)"),
+                    "kid",
+                    knowledge_record_id.to_string(),
+                    "out",
+                )
+                .await?;
+            if let Some(id) = id {
+                out.push(id);
+            }
+        }
+        Ok(out)
     }
 
     // --- Maintenance Operations ---
@@ -816,13 +996,13 @@ impl DB {
                 DEFINE TABLE IF NOT EXISTS has_task TYPE RELATION \
                     IN project OUT task;\
                 DEFINE TABLE IF NOT EXISTS belongs_to_project TYPE RELATION \
-                    IN task OUT project;\
+                    IN task|mistake|style_rule|security_detail OUT project;\
                 DEFINE TABLE IF NOT EXISTS belongs_to_module TYPE RELATION \
-                    IN task OUT module;\
+                    IN task|mistake|style_rule|security_detail OUT module;\
                 DEFINE TABLE IF NOT EXISTS has_subtask TYPE RELATION \
                     IN task OUT subtask;\
                 DEFINE TABLE IF NOT EXISTS belongs_to_task TYPE RELATION \
-                    IN subtask OUT task;\
+                    IN subtask|mistake|style_rule|security_detail OUT task;\
                 DEFINE TABLE IF NOT EXISTS has_mistake TYPE RELATION \
                     IN project|task|module|submodule|subtask OUT mistake;\
                 DEFINE TABLE IF NOT EXISTS has_style TYPE RELATION \
@@ -1250,6 +1430,79 @@ mod tests {
             subtask_ctx.iter().any(|v| v["content"] == "Project Level Mistake"),
             "subtask context should include project-level mistake: {:?}",
             subtask_ctx
+        );
+    }
+
+    #[tokio::test]
+    async fn test_link_context_reverse_belongs_to() {
+        let db = DB::new("mem://").await.expect("init DB");
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "P".to_string(),
+                description: "d".to_string(),
+            })
+            .await
+            .expect("create project");
+        let project_id = project.id.expect("id");
+
+        let module = db
+            .create_module("M", "d", &project_id)
+            .await
+            .expect("create module");
+        let module_id = module.id.expect("id");
+
+        let task = db
+            .create_task("T", "d", &module_id, &project_id)
+            .await
+            .expect("create task");
+        let task_id = task.id.expect("id");
+
+        let mistake1 = db
+            .create_mistake(&crate::models::Mistake {
+                id: None,
+                content: "m1".to_string(),
+            })
+            .await
+            .expect("create mistake");
+        let mistake1_id = mistake1.id.expect("id");
+
+        db.link_context(&project_id, &mistake1_id)
+            .await
+            .expect("link project -> mistake");
+        let targets1 = db.get_belongs_to_targets(&mistake1_id).await.expect("get_belongs_to_targets");
+        assert!(
+            targets1.contains(&project_id),
+            "mistake linked to project should have belongs_to project: {:?}",
+            targets1
+        );
+
+        let mistake2 = db
+            .create_mistake(&crate::models::Mistake {
+                id: None,
+                content: "m2".to_string(),
+            })
+            .await
+            .expect("create mistake");
+        let mistake2_id = mistake2.id.expect("id");
+        db.link_context(&task_id, &mistake2_id)
+            .await
+            .expect("link task -> mistake");
+        let targets2 = db.get_belongs_to_targets(&mistake2_id).await.expect("get_belongs_to_targets");
+        assert!(
+            targets2.contains(&project_id),
+            "mistake linked to task should belong_to project: {:?}",
+            targets2
+        );
+        assert!(
+            targets2.contains(&module_id),
+            "mistake linked to task should belong_to module: {:?}",
+            targets2
+        );
+        assert!(
+            targets2.contains(&task_id),
+            "mistake linked to task should belong_to task: {:?}",
+            targets2
         );
     }
 
