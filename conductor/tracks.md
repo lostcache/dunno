@@ -32,3 +32,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [ ] Track: Unified context schema — single `has_context` → `context` node with type field (replace dedicated mistake, style_rule, security_detail nodes).
 *Link: [./conductor/tracks/unified_context_schema_20260225/](./conductor/tracks/unified_context_schema_20260225/)*
+
+---
+
+## [ ] Track: DB & CLI flexible create/link APIs for all graph nodes.
+*Link: [./conductor/tracks/db_cli_link_api_20260226/](./conductor/tracks/db_cli_link_api_20260226/)*
