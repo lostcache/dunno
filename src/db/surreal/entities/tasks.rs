@@ -119,7 +119,7 @@ impl DB {
         }
     }
 
-    /// Gets full context for a task including subtasks, files, and linked knowledge.
+    /// Gets full context for a task including subtasks, files, and linked context (unified).
     pub async fn get_task_context(
         &self,
         task_id: &str,
@@ -133,23 +133,13 @@ impl DB {
         let hierarchy = self.get_task_hierarchy(task_id).await?;
         let files = self.get_files_from_hierarchy(&hierarchy).await?;
 
-        let mistakes = self
-            .get_linked_knowledge::<crate::models::Mistake>(task_id, "mistake")
-            .await?;
-        let style_rules = self
-            .get_linked_knowledge::<crate::models::StyleRule>(task_id, "style_rule")
-            .await?;
-        let security_details = self
-            .get_linked_knowledge::<crate::models::SecurityDetail>(task_id, "security_detail")
-            .await?;
+        let contexts = self.get_linked_context(task_id).await?;
 
         Ok(crate::models::TaskContext {
             task,
             subtasks,
             files,
-            mistakes,
-            style_rules,
-            security_details,
+            contexts,
             hierarchy,
         })
     }
@@ -411,51 +401,18 @@ impl DB {
         Ok(vec![])
     }
 
-    /// Generic method to fetch linked knowledge of a specific type.
-    pub(crate) async fn get_linked_knowledge<T: serde::de::DeserializeOwned + 'static>(
+    /// Fetches all context records linked to a structural node (project, task, module, submodule, subtask).
+    pub(crate) async fn get_linked_context(
         &self,
-        task_id: &str,
-        table: &str,
-    ) -> anyhow::Result<Vec<T>> {
-        let key = task_id.split_once(':').map(|(_, k)| k).unwrap_or(task_id);
-        let edge = match table {
-            "mistake" => "has_mistake",
-            "style_rule" => "has_style",
-            "security_detail" => "has_security_detail",
-            _ => return Err(anyhow::anyhow!("get_linked_knowledge: unknown table {}", table)),
-        };
-        let query = format!(
-            "SELECT ->{}->{}.* AS items FROM ONLY type::record('task', $key)",
-            edge, table
-        );
-
-        let mut response = self
-            .client
-            .query(&query)
-            .bind(("key", key.to_string()))
-            .await?;
-        let result: Option<surrealdb::types::Value> = response.take(0)?;
-
-        let json = match result {
-            Some(val) => surreal_to_json(val),
-            None => return Ok(vec![]),
-        };
-
-        if let Some(serde_json::Value::Array(outer)) = json.get("items") {
-            let mut items = Vec::new();
-            for elem in outer {
-                if let serde_json::Value::Array(inner) = elem {
-                    for item in inner {
-                        items.push(serde_json::from_value(item.clone())?);
-                    }
-                } else {
-                    items.push(serde_json::from_value(elem.clone())?);
-                }
-            }
-            return Ok(items);
-        }
-
-        Ok(vec![])
+        structural_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::Context>> {
+        self.query_graph_list(
+            "SELECT ->has_context->context.* AS items FROM ONLY type::record($sid)",
+            "sid",
+            structural_id.to_string(),
+            "items",
+        )
+        .await
     }
 
     /// Creates a subtask and RELATEs it to its parent task.
@@ -509,3 +466,28 @@ impl DB {
         .await
     }
 }
+
+/// Returns JSON-encoded context records directly linked to a task.
+pub async fn get_task_context_json(
+    task_id: &str,
+    db: &crate::db::DB,
+) -> anyhow::Result<Vec<serde_json::Value>> {
+    let ctxs = db.get_linked_context(task_id).await?;
+    Ok(ctxs
+        .into_iter()
+        .map(|c| serde_json::to_value(c).unwrap())
+        .collect())
+}
+
+/// Returns JSON-encoded context records directly linked to a subtask.
+pub async fn get_subtask_context_json(
+    subtask_id: &str,
+    db: &crate::db::DB,
+) -> anyhow::Result<Vec<serde_json::Value>> {
+    let ctxs = db.get_linked_context(subtask_id).await?;
+    Ok(ctxs
+        .into_iter()
+        .map(|c| serde_json::to_value(c).unwrap())
+        .collect())
+}
+

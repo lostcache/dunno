@@ -28,40 +28,57 @@ async fn setup_hierarchy_with_context(db: &dunno::db::DB) -> (String, String, St
         .expect("create task");
     let task_id = task.id.expect("task id");
 
-    // Link knowledge at each level
-    let project_mistake = db
-        .create_mistake(&dunno::models::Mistake {
+    // Link context at project/module/task levels (hierarchy behavior is now encoded in tests, but retrieval is task-only).
+    let project_ctx = db
+        .create_context(&dunno::models::Context {
             id: None,
-            content: "dunno::models::Project Level dunno::models::Mistake".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("dunno::models::Project Level dunno::models::Mistake".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("create mistake");
-    db.link_context(&project_id, project_mistake.id.as_ref().unwrap())
+        .expect("create context");
+    db.link_context(&project_id, project_ctx.id.as_ref().unwrap())
         .await
-        .expect("link project mistake");
+        .expect("link project context");
 
-    let module_style = db
-        .create_style_rule(&dunno::models::StyleRule {
+    let module_ctx = db
+        .create_context(&dunno::models::Context {
             id: None,
-            description: "Module Level Style".to_string(),
-            example: "example".to_string(),
+            context_type: "style_rule".to_string(),
+            content: None,
+            description: Some("Module Level Style".to_string()),
+            example: Some("example".to_string()),
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("create style rule");
-    db.link_context(&module_id, module_style.id.as_ref().unwrap())
+        .expect("create context");
+    db.link_context(&module_id, module_ctx.id.as_ref().unwrap())
         .await
-        .expect("link module style");
+        .expect("link module context");
 
-    let task_mistake = db
-        .create_mistake(&dunno::models::Mistake {
+    let task_ctx = db
+        .create_context(&dunno::models::Context {
             id: None,
-            content: "Task Level dunno::models::Mistake".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("Task Level dunno::models::Mistake".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("create task mistake");
-    db.link_context(&task_id, task_mistake.id.as_ref().unwrap())
+        .expect("create task context");
+    db.link_context(&task_id, task_ctx.id.as_ref().unwrap())
         .await
-        .expect("link task mistake");
+        .expect("link task context");
 
     (project_id, module_id, task_id)
 }
@@ -75,26 +92,13 @@ async fn test_task_hierarchy_context() {
         .await
         .expect("dunno::context::get_task_context should succeed");
 
-    // Should contain knowledge from task, module, and project levels
+    // With direct-only retrieval, task context should only contain the task-level entry.
     assert!(
         context.iter().any(|v| v["content"] == "Task Level dunno::models::Mistake"),
-        "Missing task-level mistake. Context: {:?}",
+        "Missing task-level context. Context: {:?}",
         context
     );
-    assert!(
-        context
-            .iter()
-            .any(|v| v["description"] == "Module Level Style"),
-        "Missing module-level style. Context: {:?}",
-        context
-    );
-    assert!(
-        context
-            .iter()
-            .any(|v| v["content"] == "dunno::models::Project Level dunno::models::Mistake"),
-        "Missing project-level mistake. Context: {:?}",
-        context
-    );
+    assert_eq!(context.len(), 1, "Context should be task-only: {:?}", context);
 }
 
 #[tokio::test]
@@ -122,57 +126,69 @@ async fn test_belongs_to_reverse_edges() {
         .expect("create task");
     let task_id = task.id.expect("id");
 
-    let project_mistake = db
-        .create_mistake(&dunno::models::Mistake {
+    let project_ctx = db
+        .create_context(&dunno::models::Context {
             id: None,
-            content: "project mistake".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("project mistake".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("create mistake");
-    let project_mistake_id = project_mistake.id.as_ref().unwrap().clone();
-    db.link_context(&project_id, &project_mistake_id)
+        .expect("create context");
+    let project_ctx_id = project_ctx.id.as_ref().unwrap().clone();
+    db.link_context(&project_id, &project_ctx_id)
         .await
-        .expect("link project mistake");
+        .expect("link project context");
 
-    let task_mistake = db
-        .create_mistake(&dunno::models::Mistake {
+    let task_ctx = db
+        .create_context(&dunno::models::Context {
             id: None,
-            content: "task mistake".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("task mistake".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("create mistake");
-    let task_mistake_id = task_mistake.id.as_ref().unwrap().clone();
-    db.link_context(&task_id, &task_mistake_id)
+        .expect("create context");
+    let task_ctx_id = task_ctx.id.as_ref().unwrap().clone();
+    db.link_context(&task_id, &task_ctx_id)
         .await
-        .expect("link task mistake");
+        .expect("link task context");
 
     let project_targets = db
-        .get_belongs_to_targets(&project_mistake_id)
+        .get_belongs_to_targets(&project_ctx_id)
         .await
         .expect("get_belongs_to_targets");
     assert!(
         project_targets.contains(&project_id),
-        "project-linked mistake should belong_to project: {:?}",
+        "project-linked context should belong_to project: {:?}",
         project_targets
     );
 
     let task_targets = db
-        .get_belongs_to_targets(&task_mistake_id)
+        .get_belongs_to_targets(&task_ctx_id)
         .await
         .expect("get_belongs_to_targets");
     assert!(
         task_targets.contains(&project_id),
-        "task-linked mistake should belong_to project: {:?}",
+        "task-linked context should belong_to project: {:?}",
         task_targets
     );
     assert!(
         task_targets.contains(&module_id),
-        "task-linked mistake should belong_to module: {:?}",
+        "task-linked context should belong_to module: {:?}",
         task_targets
     );
     assert!(
         task_targets.contains(&task_id),
-        "task-linked mistake should belong_to task: {:?}",
+        "task-linked context should belong_to task: {:?}",
         task_targets
     );
 }
@@ -198,42 +214,35 @@ async fn test_file_hierarchy_context() {
         .expect("create file");
     let file_id = file.id.expect("file id");
 
-    // Link a mistake to the submodule level
-    let sub_mistake = db
-        .create_mistake(&dunno::models::Mistake {
+    // Link context to the submodule level
+    let sub_ctx = db
+        .create_context(&dunno::models::Context {
             id: None,
-            content: "Submodule Level dunno::models::Mistake".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("Submodule Level dunno::models::Mistake".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("create sub mistake");
-    db.link_context(&submodule_id, sub_mistake.id.as_ref().unwrap())
+        .expect("create sub context");
+    db.link_context(&submodule_id, sub_ctx.id.as_ref().unwrap())
         .await
-        .expect("link sub mistake");
+        .expect("link sub context");
 
     let context = dunno::context::get_file_context(&file_id, &db)
         .await
         .expect("dunno::context::get_file_context should succeed");
 
-    // Should include context from submodule, module, and project
+    // With direct-only retrieval, file context should only contain the file-level entries (none in this setup),
+    // so inherited submodule/module/project context should not appear here.
     assert!(
-        context
+        !context
             .iter()
             .any(|v| v["content"] == "Submodule Level dunno::models::Mistake"),
-        "Missing submodule-level mistake. Context: {:?}",
-        context
-    );
-    assert!(
-        context
-            .iter()
-            .any(|v| v["description"] == "Module Level Style"),
-        "Missing module-level style. Context: {:?}",
-        context
-    );
-    assert!(
-        context
-            .iter()
-            .any(|v| v["content"] == "dunno::models::Project Level dunno::models::Mistake"),
-        "Missing project-level mistake. Context: {:?}",
+        "file context should not inherit submodule context: {:?}",
         context
     );
 }
@@ -254,19 +263,10 @@ async fn test_file_without_submodule_context() {
         .await
         .expect("dunno::context::get_file_context should succeed");
 
-    // Should include context from module and project (no submodule)
+    // With direct-only retrieval, this file has no directly linked context, even though its module/project do.
     assert!(
-        context
-            .iter()
-            .any(|v| v["description"] == "Module Level Style"),
-        "Missing module-level style. Context: {:?}",
-        context
-    );
-    assert!(
-        context
-            .iter()
-            .any(|v| v["content"] == "dunno::models::Project Level dunno::models::Mistake"),
-        "Missing project-level mistake. Context: {:?}",
+        context.is_empty(),
+        "file context should be direct-only and empty here: {:?}",
         context
     );
 }
@@ -282,47 +282,39 @@ async fn test_subtask_four_level_context() {
         .expect("create subtask");
     let subtask_id = subtask.id.expect("subtask id");
 
-    // Link a mistake to the subtask level
-    let st_mistake = db
-        .create_mistake(&dunno::models::Mistake {
+    // Link context to the subtask level
+    let st_ctx = db
+        .create_context(&dunno::models::Context {
             id: None,
-            content: "Subtask Level dunno::models::Mistake".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("Subtask Level dunno::models::Mistake".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("create subtask mistake");
-    db.link_context(&subtask_id, st_mistake.id.as_ref().unwrap())
+        .expect("create subtask context");
+    db.link_context(&subtask_id, st_ctx.id.as_ref().unwrap())
         .await
-        .expect("link subtask mistake");
+        .expect("link subtask context");
 
     let context = dunno::context::get_subtask_context(&subtask_id, &db)
         .await
         .expect("dunno::context::get_subtask_context should succeed");
 
-    // Should include context from subtask, task, module, and project (4 levels)
+    // With direct-only retrieval, subtask context should only contain the subtask-level entry.
     assert!(
         context
             .iter()
             .any(|v| v["content"] == "Subtask Level dunno::models::Mistake"),
-        "Missing subtask-level mistake. Context: {:?}",
+        "Missing subtask-level context. Context: {:?}",
         context
     );
     assert!(
-        context.iter().any(|v| v["content"] == "Task Level dunno::models::Mistake"),
-        "Missing task-level mistake. Context: {:?}",
-        context
-    );
-    assert!(
-        context
-            .iter()
-            .any(|v| v["description"] == "Module Level Style"),
-        "Missing module-level style. Context: {:?}",
-        context
-    );
-    assert!(
-        context
-            .iter()
-            .any(|v| v["content"] == "dunno::models::Project Level dunno::models::Mistake"),
-        "Missing project-level mistake. Context: {:?}",
+        context.len() == 1,
+        "Subtask context should be direct-only: {:?}",
         context
     );
 }
@@ -353,20 +345,23 @@ async fn test_security_detail_in_context() {
         .expect("create task");
     let task_id = task.id.expect("id");
 
-    // Link a dunno::models::SecurityDetail to the module
-    let detail = db
-        .create_security_detail(&dunno::models::SecurityDetail {
+    // Link a security_detail context to the task (since retrieval is direct-only).
+    let detail_ctx = db
+        .create_context(&dunno::models::Context {
             id: None,
-            content: "SQL injection risk".to_string(),
-            severity: "high".to_string(),
-            category: "injection".to_string(),
-            tags: vec!["sql".to_string()],
+            context_type: "security_detail".to_string(),
+            content: Some("SQL injection risk".to_string()),
+            description: None,
+            example: None,
+            severity: Some("high".to_string()),
+            category: Some("injection".to_string()),
+            tags: Some(vec!["sql".to_string()]),
         })
         .await
-        .expect("create security detail");
-    db.link_context(&module_id, detail.id.as_ref().unwrap())
+        .expect("create context");
+    db.link_context(&task_id, detail_ctx.id.as_ref().unwrap())
         .await
-        .expect("link security detail");
+        .expect("link security context");
 
     let context = dunno::context::get_task_context(&task_id, &db)
         .await

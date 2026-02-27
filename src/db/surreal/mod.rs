@@ -3,6 +3,7 @@
 mod convert;
 mod entities;
 mod schema;
+mod flatten_context;
 
 use convert::{is_missing_table_error, surreal_to_json};
 
@@ -269,3 +270,6 @@ impl DB {
 
 #[cfg(test)]
 mod tests;
+
+pub use entities::tasks::{get_subtask_context_json, get_task_context_json};
+pub use entities::files::get_file_context_json;

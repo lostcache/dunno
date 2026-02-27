@@ -19,7 +19,7 @@ The knowledge graph has two parallel structural paths:
 - **StyleRule:** Coding style rules with examples.
 - **SecurityDetail:** Security constraints and audit notes.
 
-Context can be linked to **any** structural node: project, module, submodule, task, or subtask. Retrieval aggregates knowledge from the given node and all its ancestors.
+Context can be linked to **any** structural node: project, module, submodule, task, or subtask. Retrieval returns only the context directly linked to the requested node.
 
 ### Supporting Entities
 - **Todo:** A project-level work queue item.
@@ -142,33 +142,29 @@ dunno add --type mistake --content "Subtask pitfall" --link-to subtask:stu
 ### 4. Retrieve context
 
 ```bash
-# By task (traverses Task -> Module -> Project)
+# By task (direct-only)
 dunno context --task-id task:ghi
 
-# By file (traverses File -> Submodule -> Module -> Project)
+# By file (direct-only)
 dunno context --file-id file:456
 
 # By subtask
 dunno context --subtask-id subtask:stu
 ```
 
-Returns a JSON array of all linked knowledge (style rules, mistakes, security details) aggregated from the node and all its ancestors.
+Returns a JSON array of all linked context items directly linked to the requested node.
 
 #### Context at every level
 
-You can link knowledge at project, module, submodule, task, or subtask. Context retrieval then aggregates from the requested node up the hierarchy:
-
-- **`dunno context --task-id task:xyz`** — returns context from that task, its module, and the project.
-- **`dunno context --file-id file:xyz`** — returns context from the file, its submodule (if any), module, and project.
-- **`dunno context --subtask-id subtask:xyz`** — returns context from the subtask, its task, module, and project.
+You can link context at project, module, submodule, task, or subtask. Context retrieval returns only what is directly linked to the requested node.
 
 ## CLI Reference
 
 ### Knowledge Management
 - `dunno add --type <mistake|style|security> --content <CONTENT> [--link-to <ID>]` — `<ID>` can be `project:...`, `module:...`, `submodule:...`, `task:...`, or `subtask:...`.
-- `dunno context --task-id <ID>` — aggregate context for a task (task + module + project).
-- `dunno context --file-id <ID>` — aggregate context for a file (file + submodule if any + module + project).
-- `dunno context --subtask-id <ID>` — aggregate context for a subtask (subtask + task + module + project).
+- `dunno context --task-id <ID>` — context for a task (direct-only).
+- `dunno context --file-id <ID>` — context for a file (direct-only).
+- `dunno context --subtask-id <ID>` — context for a subtask (direct-only).
 
 ### Hierarchy Management
 - `dunno project create <NAME> <DESC>` / `list`

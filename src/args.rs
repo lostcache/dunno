@@ -87,7 +87,7 @@ pub enum Commands {
 
     #[command(
         about = "Retrieve coding context for a task, file, or subtask.",
-        long_about = "Find relevant context by traversing the structural hierarchy via graph edges.",
+        long_about = "Find context directly linked to a task, file, or subtask.",
         after_help = "Example:\n  dunno context --task-id task:123\n  dunno context --file-id file:456\n  dunno context --subtask-id subtask:789"
     )]
     Context {

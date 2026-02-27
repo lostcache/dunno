@@ -79,28 +79,24 @@ pub struct TodoItem {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct Mistake {
+pub struct Context {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    pub content: String,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct StyleRule {
+    /// Free-form context type (e.g. mistake, style_rule, security_detail, code_styleguide, skill).
+    #[serde(rename = "type")]
+    pub context_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-    pub description: String,
-    pub example: String,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct SecurityDetail {
+    pub content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-    pub content: String,
-    pub severity: String,
-    pub category: String,
-    pub tags: Vec<String>,
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub example: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub severity: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -123,9 +119,7 @@ pub struct TaskContext {
     pub task: Task,
     pub subtasks: Vec<Subtask>,
     pub files: Vec<String>,
-    pub mistakes: Vec<Mistake>,
-    pub style_rules: Vec<StyleRule>,
-    pub security_details: Vec<SecurityDetail>,
+    pub contexts: Vec<Context>,
     pub hierarchy: TaskHierarchy,
 }
 
@@ -217,37 +211,19 @@ mod tests {
     }
 
     #[test]
-    fn test_mistake_model() {
-        let mistake = Mistake {
+    fn test_context_model() {
+        let ctx = Context {
             id: None,
-            content: "Using unwrap instead of expect".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("Avoid unwrap in production code".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: Some(vec!["error-handling".to_string()]),
         };
-        let json = to_string(&mistake).expect("Failed to serialize Mistake");
-        assert!(json.contains("Using unwrap instead of expect"));
-    }
-
-    #[test]
-    fn test_style_rule_model() {
-        let rule = StyleRule {
-            id: None,
-            description: "Prefer functional style for iterators".to_string(),
-            example: "vec.iter().map(...).collect()".to_string(),
-        };
-        let json = to_string(&rule).expect("Failed to serialize StyleRule");
-        assert!(json.contains("Prefer functional style"));
-    }
-
-    #[test]
-    fn test_security_detail_model() {
-        let detail = SecurityDetail {
-            id: None,
-            content: "SQL injection risk in raw queries".to_string(),
-            severity: "high".to_string(),
-            category: "injection".to_string(),
-            tags: vec!["sql".to_string(), "security".to_string()],
-        };
-        let json = to_string(&detail).expect("Failed to serialize SecurityDetail");
-        assert!(json.contains("SQL injection risk"));
-        assert!(json.contains("\"severity\":\"high\""));
+        let json = to_string(&ctx).expect("Failed to serialize Context");
+        assert!(json.contains("\"type\":\"mistake\""));
+        assert!(json.contains("Avoid unwrap in production code"));
     }
 }

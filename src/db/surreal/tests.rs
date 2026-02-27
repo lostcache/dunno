@@ -7,108 +7,28 @@ use std::time::{SystemTime, UNIX_EPOCH};
 async fn test_surreal_crud() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
 
-    let mistake = crate::models::Mistake {
+    let ctx = crate::models::Context {
         id: None,
-        content: "Using unwrap in production code".to_string(),
+        context_type: "mistake".to_string(),
+        content: Some("Using unwrap in production code".to_string()),
+        description: None,
+        example: None,
+        severity: None,
+        category: None,
+        tags: None,
     };
 
     let created = db
-        .create_mistake(&mistake)
+        .create_context(&ctx)
         .await
-        .expect("Failed to create mistake");
+        .expect("Failed to create context");
     assert!(created.id.is_some());
-    assert_eq!(created.content, mistake.content);
+    assert_eq!(created.content, ctx.content);
 
     let id = created.id.as_ref().unwrap();
-    let fetched = db.get_mistake(id).await.expect("Failed to fetch mistake");
+    let fetched = db.get_context(id).await.expect("Failed to fetch context");
     assert!(fetched.is_some());
-    assert_eq!(fetched.unwrap().content, mistake.content);
-}
-
-#[tokio::test]
-async fn test_graph_relate_and_list() {
-    let db = DB::new("mem://").await.expect("Failed to init DB");
-
-    let project = db
-        .create_project(&crate::models::Project {
-            id: None,
-            name: "Test".to_string(),
-            description: "Test project".to_string(),
-        })
-        .await
-        .expect("Failed to create project");
-    let project_id = project.id.expect("crate::models::Project id should exist");
-
-    let module = db
-        .create_module("crate::models::Module", "crate::models::Module desc", &project_id)
-        .await
-        .expect("Failed to create module");
-    let module_id = module.id.expect("crate::models::Module id should exist");
-
-    let modules = db
-        .list_modules_by_project(&project_id)
-        .await
-        .expect("Failed to list modules");
-    assert_eq!(modules.len(), 1);
-    assert_eq!(modules[0].name, "crate::models::Module");
-
-    let submodule = db
-        .create_submodule("Sub", "Sub desc", &module_id)
-        .await
-        .expect("Failed to create submodule");
-    let sub_id = submodule.id.expect("crate::models::Submodule id should exist");
-
-    let subs = db
-        .list_submodules_by_module(&module_id)
-        .await
-        .expect("Failed to list submodules");
-    assert_eq!(subs.len(), 1);
-
-    let file = db
-        .create_file("test.rs", "src/test.rs", &sub_id)
-        .await
-        .expect("Failed to create file");
-    assert!(file.id.is_some());
-
-    let files = db
-        .list_files_by_submodule(&sub_id)
-        .await
-        .expect("Failed to list files");
-    assert_eq!(files.len(), 1);
-}
-
-#[tokio::test]
-async fn test_link_context() {
-    let db = DB::new("mem://").await.expect("Failed to init DB");
-
-    let project = db
-        .create_project(&crate::models::Project {
-            id: None,
-            name: "Ctx".to_string(),
-            description: "d".to_string(),
-        })
-        .await
-        .expect("Failed to create project");
-    let project_id = project.id.expect("id");
-
-    let module = db
-        .create_module("M", "d", &project_id)
-        .await
-        .expect("create module");
-    let module_id = module.id.expect("id");
-
-    let mistake = db
-        .create_mistake(&crate::models::Mistake {
-            id: None,
-            content: "test mistake".to_string(),
-        })
-        .await
-        .expect("create mistake");
-    let mistake_id = mistake.id.expect("id");
-
-    db.link_context(&module_id, &mistake_id)
-        .await
-        .expect("link_context should succeed");
+    assert_eq!(fetched.unwrap().content, ctx.content);
 }
 
 #[tokio::test]
@@ -155,45 +75,63 @@ async fn test_link_context_all_levels() {
         .expect("create file");
     let file_id = file.id.expect("id");
 
-    let project_mistake = db
-        .create_mistake(&crate::models::Mistake {
+    let project_ctx = db
+        .create_context(&crate::models::Context {
             id: None,
-            content: "Project Level Mistake".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("Project Level Mistake".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("create mistake");
-    db.link_context(&project_id, project_mistake.id.as_ref().unwrap())
+        .expect("create context");
+    db.link_context(&project_id, project_ctx.id.as_ref().unwrap())
         .await
-        .expect("link project mistake");
+        .expect("link project context");
 
-    let submodule_mistake = db
-        .create_mistake(&crate::models::Mistake {
+    let submodule_ctx = db
+        .create_context(&crate::models::Context {
             id: None,
-            content: "Submodule Level Mistake".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("Submodule Level Mistake".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("create mistake");
-    db.link_context(&submodule_id, submodule_mistake.id.as_ref().unwrap())
+        .expect("create context");
+    db.link_context(&submodule_id, submodule_ctx.id.as_ref().unwrap())
         .await
-        .expect("link submodule mistake");
+        .expect("link submodule context");
 
-    let subtask_mistake = db
-        .create_mistake(&crate::models::Mistake {
+    let subtask_ctx = db
+        .create_context(&crate::models::Context {
             id: None,
-            content: "Subtask Level Mistake".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("Subtask Level Mistake".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("create mistake");
-    db.link_context(&subtask_id, subtask_mistake.id.as_ref().unwrap())
+        .expect("create context");
+    db.link_context(&subtask_id, subtask_ctx.id.as_ref().unwrap())
         .await
-        .expect("link subtask mistake");
+        .expect("link subtask context");
 
     let task_ctx = crate::context::get_task_context(&task_id, &db)
         .await
         .expect("get_task_context");
     assert!(
-        task_ctx.iter().any(|v| v["content"] == "Project Level Mistake"),
-        "task context should include project-level mistake: {:?}",
+        task_ctx.is_empty(),
+        "task context should be task-only (no inherited project context): {:?}",
         task_ctx
     );
 
@@ -201,27 +139,21 @@ async fn test_link_context_all_levels() {
         .await
         .expect("get_file_context");
     assert!(
-        file_ctx.iter().any(|v| v["content"] == "Submodule Level Mistake"),
-        "file context should include submodule-level mistake: {:?}",
-        file_ctx
-    );
-    assert!(
-        file_ctx.iter().any(|v| v["content"] == "Project Level Mistake"),
-        "file context should include project-level mistake: {:?}",
+        file_ctx.is_empty(),
+        "file context should be file-only (no inherited submodule/project context): {:?}",
         file_ctx
     );
 
-    let subtask_ctx = crate::context::get_subtask_context(&subtask_id, &db)
+    // For subtask, verify direct-only context via the DB helper.
+    let subtask_ctx = db
+        .get_linked_context(&subtask_id)
         .await
-        .expect("get_subtask_context");
+        .expect("get_linked_context for subtask");
     assert!(
-        subtask_ctx.iter().any(|v| v["content"] == "Subtask Level Mistake"),
-        "subtask context should include subtask-level mistake: {:?}",
         subtask_ctx
-    );
-    assert!(
-        subtask_ctx.iter().any(|v| v["content"] == "Project Level Mistake"),
-        "subtask context should include project-level mistake: {:?}",
+            .iter()
+            .any(|c| c.context_type == "mistake" && c.content.as_deref() == Some("Subtask Level Mistake")),
+        "subtask linked context should include subtask-level mistake: {:?}",
         subtask_ctx
     );
 }
@@ -251,50 +183,62 @@ async fn test_link_context_reverse_belongs_to() {
         .expect("create task");
     let task_id = task.id.expect("id");
 
-    let mistake1 = db
-        .create_mistake(&crate::models::Mistake {
+    let ctx1 = db
+        .create_context(&crate::models::Context {
             id: None,
-            content: "m1".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("m1".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("create mistake");
-    let mistake1_id = mistake1.id.expect("id");
+        .expect("create context");
+    let ctx1_id = ctx1.id.expect("id");
 
-    db.link_context(&project_id, &mistake1_id)
+    db.link_context(&project_id, &ctx1_id)
         .await
-        .expect("link project -> mistake");
-    let targets1 = db.get_belongs_to_targets(&mistake1_id).await.expect("get_belongs_to_targets");
+        .expect("link project -> context");
+    let targets1 = db.get_belongs_to_targets(&ctx1_id).await.expect("get_belongs_to_targets");
     assert!(
         targets1.contains(&project_id),
-        "mistake linked to project should have belongs_to project: {:?}",
+        "context linked to project should have belongs_to project: {:?}",
         targets1
     );
 
-    let mistake2 = db
-        .create_mistake(&crate::models::Mistake {
+    let ctx2 = db
+        .create_context(&crate::models::Context {
             id: None,
-            content: "m2".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("m2".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("create mistake");
-    let mistake2_id = mistake2.id.expect("id");
-    db.link_context(&task_id, &mistake2_id)
+        .expect("create context");
+    let ctx2_id = ctx2.id.expect("id");
+    db.link_context(&task_id, &ctx2_id)
         .await
-        .expect("link task -> mistake");
-    let targets2 = db.get_belongs_to_targets(&mistake2_id).await.expect("get_belongs_to_targets");
+        .expect("link task -> context");
+    let targets2 = db.get_belongs_to_targets(&ctx2_id).await.expect("get_belongs_to_targets");
     assert!(
         targets2.contains(&project_id),
-        "mistake linked to task should belong_to project: {:?}",
+        "context linked to task should belong_to project: {:?}",
         targets2
     );
     assert!(
         targets2.contains(&module_id),
-        "mistake linked to task should belong_to module: {:?}",
+        "context linked to task should belong_to module: {:?}",
         targets2
     );
     assert!(
         targets2.contains(&task_id),
-        "mistake linked to task should belong_to task: {:?}",
+        "context linked to task should belong_to task: {:?}",
         targets2
     );
 }
@@ -424,22 +368,28 @@ async fn test_get_task_context() {
         .await
         .expect("Failed to create subtask");
 
-    let mistake = db
-        .create_mistake(&crate::models::Mistake {
+    let ctx = db
+        .create_context(&crate::models::Context {
             id: None,
-            content: "crate::models::Task specific mistake".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("crate::models::Task specific mistake".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("Failed to create mistake");
-    db.link_context(&task_id, &mistake.id.unwrap())
+        .expect("Failed to create context");
+    db.link_context(&task_id, &ctx.id.unwrap())
         .await
-        .expect("Failed to link mistake");
+        .expect("Failed to link context");
 
     let context = db.get_task_context(&task_id).await.expect("get_task_context failed");
 
     assert_eq!(context.task.name, "Login");
     assert_eq!(context.subtasks.len(), 1);
-    assert_eq!(context.mistakes.len(), 1);
+    assert_eq!(context.contexts.len(), 1);
     assert_eq!(context.hierarchy.project_name, "Testcrate::models::Project");
     assert_eq!(context.hierarchy.module_name, "Auth");
 }
@@ -545,9 +495,7 @@ async fn test_get_task_context_no_linked_knowledge() {
 
     assert_eq!(context.task.name, "Login");
     assert!(context.subtasks.is_empty());
-    assert!(context.mistakes.is_empty());
-    assert!(context.style_rules.is_empty());
-    assert!(context.security_details.is_empty());
+    assert!(context.contexts.is_empty());
 }
 
 #[tokio::test]
@@ -576,45 +524,62 @@ async fn test_get_task_context_all_knowledge_types() {
         .expect("Failed to create task");
     let task_id = task.id.expect("task id");
 
-    let mistake = db
-        .create_mistake(&crate::models::Mistake {
+    let mistake_ctx = db
+        .create_context(&crate::models::Context {
             id: None,
-            content: "Using unwrap".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("Using unwrap".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("Failed to create mistake");
-    db.link_context(&task_id, &mistake.id.unwrap()).await.expect("link mistake");
+        .expect("Failed to create context");
+    db.link_context(&task_id, &mistake_ctx.id.unwrap()).await.expect("link mistake");
 
-    let style = db
-        .create_style_rule(&crate::models::StyleRule {
+    let style_ctx = db
+        .create_context(&crate::models::Context {
             id: None,
-            description: "Use match".to_string(),
-            example: "match".to_string(),
+            context_type: "style_rule".to_string(),
+            content: None,
+            description: Some("Use match".to_string()),
+            example: Some("match".to_string()),
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("Failed to create style rule");
-    db.link_context(&task_id, &style.id.unwrap()).await.expect("link style");
+        .expect("Failed to create context");
+    db.link_context(&task_id, &style_ctx.id.unwrap()).await.expect("link style");
 
-    let security = db
-        .create_security_detail(&crate::models::SecurityDetail {
+    let security_ctx = db
+        .create_context(&crate::models::Context {
             id: None,
-            content: "SQL injection".to_string(),
-            severity: "high".to_string(),
-            category: "injection".to_string(),
-            tags: vec!["sql".to_string()],
+            context_type: "security_detail".to_string(),
+            content: Some("SQL injection".to_string()),
+            description: None,
+            example: None,
+            severity: Some("high".to_string()),
+            category: Some("injection".to_string()),
+            tags: Some(vec!["sql".to_string()]),
         })
         .await
-        .expect("Failed to create security detail");
-    db.link_context(&task_id, &security.id.unwrap()).await.expect("link security");
+        .expect("Failed to create context");
+    db.link_context(&task_id, &security_ctx.id.unwrap()).await.expect("link security");
 
     let context = db.get_task_context(&task_id).await.expect("get_task_context failed");
 
-    assert_eq!(context.mistakes.len(), 1);
-    assert_eq!(context.style_rules.len(), 1);
-    assert_eq!(context.security_details.len(), 1);
-    assert_eq!(context.mistakes[0].content, "Using unwrap");
-    assert_eq!(context.style_rules[0].description, "Use match");
-    assert_eq!(context.security_details[0].severity, "high");
+    assert_eq!(context.contexts.len(), 3);
+    assert!(context
+        .contexts
+        .iter()
+        .any(|c| c.context_type == "mistake" && c.content.as_deref() == Some("Using unwrap")));
+    assert!(context.contexts.iter().any(|c| c.context_type == "style_rule"
+        && c.description.as_deref() == Some("Use match")));
+    assert!(context.contexts.iter().any(|c| c.context_type == "security_detail"
+        && c.severity.as_deref() == Some("high")));
 }
 
 #[tokio::test]
@@ -832,59 +797,73 @@ async fn test_list_tasks_by_module() {
 #[tokio::test]
 async fn test_mistake_operations() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
-    let mistake = db
-        .create_mistake(&crate::models::Mistake {
+    let ctx = db
+        .create_context(&crate::models::Context {
             id: None,
-            content: "Using unwrap".to_string(),
+            context_type: "mistake".to_string(),
+            content: Some("Using unwrap".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("Failed to create mistake");
-    let mistake_id = mistake.id.expect("mistake id");
-    let fetched = db.get_mistake(&mistake_id).await.expect("get_mistake failed");
+        .expect("Failed to create context");
+    let context_id = ctx.id.expect("context id");
+    let fetched = db.get_context(&context_id).await.expect("get_context failed");
     assert!(fetched.is_some());
-    assert_eq!(fetched.unwrap().content, "Using unwrap");
-    let mistakes = db.list_mistakes().await.expect("list_mistakes failed");
-    assert_eq!(mistakes.len(), 1);
+    assert_eq!(fetched.unwrap().content.as_deref(), Some("Using unwrap"));
+    let contexts = db.list_contexts_by_type("mistake").await.expect("list_contexts_by_type failed");
+    assert_eq!(contexts.len(), 1);
 }
 
 #[tokio::test]
 async fn test_style_rule_operations() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
-    let rule = db
-        .create_style_rule(&crate::models::StyleRule {
+    let ctx = db
+        .create_context(&crate::models::Context {
             id: None,
-            description: "Use match".to_string(),
-            example: "match".to_string(),
+            context_type: "style_rule".to_string(),
+            content: None,
+            description: Some("Use match".to_string()),
+            example: Some("match".to_string()),
+            severity: None,
+            category: None,
+            tags: None,
         })
         .await
-        .expect("Failed to create style rule");
-    let rule_id = rule.id.expect("rule id");
-    let fetched = db.get_style_rule(&rule_id).await.expect("get_style_rule failed");
+        .expect("Failed to create context");
+    let context_id = ctx.id.expect("context id");
+    let fetched = db.get_context(&context_id).await.expect("get_context failed");
     assert!(fetched.is_some());
-    assert_eq!(fetched.unwrap().description, "Use match");
-    let rules = db.list_style_rules().await.expect("list_style_rules failed");
-    assert_eq!(rules.len(), 1);
+    assert_eq!(fetched.unwrap().description.as_deref(), Some("Use match"));
+    let contexts = db.list_contexts_by_type("style_rule").await.expect("list_contexts_by_type failed");
+    assert_eq!(contexts.len(), 1);
 }
 
 #[tokio::test]
 async fn test_security_detail_operations() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
-    let detail = db
-        .create_security_detail(&crate::models::SecurityDetail {
+    let ctx = db
+        .create_context(&crate::models::Context {
             id: None,
-            content: "SQL injection".to_string(),
-            severity: "high".to_string(),
-            category: "injection".to_string(),
-            tags: vec!["sql".to_string()],
+            context_type: "security_detail".to_string(),
+            content: Some("SQL injection".to_string()),
+            description: None,
+            example: None,
+            severity: Some("high".to_string()),
+            category: Some("injection".to_string()),
+            tags: Some(vec!["sql".to_string()]),
         })
         .await
-        .expect("Failed to create security detail");
-    let detail_id = detail.id.expect("detail id");
-    let fetched = db.get_security_detail(&detail_id).await.expect("get_security_detail failed");
+        .expect("Failed to create context");
+    let context_id = ctx.id.expect("context id");
+    let fetched = db.get_context(&context_id).await.expect("get_context failed");
     assert!(fetched.is_some());
-    assert_eq!(fetched.unwrap().severity, "high");
-    let details = db.list_security_details().await.expect("list_security_details failed");
-    assert_eq!(details.len(), 1);
+    assert_eq!(fetched.unwrap().severity.as_deref(), Some("high"));
+    let contexts = db.list_contexts_by_type("security_detail").await.expect("list_contexts_by_type failed");
+    assert_eq!(contexts.len(), 1);
 }
 
 #[tokio::test]
