@@ -47,3 +47,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [~] Track: DB & CLI flexible create/link APIs for all graph nodes.
 *Link: [./conductor/tracks/db_cli_link_api_20260226/](./conductor/tracks/db_cli_link_api_20260226/)*
+
+---
+
+## [ ] Track: Test Coverage & Stateful Test Layout — co-located unit tests and centralized SurrealDB multistep tests.
+*Link: [./conductor/tracks/test_coverage_20260301/](./conductor/tracks/test_coverage_20260301/)*

@@ -184,6 +184,21 @@ For unsafe/concurrency-heavy code, add targeted tools where applicable:
 
 ---
 
+## Testing
+
+- Unit tests should live in the same `.rs` file as the code they exercise, inside a `#[cfg(test)] mod tests` module.
+  - Keep these focused on pure logic, serialization, small helpers, and non-DB behavior.
+  - Use descriptive test names and assert both success and failure paths where meaningful.
+- Multistep, stateful SurrealDB tests (CRUD, hierarchy traversal, linking, freestanding creation, purge, config) belong in `src/db/surreal/tests.rs`:
+  - Use `#[tokio::test]` with `DB::new("mem://")` or `DB::from_config(...)` helpers.
+  - Prefer small helpers for common setup (e.g., creating a project/module/task hierarchy).
+- Do not add DB/stateful tests under `tests/*.rs`:
+  - Legacy `tests/integration_tests.rs` has been removed; `src/db/surreal/tests.rs` is the single source of truth for SurrealDB multistep tests.
+  - The top-level `tests/` directory is reserved for future, explicit end-to-end CLI tests when needed.
+- When adding a new module with non-trivial behavior, add co-located unit tests in the same file as part of the change.
+
+---
+
 ## Dependencies And Tooling
 
 - Prefer fewer dependencies, especially in core paths.
