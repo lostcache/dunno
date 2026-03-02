@@ -32,9 +32,9 @@ pub enum Commands {
         #[arg(short = 'C', long, value_name = "CONTENT")]
         content: String,
 
-        /// Optional ID of a structural node to link this knowledge to.
+        /// Structural node ID(s) to link this knowledge to. Repeat for multiple.
         #[arg(long, value_name = "LINK_TO")]
-        link_to: Option<String>,
+        link_to: Vec<String>,
     },
 
     #[command(about = "Manage projects.")]
@@ -105,6 +105,23 @@ pub enum Commands {
     },
 
     #[command(
+        about = "Create an edge between existing nodes.",
+        long_about = "Link a source node to one or more target nodes via a named edge.",
+        after_help = "Example:\n  dunno link --from project:abc --edge contains --to module:def\n  dunno link --from project:abc --edge has_todo --to todo_item:1 --to todo_item:2"
+    )]
+    Link {
+        /// Source record ID (e.g. project:abc, task:xyz).
+        #[arg(long, value_name = "FROM_ID")]
+        from_id: String,
+        /// Edge name (e.g. contains, has_task, has_subtask, has_todo, has_context, belongs_to_project, belongs_to_module, belongs_to_task).
+        #[arg(long, value_name = "EDGE")]
+        edge: String,
+        /// Target record ID(s). Repeat for multiple.
+        #[arg(long, value_name = "TO_ID")]
+        to_ids: Vec<String>,
+    },
+
+    #[command(
         about = "Purge the database (DANGER).",
         long_about = "Delete all records from the database. This action is irreversible.",
         hide = true
@@ -121,8 +138,9 @@ pub enum ProjectCommands {
 #[derive(clap::Subcommand, Debug)]
 pub enum ModuleCommands {
     Create {
-        #[arg(long)]
-        project_id: String,
+        /// Project ID(s) to link this module to. Repeat for multiple. Omit for freestanding.
+        #[arg(long, value_name = "PROJECT_ID")]
+        project_ids: Vec<String>,
         name: String,
         description: String,
     },
@@ -132,8 +150,9 @@ pub enum ModuleCommands {
 #[derive(clap::Subcommand, Debug)]
 pub enum SubmoduleCommands {
     Create {
-        #[arg(long)]
-        module_id: String,
+        /// Module ID(s) to link this submodule to. Repeat for multiple. Omit for freestanding.
+        #[arg(long, value_name = "MODULE_ID")]
+        module_ids: Vec<String>,
         name: String,
         description: String,
     },
@@ -146,9 +165,9 @@ pub enum SubmoduleCommands {
 #[derive(clap::Subcommand, Debug)]
 pub enum FileCommands {
     Create {
-        /// Parent ID (module or submodule).
-        #[arg(long)]
-        parent_id: String,
+        /// Parent ID(s) (module or submodule). Repeat for multiple. Omit for freestanding.
+        #[arg(long, value_name = "PARENT_ID")]
+        parent_ids: Vec<String>,
         name: String,
         path: String,
     },
@@ -163,10 +182,12 @@ pub enum FileCommands {
 #[derive(clap::Subcommand, Debug)]
 pub enum TaskCommands {
     Create {
-        #[arg(long)]
-        module_id: String,
-        #[arg(long)]
-        project_id: String,
+        /// Module ID (single). Use with one project_id to link task.
+        #[arg(long, value_name = "MODULE_ID")]
+        module_ids: Vec<String>,
+        /// Project ID (single). Use with one module_id to link task.
+        #[arg(long, value_name = "PROJECT_ID")]
+        project_ids: Vec<String>,
         name: String,
         description: String,
     },
@@ -189,8 +210,9 @@ pub enum TaskCommands {
 #[derive(clap::Subcommand, Debug)]
 pub enum SubtaskCommands {
     Create {
-        #[arg(long)]
-        task_id: String,
+        /// Task ID(s) to link this subtask to. Repeat for multiple. Omit for freestanding.
+        #[arg(long, value_name = "TASK_ID")]
+        task_ids: Vec<String>,
         name: String,
         description: String,
     },
@@ -203,8 +225,9 @@ pub enum SubtaskCommands {
 #[derive(clap::Subcommand, Debug)]
 pub enum TodoCommands {
     Create {
-        #[arg(long)]
-        project_id: String,
+        /// Project ID(s) to link this todo to. Repeat for multiple. Omit for freestanding.
+        #[arg(long, value_name = "PROJECT_ID")]
+        project_ids: Vec<String>,
         content: String,
     },
     List {

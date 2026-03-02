@@ -49,6 +49,36 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
             dunno::ingest::add_knowledge(kind, content, link_to, &db).await?;
             println!("{}", serde_json::json!({ "status": "ok" }));
         }
+        dunno::args::Commands::Link {
+            from_id,
+            edge,
+            to_ids,
+        } => {
+            const ALLOWED_EDGES: &[&str] = &[
+                "contains",
+                "has_task",
+                "has_subtask",
+                "has_todo",
+                "has_context",
+                "belongs_to_project",
+                "belongs_to_module",
+                "belongs_to_task",
+            ];
+            if !ALLOWED_EDGES.contains(&edge.as_str()) {
+                return Err(anyhow::anyhow!(
+                    "Unknown edge {:?}. Allowed: {:?}",
+                    edge,
+                    ALLOWED_EDGES
+                ));
+            }
+            if to_ids.is_empty() {
+                return Err(anyhow::anyhow!("At least one --to ID is required"));
+            }
+            for to_id in &to_ids {
+                db.link(&from_id, &edge, to_id).await?;
+            }
+            println!("{}", serde_json::json!({ "status": "ok" }));
+        }
         dunno::args::Commands::Project { command } => match command {
             dunno::args::ProjectCommands::Create { name, description } => {
                 let project = dunno::models::Project {
@@ -66,11 +96,27 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
         },
         dunno::args::Commands::Module { command } => match command {
             dunno::args::ModuleCommands::Create {
-                project_id,
+                project_ids,
                 name,
                 description,
             } => {
-                let created = db.create_module(&name, &description, &project_id).await?;
+                let created = db
+                    .create_module(
+                        &name,
+                        &description,
+                        project_ids.first().map(String::as_str),
+                    )
+                    .await?;
+                let module_id = match &created.id {
+                    Some(id) => id.as_str(),
+                    None => {
+                        println!("{}", serde_json::json!(created));
+                        return Ok(());
+                    }
+                };
+                for pid in project_ids.iter().skip(1) {
+                    db.link(pid, "contains", module_id).await?;
+                }
                 println!("{}", serde_json::json!(created));
             }
             dunno::args::ModuleCommands::List => {
@@ -80,11 +126,27 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
         },
         dunno::args::Commands::Submodule { command } => match command {
             dunno::args::SubmoduleCommands::Create {
-                module_id,
+                module_ids,
                 name,
                 description,
             } => {
-                let created = db.create_submodule(&name, &description, &module_id).await?;
+                let created = db
+                    .create_submodule(
+                        &name,
+                        &description,
+                        module_ids.first().map(String::as_str),
+                    )
+                    .await?;
+                let sub_id = match &created.id {
+                    Some(id) => id.as_str(),
+                    None => {
+                        println!("{}", serde_json::json!(created));
+                        return Ok(());
+                    }
+                };
+                for mid in module_ids.iter().skip(1) {
+                    db.link(mid, "contains", sub_id).await?;
+                }
                 println!("{}", serde_json::json!(created));
             }
             dunno::args::SubmoduleCommands::List { module_id } => {
@@ -98,11 +160,23 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
         },
         dunno::args::Commands::File { command } => match command {
             dunno::args::FileCommands::Create {
-                parent_id,
+                parent_ids,
                 name,
                 path,
             } => {
-                let created = db.create_file(&name, &path, &parent_id).await?;
+                let created = db
+                    .create_file(&name, &path, parent_ids.first().map(String::as_str))
+                    .await?;
+                let file_id = match &created.id {
+                    Some(id) => id.as_str(),
+                    None => {
+                        println!("{}", serde_json::json!(created));
+                        return Ok(());
+                    }
+                };
+                for pid in parent_ids.iter().skip(1) {
+                    db.link(pid, "contains", file_id).await?;
+                }
                 println!("{}", serde_json::json!(created));
             }
             dunno::args::FileCommands::List {
@@ -121,12 +195,28 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
         },
         dunno::args::Commands::Task { command } => match command {
             dunno::args::TaskCommands::Create {
-                module_id,
-                project_id,
+                module_ids,
+                project_ids,
                 name,
                 description,
             } => {
-                let created = db.create_task(&name, &description, &module_id, &project_id).await?;
+                let (mid, pid) = match (module_ids.len(), project_ids.len()) {
+                    (0, 0) => (None, None),
+                    (1, 1) => (
+                        Some(module_ids[0].as_str()),
+                        Some(project_ids[0].as_str()),
+                    ),
+                    _ => {
+                        return Err(anyhow::anyhow!(
+                            "Task create: provide either no module/project IDs (freestanding) or exactly one of each (linked). Got {} module_ids and {} project_ids",
+                            module_ids.len(),
+                            project_ids.len()
+                        ));
+                    }
+                };
+                let created = db
+                    .create_task(&name, &description, mid, pid)
+                    .await?;
                 println!("{}", serde_json::json!(created));
             }
             dunno::args::TaskCommands::Update {
@@ -162,11 +252,28 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
         },
         dunno::args::Commands::Subtask { command } => match command {
             dunno::args::SubtaskCommands::Create {
-                task_id,
+                task_ids,
                 name,
                 description,
             } => {
-                let created = db.create_subtask(&name, &description, &task_id).await?;
+                let created = db
+                    .create_subtask(
+                        &name,
+                        &description,
+                        task_ids.first().map(String::as_str),
+                    )
+                    .await?;
+                let stid = match &created.id {
+                    Some(id) => id.as_str(),
+                    None => {
+                        println!("{}", serde_json::json!(created));
+                        return Ok(());
+                    }
+                };
+                for tid in task_ids.iter().skip(1) {
+                    db.link(tid, "has_subtask", stid).await?;
+                    db.link(stid, "belongs_to_task", tid).await?;
+                }
                 println!("{}", serde_json::json!(created));
             }
             dunno::args::SubtaskCommands::List { task_id } => {
@@ -176,10 +283,22 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
         },
         dunno::args::Commands::Todo { command } => match command {
             dunno::args::TodoCommands::Create {
-                project_id,
+                project_ids,
                 content,
             } => {
-                let created = db.create_todo(&content, &project_id).await?;
+                let created = db
+                    .create_todo(&content, project_ids.first().map(String::as_str))
+                    .await?;
+                let todo_id = match &created.id {
+                    Some(id) => id.as_str(),
+                    None => {
+                        println!("{}", serde_json::json!(created));
+                        return Ok(());
+                    }
+                };
+                for pid in project_ids.iter().skip(1) {
+                    db.link(pid, "has_todo", todo_id).await?;
+                }
                 println!("{}", serde_json::json!(created));
             }
             dunno::args::TodoCommands::List { project_id } => {

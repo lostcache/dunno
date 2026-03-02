@@ -8,7 +8,7 @@ pub struct KnowledgeResult {
 pub async fn add_knowledge(
     kind: String,
     content: String,
-    link_to: Option<String>,
+    link_to: Vec<String>,
     db: &crate::db::DB,
 ) -> anyhow::Result<KnowledgeResult> {
     let ctx = crate::models::Context {
@@ -38,19 +38,25 @@ pub async fn add_knowledge(
     };
 
     let created = db.create_context(&ctx).await?;
-    let id = created.id.clone();
-
-    let linked = if let (Some(target_id), Some(record_id)) = (link_to, &id) {
-        db.link_context(&target_id, record_id).await?;
-        true
-    } else {
-        false
+    let record_id = match &created.id {
+        Some(id) => id.clone(),
+        None => {
+            return Ok(KnowledgeResult {
+                kind,
+                content,
+                linked: false,
+            });
+        }
     };
+
+    for target_id in &link_to {
+        db.link_context(target_id, &record_id).await?;
+    }
 
     Ok(KnowledgeResult {
         kind,
         content,
-        linked,
+        linked: !link_to.is_empty(),
     })
 }
 
@@ -63,7 +69,7 @@ mod tests {
         let result = crate::ingest::add_knowledge(
             "mistake".to_string(),
             "Using unwrap".to_string(),
-            None,
+            vec![],
             &db,
         )
         .await
@@ -98,7 +104,7 @@ mod tests {
         let result = crate::ingest::add_knowledge(
             "mistake".to_string(),
             "Using unwrap".to_string(),
-            Some(project_id.clone()),
+            vec![project_id.clone()],
             &db,
         )
         .await

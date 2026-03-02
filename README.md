@@ -92,22 +92,22 @@ auth_type = "root" # "root" | "namespace" | "database"
 dunno project create "My App" "A web application"
 # Returns: {"id":"project:abc","name":"My App","description":"A web application"}
 
-# Create a module within the project
-dunno module create --project-id project:abc "Auth" "Authentication system"
+# Create a module within the project (single project; flag is repeatable for multiple)
+dunno module create --project-ids project:abc "Auth" "Authentication system"
 # Returns: {"id":"module:def", ...}
 
 # (Optional) Create a submodule within the module
-dunno submodule create --module-id module:def "OAuth" "OAuth2 providers"
+dunno submodule create --module-ids module:def "OAuth" "OAuth2 providers"
 
 # Register a file under the module (or submodule)
-dunno file create --parent-id module:def "oauth.rs" "src/auth/oauth.rs"
+dunno file create --parent-ids module:def "oauth.rs" "src/auth/oauth.rs"
 
 # Create a task within the module
-dunno task create --module-id module:def --project-id project:abc "Implement JWT" "Add token support"
+dunno task create --module-ids module:def --project-ids project:abc "Implement JWT" "Add token support"
 # Returns: {"id":"task:ghi", ...}
 
 # (Optional) Create a subtask within the task
-dunno subtask create --task-id task:ghi "Write tests" "Add unit tests"
+dunno subtask create --task-ids task:ghi "Write tests" "Add unit tests"
 ```
 
 ### 2. Track task progress
@@ -161,22 +161,41 @@ You can link context at project, module, submodule, task, or subtask. Context re
 ## CLI Reference
 
 ### Knowledge Management
-- `dunno add --type <mistake|style|security> --content <CONTENT> [--link-to <ID>]` — `<ID>` can be `project:...`, `module:...`, `submodule:...`, `task:...`, or `subtask:...`.
+- `dunno add --type <mistake|style|security> --content <CONTENT> [--link-to <ID> ...]` — `--link-to` is **repeatable**; each `<ID>` can be `project:...`, `module:...`, `submodule:...`, `task:...`, or `subtask:...`.
 - `dunno context --task-id <ID>` — context for a task (direct-only).
 - `dunno context --file-id <ID>` — context for a file (direct-only).
 - `dunno context --subtask-id <ID>` — context for a subtask (direct-only).
 
 ### Hierarchy Management
 - `dunno project create <NAME> <DESC>` / `list`
-- `dunno module create --project-id <ID> <NAME> <DESC>` / `list`
-- `dunno submodule create --module-id <ID> <NAME> <DESC>` / `list [--module-id <ID>]`
-- `dunno file create --parent-id <ID> <NAME> <PATH>` / `list [--module-id <ID>] [--submodule-id <ID>]`
-- `dunno task create --module-id <ID> --project-id <ID> <NAME> <DESC>` / `list`
+- `dunno module create --project-ids <ID> [--project-ids <ID> ...] <NAME> <DESC>` / `list`
+- `dunno submodule create --module-ids <ID> [--module-ids <ID> ...] <NAME> <DESC>` / `list [--module-id <ID>]`
+- `dunno file create --parent-ids <ID> [--parent-ids <ID> ...] <NAME> <PATH>` / `list [--module-id <ID>] [--submodule-id <ID>]`
+- `dunno task create [--module-ids <ID> --project-ids <ID>] <NAME> <DESC>` / `list`
 - `dunno task update <TASK_ID> [--name <NAME>] [--description <DESC>] [--status <not_started|started|finished>]`
-- `dunno subtask create --task-id <ID> <NAME> <DESC>` / `list --task-id <ID>`
+- `dunno subtask create --task-ids <ID> [--task-ids <ID> ...] <NAME> <DESC>` / `list --task-id <ID>`
 
 ### Work Queue
-- `dunno todo create --project-id <ID> <CONTENT>` / `list --project-id <ID>`
+- `dunno todo create --project-ids <ID> [--project-ids <ID> ...] <CONTENT>` / `list --project-id <ID>`
+
+### Generic Linking
+- `dunno link --from <ID> --edge <EDGE> --to <ID> [--to <ID> ...]`
+  - `--from` / `--to` are record IDs like `project:abc`, `module:def`, `task:ghi`.
+  - `--edge` must be one of: `contains`, `has_task`, `has_subtask`, `has_todo`, `has_context`, `belongs_to_project`, `belongs_to_module`, `belongs_to_task`.
+
+### Recommended Patterns (AI Agent)
+
+- **Primitive operations**:
+  - **Create**: use the typed `create` commands to create a freestanding node (no link flags) or to attach it to one or more parents (repeat the appropriate `--*-ids` flags).
+  - **Link**: use `dunno link` (or `--link-to` for `dunno add`) to add relationships between existing nodes.
+- **Task invariants**:
+  - For `dunno task create`, either:
+    - Omit `--module-ids` / `--project-ids` entirely to create a **freestanding** task, or
+    - Provide **exactly one** `--module-ids` and **exactly one** `--project-ids` to create a fully linked task.
+  - Any other combination is rejected to avoid ambiguous hierarchies.
+- **Preferred flow**:
+  - Use typed `create` commands with link IDs for standard hierarchy (`project → module → submodule → file`, `project → module → task → subtask`).
+  - Use `dunno link` as a low-level escape hatch when you need to wire non-standard or additional relationships between existing nodes.
 
 ### Config
 - `dunno config show`

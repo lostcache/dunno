@@ -17,13 +17,13 @@ async fn setup_hierarchy_with_context(db: &dunno::db::DB) -> (String, String, St
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("Auth", "Auth module", &project_id)
+        .create_module("Auth", "Auth module", Some(&project_id))
         .await
         .expect("create module");
     let module_id = module.id.expect("module id");
 
     let task = db
-        .create_task("Login", "Implement login", &module_id, &project_id)
+        .create_task("Login", "Implement login", Some(&module_id), Some(&project_id))
         .await
         .expect("create task");
     let task_id = task.id.expect("task id");
@@ -115,13 +115,13 @@ async fn test_belongs_to_reverse_edges() {
     let project_id = project.id.expect("id");
 
     let module = db
-        .create_module("M", "d", &project_id)
+        .create_module("M", "d", Some(&project_id))
         .await
         .expect("create module");
     let module_id = module.id.expect("id");
 
     let task = db
-        .create_task("T", "d", &module_id, &project_id)
+        .create_task("T", "d", Some(&module_id), Some(&project_id))
         .await
         .expect("create task");
     let task_id = task.id.expect("id");
@@ -199,7 +199,7 @@ async fn test_file_hierarchy_context() {
     let (_project_id, module_id, _task_id) = setup_hierarchy_with_context(&db).await;
 
     let submodule = db
-        .create_submodule("Controllers", "Controllers submodule", &module_id)
+        .create_submodule("Controllers", "Controllers submodule", Some(&module_id))
         .await
         .expect("create submodule");
     let submodule_id = submodule.id.expect("submodule id");
@@ -208,7 +208,7 @@ async fn test_file_hierarchy_context() {
         .create_file(
             "auth_controller.rs",
             "src/controllers/auth.rs",
-            &submodule_id,
+            Some(&submodule_id),
         )
         .await
         .expect("create file");
@@ -254,7 +254,7 @@ async fn test_file_without_submodule_context() {
 
     // File directly under module (no submodule)
     let file = db
-        .create_file("lib.rs", "src/lib.rs", &module_id)
+        .create_file("lib.rs", "src/lib.rs", Some(&module_id))
         .await
         .expect("create file");
     let file_id = file.id.expect("file id");
@@ -277,7 +277,7 @@ async fn test_subtask_four_level_context() {
     let (_project_id, _module_id, task_id) = setup_hierarchy_with_context(&db).await;
 
     let subtask = db
-        .create_subtask("Write Tests", "Unit tests for login", &task_id)
+        .create_subtask("Write Tests", "Unit tests for login", Some(&task_id))
         .await
         .expect("create subtask");
     let subtask_id = subtask.id.expect("subtask id");
@@ -334,13 +334,13 @@ async fn test_security_detail_in_context() {
     let project_id = project.id.expect("id");
 
     let module = db
-        .create_module("API", "API module", &project_id)
+        .create_module("API", "API module", Some(&project_id))
         .await
         .expect("create module");
     let module_id = module.id.expect("id");
 
     let task = db
-        .create_task("Fix SQL", "Fix injection", &module_id, &project_id)
+        .create_task("Fix SQL", "Fix injection", Some(&module_id), Some(&project_id))
         .await
         .expect("create task");
     let task_id = task.id.expect("id");
@@ -372,4 +372,42 @@ async fn test_security_detail_in_context() {
         "Missing security detail. Context: {:?}",
         context
     );
+}
+
+/// Exercises the link primitive: create two freestanding nodes, relate them, verify via list.
+/// Mirrors what `dunno link --from project:x --edge contains --to module:y` does.
+#[tokio::test]
+async fn test_link_after_freestanding_create() {
+    let db = setup_db().await;
+    let project = db
+        .create_project(&dunno::models::Project {
+            id: None,
+            name: "LinkTest".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("project id");
+    let module = db
+        .create_module("Freestanding", "d", None)
+        .await
+        .expect("create freestanding module");
+    let module_id = module.id.expect("module id");
+
+    let by_project_before = db
+        .list_modules_by_project(&project_id)
+        .await
+        .expect("list_modules_by_project");
+    assert_eq!(by_project_before.len(), 0);
+
+    db.relate(&project_id, "contains", &module_id)
+        .await
+        .expect("link project -> contains -> module");
+
+    let by_project_after = db
+        .list_modules_by_project(&project_id)
+        .await
+        .expect("list_modules_by_project");
+    assert_eq!(by_project_after.len(), 1);
+    assert_eq!(by_project_after[0].id.as_deref(), Some(module_id.as_str()));
 }

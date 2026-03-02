@@ -81,13 +81,13 @@
 
 ## Tasks (mirroring .cursor plan todos)
 
-- [ ] Review all existing DB entity create and link functions for projects, modules, submodules, files, tasks, subtasks, todos, and contexts to capture current relationship semantics.
-- [ ] Introduce internal `*_record` helper functions per entity type to create bare records without relationships and refactor existing `create_*` methods to use them.
-- [ ] Update DB create methods to accept optional parent IDs and conditionally establish relationships while preserving invariants.
-- [ ] Adjust CLI `create` subcommands to make linking IDs optional/repeatable and pass them through to the updated DB APIs with any necessary validation.
-- [ ] Add a new generic `dunno link` CLI command that connects existing nodes via named edges, backed by DB `relate`.
-- [ ] Update and extend SurrealDB integration tests and CLI tests to cover both freestanding and linked creation flows plus the new link command.
-- [ ] Document the new behaviors and recommended usage patterns for the AI agent in `README.md`.
+- [x] Review all existing DB entity create and link functions for projects, modules, submodules, files, tasks, subtasks, todos, and contexts to capture current relationship semantics.
+- [x] Introduce internal `*_record` helper functions per entity type to create bare records without relationships and refactor existing `create_*` methods to use them.
+- [x] Update DB create methods to accept optional parent IDs and conditionally establish relationships while preserving invariants.
+- [x] Adjust CLI `create` subcommands to make linking IDs optional/repeatable and pass them through to the updated DB APIs with any necessary validation.
+- [x] Add a new generic `dunno link` CLI command that connects existing nodes via named edges, backed by DB `relate`.
+- [x] Update and extend SurrealDB integration tests and CLI tests to cover both freestanding and linked creation flows plus the new link command.
+- [x] Document the new behaviors and recommended usage patterns for the AI agent in `README.md`.
 
 ## Notes / trade-offs
 

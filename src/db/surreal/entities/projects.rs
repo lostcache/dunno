@@ -2,8 +2,8 @@ use crate::db::surreal::convert::{json_to_surreal, surreal_to_json};
 use crate::db::surreal::DB;
 
 impl DB {
-    /// Creates a new project record.
-    pub async fn create_project(
+    /// Internal helper: creates a new project record without any relationships.
+    pub(crate) async fn create_project_record(
         &self,
         project: &crate::models::Project,
     ) -> anyhow::Result<crate::models::Project> {
@@ -11,12 +11,17 @@ impl DB {
         let value = json_to_surreal(json);
         let created: Option<surrealdb::types::Value> =
             self.client.create("project").content(value).await?;
-        if let Some(val) = created {
-            let json = surreal_to_json(val);
-            Ok(serde_json::from_value(json)?)
-        } else {
-            Err(anyhow::anyhow!("Failed to create project"))
-        }
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create project"))?;
+        let json = surreal_to_json(val);
+        Ok(serde_json::from_value(json)?)
+    }
+
+    /// Creates a new project record (no relationships).
+    pub async fn create_project(
+        &self,
+        project: &crate::models::Project,
+    ) -> anyhow::Result<crate::models::Project> {
+        self.create_project_record(project).await
     }
 
     /// Fetches a project by record id.

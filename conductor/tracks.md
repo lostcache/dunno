@@ -30,10 +30,20 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
+## [ ] Track: Add User Story entity and relations to the project knowledge graph.
+*Link: [./conductor/tracks/user_story_schema_20260225/](./conductor/tracks/user_story_schema_20260225/)*
+
+---
+
+## [ ] Track: Add Epic entity and relations between Project, User Story, and Task.
+*Link: [./conductor/tracks/epic_schema_20260225/](./conductor/tracks/epic_schema_20260225/)*
+
+---
+
 ## [ ] Track: Unified context schema — single `has_context` → `context` node with type field (replace dedicated mistake, style_rule, security_detail nodes).
 *Link: [./conductor/tracks/unified_context_schema_20260225/](./conductor/tracks/unified_context_schema_20260225/)*
 
 ---
 
-## [ ] Track: DB & CLI flexible create/link APIs for all graph nodes.
+## [~] Track: DB & CLI flexible create/link APIs for all graph nodes.
 *Link: [./conductor/tracks/db_cli_link_api_20260226/](./conductor/tracks/db_cli_link_api_20260226/)*

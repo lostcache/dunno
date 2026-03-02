@@ -48,17 +48,17 @@ impl DB {
                 to_context_id
             ));
         }
-        self.relate(from_id, "has_context", to_context_id).await?;
+        self.link(from_id, "has_context", to_context_id).await?;
 
         let hierarchy = self.resolve_structural_hierarchy(from_id).await?;
         if let Some(id) = hierarchy.project_id {
-            self.relate(to_context_id, "belongs_to_project", &id).await?;
+            self.link(to_context_id, "belongs_to_project", &id).await?;
         }
         if let Some(id) = hierarchy.module_id {
-            self.relate(to_context_id, "belongs_to_module", &id).await?;
+            self.link(to_context_id, "belongs_to_module", &id).await?;
         }
         if let Some(id) = hierarchy.task_id {
-            self.relate(to_context_id, "belongs_to_task", &id).await?;
+            self.link(to_context_id, "belongs_to_task", &id).await?;
         }
         Ok(())
     }

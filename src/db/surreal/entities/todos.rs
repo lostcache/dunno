@@ -2,28 +2,34 @@ use crate::db::surreal::convert::{json_to_surreal, surreal_to_json};
 use crate::db::surreal::DB;
 
 impl DB {
-    /// Creates a todo item and RELATEs it to a project via `has_todo`.
-    pub async fn create_todo(
+    /// Internal helper: creates a todo item record without any relationships.
+    pub(crate) async fn create_todo_record(
         &self,
-        content: &str,
-        project_id: &str,
+        todo: &crate::models::TodoItem,
     ) -> anyhow::Result<crate::models::TodoItem> {
-        let todo = crate::models::TodoItem {
-            id: None,
-            content: content.to_string(),
-        };
-        let json = serde_json::to_value(&todo)?;
+        let json = serde_json::to_value(todo)?;
         let value = json_to_surreal(json);
         let created: Option<surrealdb::types::Value> =
             self.client.create("todo_item").content(value).await?;
         let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create todo item"))?;
         let result: crate::models::TodoItem = serde_json::from_value(surreal_to_json(val))?;
-        let todo_id = result
-            .id
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("TodoItem missing id after create"))?;
+        Ok(result)
+    }
 
-        self.relate(project_id, "has_todo", todo_id).await?;
+    /// Creates a todo item and optionally RELATEs it to a project via `has_todo`.
+    pub async fn create_todo(
+        &self,
+        content: &str,
+        project_id: Option<&str>,
+    ) -> anyhow::Result<crate::models::TodoItem> {
+        let todo = crate::models::TodoItem {
+            id: None,
+            content: content.to_string(),
+        };
+        let result = self.create_todo_record(&todo).await?;
+        if let (Some(pid), Some(tid)) = (project_id, result.id.as_ref()) {
+            self.link(pid, "has_todo", tid).await?;
+        }
         Ok(result)
     }
 

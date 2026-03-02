@@ -2,13 +2,27 @@ use crate::db::surreal::convert::{json_to_surreal, surreal_to_json};
 use crate::db::surreal::{StructuralHierarchy, DB};
 
 impl DB {
-    /// Creates a task and RELATEs it to its parent module with bidirectional edges.
+    /// Internal helper: creates a task record without any relationships.
+    pub(crate) async fn create_task_record(
+        &self,
+        task: &crate::models::Task,
+    ) -> anyhow::Result<crate::models::Task> {
+        let json = serde_json::to_value(task)?;
+        let value = json_to_surreal(json);
+        let created: Option<surrealdb::types::Value> =
+            self.client.create("task").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create task"))?;
+        let result: crate::models::Task = serde_json::from_value(surreal_to_json(val))?;
+        Ok(result)
+    }
+
+    /// Creates a task and optionally RELATEs it to its parent module and project with bidirectional edges.
     pub async fn create_task(
         &self,
         name: &str,
         description: &str,
-        module_id: &str,
-        project_id: &str,
+        module_id: Option<&str>,
+        project_id: Option<&str>,
     ) -> anyhow::Result<crate::models::Task> {
         let task = crate::models::Task {
             id: None,
@@ -16,20 +30,24 @@ impl DB {
             description: description.to_string(),
             status: crate::models::TaskStatus::NotStarted,
         };
-        let json = serde_json::to_value(&task)?;
-        let value = json_to_surreal(json);
-        let created: Option<surrealdb::types::Value> =
-            self.client.create("task").content(value).await?;
-        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create task"))?;
-        let result: crate::models::Task = serde_json::from_value(surreal_to_json(val))?;
-        let task_id = result
-            .id
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Task missing id after create"))?;
+        let result = self.create_task_record(&task).await?;
 
-        self.relate(project_id, "has_task", task_id).await?;
-        self.relate(task_id, "belongs_to_project", project_id).await?;
-        self.relate(task_id, "belongs_to_module", module_id).await?;
+        match (module_id, project_id, result.id.as_ref()) {
+            (Some(mid), Some(pid), Some(tid)) => {
+                self.link(pid, "has_task", tid).await?;
+                self.link(tid, "belongs_to_project", pid).await?;
+                self.link(tid, "belongs_to_module", mid).await?;
+            }
+            (None, None, _) => {
+                // Freestanding task: no relationships.
+            }
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "create_task: when linking, both module_id and project_id must be provided"
+                ));
+            }
+        }
+
         Ok(result)
     }
 
@@ -415,12 +433,26 @@ impl DB {
         .await
     }
 
-    /// Creates a subtask and RELATEs it to its parent task.
+    /// Internal helper: creates a subtask record without any relationships.
+    pub(crate) async fn create_subtask_record(
+        &self,
+        subtask: &crate::models::Subtask,
+    ) -> anyhow::Result<crate::models::Subtask> {
+        let json = serde_json::to_value(subtask)?;
+        let value = json_to_surreal(json);
+        let created: Option<surrealdb::types::Value> =
+            self.client.create("subtask").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create subtask"))?;
+        let result: crate::models::Subtask = serde_json::from_value(surreal_to_json(val))?;
+        Ok(result)
+    }
+
+    /// Creates a subtask and optionally RELATEs it to its parent task.
     pub async fn create_subtask(
         &self,
         name: &str,
         description: &str,
-        task_id: &str,
+        task_id: Option<&str>,
     ) -> anyhow::Result<crate::models::Subtask> {
         let subtask = crate::models::Subtask {
             id: None,
@@ -428,19 +460,13 @@ impl DB {
             description: description.to_string(),
             status: crate::models::TaskStatus::NotStarted,
         };
-        let json = serde_json::to_value(&subtask)?;
-        let value = json_to_surreal(json);
-        let created: Option<surrealdb::types::Value> =
-            self.client.create("subtask").content(value).await?;
-        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create subtask"))?;
-        let result: crate::models::Subtask = serde_json::from_value(surreal_to_json(val))?;
-        let subtask_id = result
-            .id
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Subtask missing id after create"))?;
+        let result = self.create_subtask_record(&subtask).await?;
 
-        self.relate(task_id, "has_subtask", subtask_id).await?;
-        self.relate(subtask_id, "belongs_to_task", task_id).await?;
+        if let (Some(tid), Some(stid)) = (task_id, result.id.as_ref()) {
+            self.link(tid, "has_subtask", stid).await?;
+            self.link(stid, "belongs_to_task", tid).await?;
+        }
+
         Ok(result)
     }
 

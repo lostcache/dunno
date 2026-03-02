@@ -2,30 +2,36 @@ use crate::db::surreal::convert::{json_to_surreal, surreal_to_json};
 use crate::db::surreal::DB;
 
 impl DB {
-    /// Creates a file and RELATEs it to a parent (module or submodule).
+    /// Internal helper: creates a file record without any relationships.
+    pub(crate) async fn create_file_record(
+        &self,
+        file: &crate::models::File,
+    ) -> anyhow::Result<crate::models::File> {
+        let json = serde_json::to_value(file)?;
+        let value = json_to_surreal(json);
+        let created: Option<surrealdb::types::Value> =
+            self.client.create("file").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create file"))?;
+        let result: crate::models::File = serde_json::from_value(surreal_to_json(val))?;
+        Ok(result)
+    }
+
+    /// Creates a file and optionally RELATEs it to a parent (module or submodule).
     pub async fn create_file(
         &self,
         name: &str,
         path: &str,
-        parent_id: &str,
+        parent_id: Option<&str>,
     ) -> anyhow::Result<crate::models::File> {
         let file = crate::models::File {
             id: None,
             name: name.to_string(),
             path: path.to_string(),
         };
-        let json = serde_json::to_value(&file)?;
-        let value = json_to_surreal(json);
-        let created: Option<surrealdb::types::Value> =
-            self.client.create("file").content(value).await?;
-        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create file"))?;
-        let result: crate::models::File = serde_json::from_value(surreal_to_json(val))?;
-        let file_id = result
-            .id
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("File missing id after create"))?;
-
-        self.relate(parent_id, "contains", file_id).await?;
+        let result = self.create_file_record(&file).await?;
+        if let (Some(pid), Some(fid)) = (parent_id, result.id.as_ref()) {
+            self.link(pid, "contains", fid).await?;
+        }
         Ok(result)
     }
 

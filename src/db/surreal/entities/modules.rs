@@ -2,12 +2,26 @@ use crate::db::surreal::convert::{json_to_surreal, surreal_to_json};
 use crate::db::surreal::DB;
 
 impl DB {
-    /// Creates a module and RELATEs it to its parent project.
+    /// Internal helper: creates a module record without any relationships.
+    pub(crate) async fn create_module_record(
+        &self,
+        module: &crate::models::Module,
+    ) -> anyhow::Result<crate::models::Module> {
+        let json = serde_json::to_value(module)?;
+        let value = json_to_surreal(json);
+        let created: Option<surrealdb::types::Value> =
+            self.client.create("module").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create module"))?;
+        let result: crate::models::Module = serde_json::from_value(surreal_to_json(val))?;
+        Ok(result)
+    }
+
+    /// Creates a module and optionally RELATEs it to its parent project.
     pub async fn create_module(
         &self,
         name: &str,
         description: &str,
-        project_id: &str,
+        project_id: Option<&str>,
     ) -> anyhow::Result<crate::models::Module> {
         let module = crate::models::Module {
             id: None,
@@ -15,18 +29,10 @@ impl DB {
             description: description.to_string(),
             files: None,
         };
-        let json = serde_json::to_value(&module)?;
-        let value = json_to_surreal(json);
-        let created: Option<surrealdb::types::Value> =
-            self.client.create("module").content(value).await?;
-        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create module"))?;
-        let result: crate::models::Module = serde_json::from_value(surreal_to_json(val))?;
-        let module_id = result
-            .id
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Module missing id after create"))?;
-
-        self.relate(project_id, "contains", module_id).await?;
+        let result = self.create_module_record(&module).await?;
+        if let (Some(pid), Some(mid)) = (project_id, result.id.as_ref()) {
+            self.link(pid, "contains", mid).await?;
+        }
         Ok(result)
     }
 
@@ -57,12 +63,26 @@ impl DB {
         self.list_records("module").await
     }
 
-    /// Creates a submodule and RELATEs it to its parent module.
+    /// Internal helper: creates a submodule record without any relationships.
+    pub(crate) async fn create_submodule_record(
+        &self,
+        submodule: &crate::models::Submodule,
+    ) -> anyhow::Result<crate::models::Submodule> {
+        let json = serde_json::to_value(submodule)?;
+        let value = json_to_surreal(json);
+        let created: Option<surrealdb::types::Value> =
+            self.client.create("submodule").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create submodule"))?;
+        let result: crate::models::Submodule = serde_json::from_value(surreal_to_json(val))?;
+        Ok(result)
+    }
+
+    /// Creates a submodule and optionally RELATEs it to its parent module.
     pub async fn create_submodule(
         &self,
         name: &str,
         description: &str,
-        module_id: &str,
+        module_id: Option<&str>,
     ) -> anyhow::Result<crate::models::Submodule> {
         let submodule = crate::models::Submodule {
             id: None,
@@ -70,18 +90,10 @@ impl DB {
             description: description.to_string(),
             files: None,
         };
-        let json = serde_json::to_value(&submodule)?;
-        let value = json_to_surreal(json);
-        let created: Option<surrealdb::types::Value> =
-            self.client.create("submodule").content(value).await?;
-        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create submodule"))?;
-        let result: crate::models::Submodule = serde_json::from_value(surreal_to_json(val))?;
-        let sub_id = result
-            .id
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Submodule missing id after create"))?;
-
-        self.relate(module_id, "contains", sub_id).await?;
+        let result = self.create_submodule_record(&submodule).await?;
+        if let (Some(mid), Some(sub_id)) = (module_id, result.id.as_ref()) {
+            self.link(mid, "contains", sub_id).await?;
+        }
         Ok(result)
     }
 

@@ -149,8 +149,8 @@ impl DB {
 
     // --- Generic Helpers ---
 
-    /// Creates a RELATE edge between two record ids.
-    pub(crate) async fn relate(
+    /// Creates a RELATE edge between two record ids. Public for the generic `dunno link` CLI.
+    pub async fn link(
         &self,
         from_id: &str,
         edge_table: &str,
