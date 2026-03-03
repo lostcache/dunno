@@ -110,6 +110,26 @@ dunno task create --module-ids module:def --project-ids project:abc "Implement J
 dunno subtask create --task-ids task:ghi "Write tests" "Add unit tests"
 ```
 
+### User Stories (Optional)
+
+User stories provide an additional layer between projects and tasks for agile workflow management:
+
+```bash
+# Create a user story linked to a project
+dunno user-story create --project-id project:abc "As a user, I want login" "Authentication feature"
+# Returns: {"id":"user_story:jkl", ...}
+
+# List user stories for a project
+dunno user-story list --project-id project:abc
+
+# Create a task linked to a user story
+dunno task create --module-ids module:def --project-ids project:abc --user-story-ids user_story:jkl "Implement login" "Add JWT auth"
+
+# Link existing task to user story (using generic link command)
+dunno link --from-id user_story:jkl --edge has_task --to-ids task:ghi
+dunno link --from-id task:ghi --edge belongs_to_story --to-ids user_story:jkl
+```
+
 ### 2. Track task progress
 
 ```bash
@@ -171,9 +191,13 @@ You can link context at project, module, submodule, task, or subtask. Context re
 - `dunno module create --project-ids <ID> [--project-ids <ID> ...] <NAME> <DESC>` / `list`
 - `dunno submodule create --module-ids <ID> [--module-ids <ID> ...] <NAME> <DESC>` / `list [--module-id <ID>]`
 - `dunno file create --parent-ids <ID> [--parent-ids <ID> ...] <NAME> <PATH>` / `list [--module-id <ID>] [--submodule-id <ID>]`
-- `dunno task create [--module-ids <ID> --project-ids <ID>] <NAME> <DESC>` / `list`
+- `dunno task create [--module-ids <ID> --project-ids <ID>] [--user-story-ids <ID> ...] <NAME> <DESC>` / `list`
 - `dunno task update <TASK_ID> [--name <NAME>] [--description <DESC>] [--status <not_started|started|finished>]`
 - `dunno subtask create --task-ids <ID> [--task-ids <ID> ...] <NAME> <DESC>` / `list --task-id <ID>`
+
+### User Stories
+- `dunno user-story create --project-id <ID> <TITLE> <DESC>` — create linked to project.
+- `dunno user-story list [--project-id <ID>]` — list all or filter by project.
 
 ### Work Queue
 - `dunno todo create --project-ids <ID> [--project-ids <ID> ...] <CONTENT>` / `list --project-id <ID>`
@@ -181,7 +205,7 @@ You can link context at project, module, submodule, task, or subtask. Context re
 ### Generic Linking
 - `dunno link --from <ID> --edge <EDGE> --to <ID> [--to <ID> ...]`
   - `--from` / `--to` are record IDs like `project:abc`, `module:def`, `task:ghi`.
-  - `--edge` must be one of: `contains`, `has_task`, `has_subtask`, `has_todo`, `has_context`, `belongs_to_project`, `belongs_to_module`, `belongs_to_task`.
+  - `--edge` must be one of: `contains`, `has_task`, `has_subtask`, `has_todo`, `has_context`, `has_user_story`, `has_module`, `has_submodule`, `belongs_to_project`, `belongs_to_module`, `belongs_to_task`, `belongs_to_story`, `belongs_to_user_story`.
 
 ### Recommended Patterns (AI Agent)
 
