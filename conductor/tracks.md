@@ -19,12 +19,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: ~~Add Subtask and SecurityDetail entities to complete the ER model.~~ Superseded.
-*Link: [./conductor/tracks/er_completion_20260219/](./conductor/tracks/er_completion_20260219/)*
-*Superseded by: graph_native_schema_20260219 — the scope expanded from "add 2 entities" to a full graph-native schema rewrite.*
-
----
-
 ## [x] Track: Graph-Native Schema Redesign — rewrite data layer to use SurrealDB RELATE edges, add Subtask & SecurityDetail. (COMPLETE)
 *Link: [./conductor/tracks/graph_native_schema_20260219/](./conductor/tracks/graph_native_schema_20260219/)*
 
@@ -40,12 +34,12 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Unified context schema — single `has_context` → `context` node with type field (replace dedicated mistake, style_rule, security_detail nodes).
+## [X] Track: Unified context schema — single `has_context` → `context` node with type field (replace dedicated mistake, style_rule, security_detail nodes).
 *Link: [./conductor/tracks/unified_context_schema_20260225/](./conductor/tracks/unified_context_schema_20260225/)*
 
 ---
 
-## [~] Track: DB & CLI flexible create/link APIs for all graph nodes.
+## [X] Track: DB & CLI flexible create/link APIs for all graph nodes.
 *Link: [./conductor/tracks/db_cli_link_api_20260226/](./conductor/tracks/db_cli_link_api_20260226/)*
 
 ---
