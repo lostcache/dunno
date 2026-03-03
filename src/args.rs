@@ -20,17 +20,17 @@ pub struct Args {
 pub enum Commands {
     #[command(
         about = "Add a new knowledge entry.",
-        long_about = "Persist one knowledge entry (mistake/style/security) and optionally link it to a structural node.",
-        after_help = "Examples:\n  dunno add --type mistake --content \"Avoid unwrap\"\n  dunno add --type security --content \"SQL injection risk\" --link-to module:abc"
+        long_about = "Persist one knowledge entry with arbitrary fields and optionally link it to structural nodes.",
+        after_help = "Examples:\n  dunno add --field type --value mistake --field content --value \"Avoid unwrap\" --field severity --value high\n  dunno add --field type --value security --field content --value \"SQL injection risk\" --link-to module:abc\n  dunno add --field custom_type --value performance --field content --value \"Use parallel iterators\" --field category --value optimization"
     )]
     Add {
-        /// Knowledge type (`mistake`, `style`, or `security`).
-        #[arg(short = 't', long = "type", value_name = "TYPE")]
-        kind: String,
+        /// Field name. Must be paired with --value. Repeat for multiple fields.
+        #[arg(long = "field", value_name = "FIELD_NAME", required = true)]
+        field_names: Vec<String>,
 
-        /// Main content to store.
-        #[arg(short = 'C', long, value_name = "CONTENT")]
-        content: String,
+        /// Field value. Must be paired with --field. Repeat for multiple fields.
+        #[arg(long = "value", value_name = "FIELD_VALUE", required = true)]
+        field_values: Vec<String>,
 
         /// Structural node ID(s) to link this knowledge to. Repeat for multiple.
         #[arg(long, value_name = "LINK_TO")]
@@ -325,5 +325,129 @@ mod tests {
 
         let subtask_ok = Args::try_parse_from(["dunno", "context", "--subtask-id", "subtask:3"]);
         assert!(subtask_ok.is_ok());
+    }
+
+    #[test]
+    fn add_command_accepts_field_value_pairs() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "add",
+            "--field",
+            "type",
+            "--value",
+            "mistake",
+            "--field",
+            "content",
+            "--value",
+            "Avoid unwrap",
+            "--field",
+            "severity",
+            "--value",
+            "high",
+        ]);
+        assert!(args.is_ok(), "should parse --field and --value flags");
+        if let Commands::Add {
+            field_names,
+            field_values,
+            ..
+        } = &args.unwrap().command
+        {
+            assert_eq!(field_names.len(), 3);
+            assert_eq!(field_values.len(), 3);
+            assert_eq!(field_names[0], "type");
+            assert_eq!(field_values[0], "mistake");
+            assert_eq!(field_names[1], "content");
+            assert_eq!(field_values[1], "Avoid unwrap");
+            assert_eq!(field_names[2], "severity");
+            assert_eq!(field_values[2], "high");
+        } else {
+            panic!("expected Add command");
+        }
+    }
+
+    #[test]
+    fn add_command_requires_field_and_value() {
+        // Missing --value
+        let result = Args::try_parse_from(["dunno", "add", "--field", "type"]);
+        assert!(
+            result.is_err(),
+            "expected clap to require --value when --field is present"
+        );
+
+        // Missing --field
+        let result2 = Args::try_parse_from(["dunno", "add", "--value", "mistake"]);
+        assert!(
+            result2.is_err(),
+            "expected clap to require --field when --value is present"
+        );
+
+        // Both missing
+        let result3 = Args::try_parse_from(["dunno", "add"]);
+        assert!(
+            result3.is_err(),
+            "expected clap to require --field and --value"
+        );
+    }
+
+    #[test]
+    fn add_command_accepts_field_value_with_link_to() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "add",
+            "--field",
+            "type",
+            "--value",
+            "performance",
+            "--field",
+            "content",
+            "--value",
+            "Use iterators",
+            "--link-to",
+            "project:abc",
+            "--link-to",
+            "task:def",
+        ]);
+        assert!(args.is_ok(), "should parse --field/--value with --link-to");
+        if let Commands::Add {
+            field_names,
+            field_values,
+            link_to,
+            ..
+        } = args.unwrap().command
+        {
+            assert_eq!(field_names.len(), 2);
+            assert_eq!(field_values.len(), 2);
+            assert_eq!(link_to.len(), 2);
+            assert_eq!(link_to[0], "project:abc");
+            assert_eq!(link_to[1], "task:def");
+        } else {
+            panic!("expected Add command");
+        }
+    }
+
+    #[test]
+    fn add_command_single_field_value() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "add",
+            "--field",
+            "content",
+            "--value",
+            "Simple note",
+        ]);
+        assert!(args.is_ok(), "should parse single --field/--value pair");
+        if let Commands::Add {
+            field_names,
+            field_values,
+            ..
+        } = &args.unwrap().command
+        {
+            assert_eq!(field_names.len(), 1);
+            assert_eq!(field_values.len(), 1);
+            assert_eq!(field_names[0], "content");
+            assert_eq!(field_values[0], "Simple note");
+        } else {
+            panic!("expected Add command");
+        }
     }
 }

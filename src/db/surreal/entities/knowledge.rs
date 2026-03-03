@@ -26,6 +26,20 @@ impl DB {
         Ok(serde_json::from_value(surreal_to_json(val))?)
     }
 
+    /// Creates a new context record from arbitrary key-value fields (schemaless).
+    /// Returns the created record as a JSON value.
+    pub async fn create_context_schemaless(
+        &self,
+        fields: serde_json::Map<String, serde_json::Value>,
+    ) -> anyhow::Result<serde_json::Value> {
+        let json = serde_json::Value::Object(fields);
+        let value = json_to_surreal(json);
+        let created: Option<surrealdb::types::Value> =
+            self.client.create("context").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create context"))?;
+        Ok(surreal_to_json(val))
+    }
+
     /// Fetches a context record by id.
     pub async fn get_context(&self, id: &str) -> anyhow::Result<Option<crate::models::Context>> {
         self.get_record("context", id).await
@@ -106,5 +120,79 @@ mod tests {
             err.to_string()
                 .contains("to_context_id must be a context record id")
         );
+    }
+
+    // Schemaless context creation tests
+    #[tokio::test]
+    async fn create_context_schemaless_stores_arbitrary_fields() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        
+        let mut fields = serde_json::Map::new();
+        fields.insert("custom_type".to_string(), serde_json::Value::String("my_type".to_string()));
+        fields.insert("description".to_string(), serde_json::Value::String("Custom description".to_string()));
+        fields.insert("priority".to_string(), serde_json::Value::Number(5.into()));
+        fields.insert("tags".to_string(), serde_json::Value::Array(vec![
+            serde_json::Value::String("tag1".to_string()),
+            serde_json::Value::String("tag2".to_string()),
+        ]));
+        
+        let created = db.create_context_schemaless(fields).await.expect("should create schemaless context");
+        
+        // Verify the record was created with an ID
+        assert!(created.get("id").is_some());
+        
+        // Verify all custom fields were stored
+        assert_eq!(created.get("custom_type").and_then(|v| v.as_str()), Some("my_type"));
+        assert_eq!(created.get("description").and_then(|v| v.as_str()), Some("Custom description"));
+        assert_eq!(created.get("priority").and_then(|v| v.as_i64()), Some(5));
+        
+        let tags = created.get("tags").and_then(|v| v.as_array());
+        assert!(tags.is_some());
+        assert_eq!(tags.unwrap().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn create_context_schemaless_empty_fields() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        
+        let fields = serde_json::Map::new();
+        
+        // Should still create a record even with empty fields
+        let created = db.create_context_schemaless(fields).await.expect("should create empty schemaless context");
+        assert!(created.get("id").is_some());
+    }
+
+    #[tokio::test]
+    async fn create_context_schemaless_with_special_characters() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        
+        let mut fields = serde_json::Map::new();
+        fields.insert("content".to_string(), serde_json::Value::String("Value with = equals and \"quotes\" and spaces".to_string()));
+        fields.insert("unicode".to_string(), serde_json::Value::String("日本語テキスト".to_string()));
+        
+        let created = db.create_context_schemaless(fields).await.expect("should create with special chars");
+        
+        assert_eq!(
+            created.get("content").and_then(|v| v.as_str()),
+            Some("Value with = equals and \"quotes\" and spaces")
+        );
+        assert_eq!(
+            created.get("unicode").and_then(|v| v.as_str()),
+            Some("日本語テキスト")
+        );
+    }
+
+    #[tokio::test]
+    async fn create_context_schemaless_returns_record_id() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        
+        let mut fields = serde_json::Map::new();
+        fields.insert("type".to_string(), serde_json::Value::String("test".to_string()));
+        
+        let created = db.create_context_schemaless(fields).await.expect("should create");
+        
+        // Verify the ID is in the correct format
+        let id = created.get("id").and_then(|v| v.as_str()).expect("should have id");
+        assert!(id.starts_with("context:"), "id should start with context:");
     }
 }

@@ -4,322 +4,523 @@
 
 Unlike traditional natural language search, `dunno` uses a strict graph hierarchy. Context (mistakes, style rules, and security details) is linked to nodes in this hierarchy and is inherited down the tree.
 
-## Core Hierarchy
+---
 
-The knowledge graph has two parallel structural paths:
+## 📖 User Guide
 
-**Code Structure Path:**
-- **Project** -> **Module** -> **Submodule** (optional) -> **File** (path)
+### Installation
 
-**Work Tracking Path:**
-- **Project** -> **Module** -> **Task** -> **Subtask** (optional)
-
-### Knowledge Entities (linkable to any structural node)
-- **Mistake:** Known pitfalls and errors to avoid.
-- **StyleRule:** Coding style rules with examples.
-- **SecurityDetail:** Security constraints and audit notes.
-
-Context can be linked to **any** structural node: project, module, submodule, task, or subtask. Retrieval returns only the context directly linked to the requested node.
-
-### Supporting Entities
-- **Todo:** A project-level work queue item.
-
-## Retrieval Strategy
-
-Retrieval is purely deterministic and graph-based:
-1. Provide a `task_id`, `file_id`, or `subtask_id`.
-2. **Task path:** Traverses Task -> Module -> Project, collecting all linked knowledge at each level.
-3. **File path:** Traverses File -> Submodule (if any) -> Module -> Project, collecting all linked knowledge at each level.
-4. All unique knowledge nodes (Mistakes, Style Rules, Security Details) are deduplicated and returned as JSON.
-
-## Prerequisites
-
-- Rust toolchain (stable) with `cargo`.
-- Optional: SurrealDB Cloud credentials if using the cloud backend.
-
-## Build
+#### Option 1: Build from Source (Current Method)
 
 ```bash
+# Clone the repository
+git clone <repo-url>
+cd dunno
+
+# Build release binary
 cargo build --release
+
+# The binary is now available at:
+./target/release/dunno
+
+# Optional: Install to system PATH
+sudo cp target/release/dunno /usr/local/bin/
 ```
 
-Binary path: `target/release/dunno`
+#### Option 2: Install via Cargo
 
-## Configuration
+Coming soon - not yet published to crates.io.
 
-The CLI resolves configuration from (highest to lowest precedence):
-1. CLI flags (`--backend`)
-2. Environment variables
-3. `~/.config/dunno/config.toml`
-4. Built-in defaults
+#### Option 3: Download Binary
 
-By default, no config file is required. The app uses local embedded storage at `~/.local/share/dunno/data.db`.
+Coming soon - pre-built binaries not yet available in releases.
 
-### Example config file
+### Quick Start
 
-```toml
-backend = "local" # "local" | "cloud"
+#### 1. Initial Setup
 
+```bash
+# Verify installation
+dunno --version
+
+# Check current configuration
+dunno config show
+```
+
+By default, dunno uses local embedded storage at `~/.local/share/dunno/data.db`. No configuration is required to get started.
+
+#### 2. Project Setup (Recommended)
+
+For project-specific settings, create a local config file:
+
+```bash
+# Create local config
+cat > dunno.toml << 'EOF'
 [local]
-path = "~/.local/share/dunno/data.db"
+path = "./.dunno/data.db"
+EOF
 
-[cloud]
-url = "wss://YOUR_INSTANCE.surrealdb.com"
-namespace = ""
-database = ""
-username = "root"
-password = "root"
-auth_type = "root" # "root" | "namespace" | "database"
+# Create data directory
+mkdir -p .dunno
 ```
 
-### Environment overrides
-
-- `DUNNO_BACKEND`
-- `DUNNO_LOCAL_PATH`
-- `DUNNO_CLOUD_URL`
-- `DUNNO_CLOUD_NS`
-- `DUNNO_CLOUD_DB`
-- `DUNNO_CLOUD_USER`
-- `DUNNO_CLOUD_PASS`
-- `DUNNO_CLOUD_AUTH_TYPE`
-
-## Quick Start
-
-### 1. Initialize your hierarchy
+#### 3. Create Your First Project
 
 ```bash
 # Create a project
 dunno project create "My App" "A web application"
 # Returns: {"id":"project:abc","name":"My App","description":"A web application"}
 
-# Create a module within the project (single project; flag is repeatable for multiple)
+# Create a module
 dunno module create --project-ids project:abc "Auth" "Authentication system"
 # Returns: {"id":"module:def", ...}
 
-# (Optional) Create a submodule within the module
-dunno submodule create --module-ids module:def "OAuth" "OAuth2 providers"
-
-# Register a file under the module (or submodule)
-dunno file create --parent-ids module:def "oauth.rs" "src/auth/oauth.rs"
-
-# Create a task within the module
-dunno task create --module-ids module:def --project-ids project:abc "Implement JWT" "Add token support"
+# Create a task
+dunno task create --module-ids module:def --project-ids project:abc "Implement login" "Add JWT authentication"
 # Returns: {"id":"task:ghi", ...}
-
-# (Optional) Create a subtask within the task
-dunno subtask create --task-ids task:ghi "Write tests" "Add unit tests"
 ```
 
-### Epics (Optional)
-
-Epics provide a higher-level grouping above user stories for agile workflow management:
+#### 4. Add Knowledge
 
 ```bash
-# Create an epic linked to a project
-dunno epic create --project-id project:abc "Authentication Epic" "Complete auth system"
-# Returns: {"id":"epic:mno","title":"Authentication Epic","description":"Complete auth system"}
+# Add a coding mistake to remember
+dunno add --field type --value mistake --field content --value "Don't use unwrap() in production" --link-to task:ghi
 
-# List epics for a project
-dunno epic list --project-id project:abc
+# Add a style rule
+dunno add --field type --value style --field content --value "Use Result for error handling" --link-to module:def
 
-# Create a user story linked to an epic
-dunno user-story create --project-id project:abc --epic-ids epic:mno "As a user, I want login" "Authentication feature"
-
-# Create a task linked to an epic
-dunno task create --module-ids module:def --project-ids project:abc --epic-ids epic:mno "Implement login" "Add JWT auth"
-
-# Link existing user story to epic
-dunno link --from-id epic:mno --edge has_user_story --to-ids user_story:jkl
-dunno link --from-id user_story:jkl --edge belongs_to_epic --to-ids epic:mno
-
-# Link existing task to epic
-dunno link --from-id epic:mno --edge has_task --to-ids task:ghi
-dunno link --from-id task:ghi --edge belongs_to_epic --to-ids epic:mno
+# Add security note
+dunno add --field type --value security --field content --value "Validate all JWT tokens" --link-to project:abc
 ```
 
-### User Stories (Optional)
-
-User stories provide an additional layer between projects and tasks for agile workflow management:
+#### 5. Retrieve Context
 
 ```bash
-# Create a user story linked to a project
-dunno user-story create --project-id project:abc "As a user, I want login" "Authentication feature"
-# Returns: {"id":"user_story:jkl", ...}
-
-# List user stories for a project
-dunno user-story list --project-id project:abc
-
-# Create a task linked to a user story
-dunno task create --module-ids module:def --project-ids project:abc --user-story-ids user_story:jkl "Implement login" "Add JWT auth"
-
-# Link existing task to user story (using generic link command)
-dunno link --from-id user_story:jkl --edge has_task --to-ids task:ghi
-dunno link --from-id task:ghi --edge belongs_to_story --to-ids user_story:jkl
-```
-
-### 2. Track task progress
-
-```bash
-# Update a task's status
-dunno task update task:ghi --status started
-
-# Edit a task in-place
-dunno task update task:ghi --description "Add JWT token support with refresh"
-```
-
-### 3. Link knowledge
-
-```bash
-# Add a style rule to the project
-dunno add --type style --content "Use explicit error types" --link-to project:abc
-
-# Add a mistake to a task
-dunno add --type mistake --content "Do not log raw passwords" --link-to task:ghi
-
-# Add a security note to a module
-dunno add --type security --content "Validate all user inputs" --link-to module:def
-
-# Link to submodule (e.g. submodule:xyz from submodule create)
-dunno add --type style --content "Submodule convention" --link-to submodule:xyz
-
-# Link to subtask (e.g. subtask:stu from subtask create)
-dunno add --type mistake --content "Subtask pitfall" --link-to subtask:stu
-```
-
-### 4. Retrieve context
-
-```bash
-# By task (direct-only)
+# Get context for a task
 dunno context --task-id task:ghi
-
-# By file (direct-only)
-dunno context --file-id file:456
-
-# By subtask
-dunno context --subtask-id subtask:stu
-
-# By epic
-dunno context --epic-id epic:mno
+# Returns all linked knowledge as JSON
 ```
 
-Returns a JSON array of all linked context items directly linked to the requested node.
+### Configuration
 
-#### Context at every level
+Dunno uses a layered configuration system on a **per-field basis** (highest to lowest priority):
 
-You can link context at project, module, submodule, task, or subtask. Context retrieval returns only what is directly linked to the requested node.
+1. **CLI flags** (`--backend`)
+2. **Local project config** (`./dunno.toml`)
+3. **Global user config** (`~/.config/dunno/dunno.toml`)
+4. **Environment variables**
+5. **Built-in defaults**
 
-## CLI Reference
+#### Config File Locations
 
-### Knowledge Management
-- `dunno add --type <mistake|style|security> --content <CONTENT> [--link-to <ID> ...]` — `--link-to` is **repeatable**; each `<ID>` can be `project:...`, `module:...`, `submodule:...`, `task:...`, or `subtask:...`.
-- `dunno context --task-id <ID>` — context for a task (direct-only).
-- `dunno context --file-id <ID>` — context for a file (direct-only).
-- `dunno context --subtask-id <ID>` — context for a subtask (direct-only).
+- **Local:** `./dunno.toml` (project-specific, not committed to git)
+- **Global:** `~/.config/dunno/dunno.toml` (user-wide settings)
 
-### Hierarchy Management
-- `dunno project create <NAME> <DESC>` / `list`
-- `dunno module create --project-ids <ID> [--project-ids <ID> ...] <NAME> <DESC>` / `list`
-- `dunno submodule create --module-ids <ID> [--module-ids <ID> ...] <NAME> <DESC>` / `list [--module-id <ID>]`
-- `dunno file create --parent-ids <ID> [--parent-ids <ID> ...] <NAME> <PATH>` / `list [--module-id <ID>] [--submodule-id <ID>]`
-- `dunno task create [--module-ids <ID> --project-ids <ID>] [--user-story-ids <ID> ...] <NAME> <DESC>` / `list`
-- `dunno task update <TASK_ID> [--name <NAME>] [--description <DESC>] [--status <not_started|started|finished>]`
-- `dunno subtask create --task-ids <ID> [--task-ids <ID> ...] <NAME> <DESC>` / `list --task-id <ID>`
+#### Example Configuration
 
-### User Stories
-- `dunno user-story create --project-id <ID> [--epic-ids <ID> ...] <TITLE> <DESC>` — create linked to project, optionally to epics.
-- `dunno user-story list [--project-id <ID>] [--epic-id <ID>]` — list all or filter by project or epic.
+**Global config** (`~/.config/dunno/dunno.toml`):
+```toml
+backend = "cloud"
 
-### Epics
-- `dunno epic create --project-id <ID> <TITLE> <DESC>` — create linked to project.
-- `dunno epic list [--project-id <ID>]` — list all or filter by project.
-
-### Work Queue
-- `dunno todo create --project-ids <ID> [--project-ids <ID> ...] <CONTENT>` / `list --project-id <ID>`
-
-### Generic Linking
-- `dunno link --from <ID> --edge <EDGE> --to <ID> [--to <ID> ...]`
-  - `--from` / `--to` are record IDs like `project:abc`, `module:def`, `task:ghi`.
-  - `--edge` must be one of: `contains`, `has_task`, `has_subtask`, `has_todo`, `has_context`, `has_user_story`, `has_module`, `has_submodule`, `has_epic`, `belongs_to_project`, `belongs_to_module`, `belongs_to_task`, `belongs_to_story`, `belongs_to_user_story`, `belongs_to_epic`.
-
-### Recommended Patterns (AI Agent)
-
-- **Primitive operations**:
-  - **Create**: use the typed `create` commands to create a freestanding node (no link flags) or to attach it to one or more parents (repeat the appropriate `--*-ids` flags).
-  - **Link**: use `dunno link` (or `--link-to` for `dunno add`) to add relationships between existing nodes.
-- **Task invariants**:
-  - For `dunno task create`, either:
-    - Omit `--module-ids` / `--project-ids` entirely to create a **freestanding** task, or
-    - Provide **exactly one** `--module-ids` and **exactly one** `--project-ids` to create a fully linked task.
-  - Any other combination is rejected to avoid ambiguous hierarchies.
-- **Preferred flow**:
-  - Use typed `create` commands with link IDs for standard hierarchy (`project → module → submodule → file`, `project → module → task → subtask`).
-  - Use `dunno link` as a low-level escape hatch when you need to wire non-standard or additional relationships between existing nodes.
-
-### Config
-- `dunno config show`
-- `dunno --backend <local|cloud> ...`
-
-## Output Contract
-
-All commands return structured JSON. Successful operations return the created/updated object or a list. Errors return:
-
-```json
-{"status":"error","kind":"runtime_error","error":"Task not found: task:123"}
+[cloud]
+url = "wss://my-instance.surrealdb.com"
+namespace = "my-namespace"
+database = "dunno"
+username = "root"
+password = "root"
+auth_type = "root"
 ```
 
-Task statuses are strictly one of: `not_started`, `started`, `finished`.
+**Local config** (`./dunno.toml`):
+```toml
+# Override only the database path for this project
+[local]
+path = "./.dunno/data.db"
+```
 
-## Graph Schema
+#### Environment Variables
 
-The database uses SurrealDB with explicit graph relation types for visualization in Surrealist:
+All config fields can be set via environment:
 
-| Edge | From | To |
-|------|------|----|
-| `contains` | project, module, submodule | module, submodule, file |
-| `has_task` | project, user_story, epic | task |
-| `belongs_to_project` | task, context, user_story, epic | project |
-| `belongs_to_module` | task, context | module |
-| `has_subtask` | task | subtask |
-| `belongs_to_task` | subtask, context | task |
-| `has_context` | project, task, module, submodule, subtask | context |
-| `has_todo` | project | todo_item |
-| `has_user_story` | project, epic | user_story |
-| `belongs_to_story` | task | user_story |
-| `has_module` | user_story | module |
-| `has_submodule` | user_story | submodule |
-| `belongs_to_user_story` | module, submodule | user_story |
-| `has_epic` | project | epic |
-| `belongs_to_epic` | user_story, task | epic |
+- `DUNNO_BACKEND` - Backend type (`local` or `cloud`)
+- `DUNNO_LOCAL_PATH` - Local database file path
+- `DUNNO_CLOUD_URL` - Cloud instance URL
+- `DUNNO_CLOUD_NS` - Namespace
+- `DUNNO_CLOUD_DB` - Database name
+- `DUNNO_CLOUD_USER` - Username
+- `DUNNO_CLOUD_PASS` - Password
+- `DUNNO_CLOUD_AUTH_TYPE` - Auth type (`root`, `namespace`, `database`)
 
-## Development
+### Core Concepts
 
-### Context retrieval (implementation)
+#### Hierarchy
 
-Task, file, subtask, and epic context are implemented in `src/context.rs` as single SurrealQL queries:
+Dunno organizes work into two parallel paths:
 
-- **Task context:** Task `->belongs_to_module->` Module, Task `->belongs_to_project->` Project; collect `->has_context->` at each level.
-- **File context:** File `<-contains<-` Submodule (if any) `<-contains<-` Module `<-contains<-` Project; collect `->has_context->` at each level.
-- **Subtask context:** Subtask `->belongs_to_task->` Task `->belongs_to_module->` Module `->belongs_to_project->` Project; collect `->has_context->` at each level.
-- **Epic context:** Epic `->belongs_to_project->` Project; collect `->has_context->` at epic and project levels.
+**Code Structure:**
+```
+Project → Module → Submodule (optional) → File
+```
 
-Results are flattened, tagged with `node_type`, and deduplicated by id.
+**Work Tracking:**
+```
+Project → Module → Task → Subtask (optional)
+```
 
-Knowledge links are **bidirectional**: when you link a mistake, style rule, or security detail to a structural node, the graph stores the forward edge (e.g. `task -> has_mistake -> mistake`) and reverse edges using the same relation names as tasks: `belongs_to_project`, `belongs_to_module`, and `belongs_to_task` (e.g. `mistake -> belongs_to_project -> project`, `mistake -> belongs_to_module -> module`, `mistake -> belongs_to_task -> task`). This keeps “what belongs to what” explicit and consistent with the task hierarchy.
+**Optional Layers:**
+- **Epics** - Large feature groups
+- **User Stories** - User-centric feature descriptions
 
-### Tests
+#### Knowledge Types
+
+Link knowledge to any structural node:
+
+- **Mistake** - Known pitfalls and errors
+- **StyleRule** - Coding conventions
+- **SecurityDetail** - Security constraints
+- **Custom** - Any key-value pairs you need
+
+### CLI Reference
+
+#### Project Management
+```bash
+dunno project create "<name>" "<description>"  # Create project
+dunno project list                              # List all projects
+```
+
+#### Module Management
+```bash
+dunno module create --project-ids <id> "<name>" "<description>"
+dunno module list
+```
+
+#### Task Management
+```bash
+dunno task create --module-ids <id> --project-ids <id> "<name>" "<description>"
+dunno task list
+dunno task update <id> --status started
+```
+
+#### Knowledge Management
+```bash
+# Add knowledge with arbitrary fields
+dunno add --field <key> --value <val> [--link-to <id> ...]
+
+# Examples:
+dunno add --field type --value mistake --field content --value "Avoid panic!" --link-to project:abc
+dunno add --field type --value style --field language --value rust --field rule --value "Use ? operator" --link-to module:def
+```
+
+#### Context Retrieval
+```bash
+dunno context --task-id <id>
+dunno context --file-id <id>
+dunno context --subtask-id <id>
+dunno context --epic-id <id>
+```
+
+#### Linking
+```bash
+dunno link --from-id <id> --edge <type> --to-ids <id> [<id> ...]
+```
+
+### Common Workflows
+
+**1. Starting a New Feature:**
+```bash
+# Create epic for the feature
+dunno epic create --project-id project:abc "User Authentication" "Complete auth system"
+
+# Create user story
+dunno user-story create --project-id project:abc --epic-ids epic:mno "As a user, I want to login" "Authentication feature"
+
+# Create implementation task
+dunno task create --module-ids module:def --project-ids project:abc --epic-ids epic:mno "Implement JWT" "Add token support"
+```
+
+**2. Recording Mistakes:**
+```bash
+# After fixing a bug, record it for future reference
+dunno add --field type --value mistake \
+  --field content --value "MutexGuard across await causes deadlock" \
+  --field solution --value "Use tokio::sync::Mutex instead" \
+  --field severity --value high \
+  --link-to task:ghi
+```
+
+**3. Code Review Context:**
+```bash
+# Before reviewing, get all context for a task
+dunno context --task-id task:ghi | jq '.[] | select(.fields.type == "mistake")'
+```
+
+---
+
+## 🔧 Developer Guide
+
+### Architecture Overview
+
+Dunno is built on a graph database (SurrealDB) with a hierarchical structure. The codebase follows a modular architecture:
+
+```
+src/
+├── main.rs          # Entry point and CLI dispatch
+├── args.rs          # CLI argument definitions (clap)
+├── config.rs        # Configuration management
+├── context.rs       # Context retrieval logic
+├── ingest.rs        # Knowledge ingestion
+├── models.rs        # Data models/structs
+└── db/
+    ├── mod.rs       # DB module interface
+    └── surreal/     # SurrealDB implementation
+        ├── mod.rs   # Connection management
+        ├── context.rs   # Context queries
+        ├── ingest.rs    # Knowledge operations
+        └── entities/    # Entity CRUD operations
+            ├── projects.rs
+            ├── modules.rs
+            ├── tasks.rs
+            └── ...
+```
+
+### Core Design Principles
+
+1. **Graph-Based Hierarchy** - All data is stored as nodes and edges in a graph
+2. **Deterministic Retrieval** - No search algorithms; exact graph traversal only
+3. **Bidirectional Links** - Every link has a reverse edge for consistency
+4. **Schemaless Knowledge** - Knowledge entries use arbitrary key-value fields
+5. **Local-First** - Default embedded database; cloud is optional
+
+### Technology Stack
+
+- **Language:** Rust (Edition 2024)
+- **CLI Framework:** clap v4.5 with derive macros
+- **Database:** SurrealDB v3.0.0 (embedded or cloud)
+- **Serialization:** serde with JSON/TOML support
+- **Async Runtime:** tokio
+
+### Database Schema
+
+#### Entities (Nodes)
+
+| Entity | Record ID Pattern | Description |
+|--------|-------------------|-------------|
+| Project | `project:<id>` | Top-level container |
+| Module | `module:<id>` | Code organization unit |
+| Submodule | `submodule:<id>` | Nested code unit |
+| File | `file:<id>` | Source file reference |
+| Task | `task:<id>` | Work item |
+| Subtask | `subtask:<id>` | Sub-work item |
+| Epic | `epic:<id>` | Large feature group |
+| UserStory | `user_story:<id>` | User-centric feature |
+| Context | `context:<id>` | Knowledge entry |
+| Todo | `todo_item:<id>` | Work queue item |
+
+#### Graph Relations (Edges)
+
+| Edge | From | To | Purpose |
+|------|------|-----|---------|
+| `contains` | project, module, submodule | module, submodule, file | Structural containment |
+| `has_task` | project, epic, user_story | task | Task assignment |
+| `has_subtask` | task | subtask | Subtask grouping |
+| `has_context` | *any structural* | context | Knowledge linking |
+| `has_user_story` | project, epic | user_story | Story grouping |
+| `has_epic` | project | epic | Epic grouping |
+| `has_todo` | project | todo_item | Todo tracking |
+| `belongs_to_project` | task, context, user_story, epic | project | Reverse link |
+| `belongs_to_module` | task, context | module | Reverse link |
+| `belongs_to_task` | subtask, context | task | Reverse link |
+| `belongs_to_story` | task | user_story | Reverse link |
+| `belongs_to_epic` | user_story, task | epic | Reverse link |
+
+### Development Setup
+
+#### Prerequisites
+
+- Rust toolchain (stable) with `cargo`
+- Optional: SurrealDB Cloud credentials for cloud backend testing
+
+#### Building
 
 ```bash
+# Debug build
+cargo build
+
+# Release build
+cargo build --release
+
+# Run with cargo
+cargo run -- --help
+```
+
+#### Testing
+
+```bash
+# Run all tests
 cargo test
+
+# Run specific module tests
+cargo test config
+cargo test db::surreal
+
+# Run with output
+cargo test -- --nocapture
 ```
 
-Tests run against in-memory backends (`mem://`) and do not require a separate SurrealDB server.
+Tests use in-memory backends (`mem://`) and don't require a SurrealDB server.
 
-### Shell Tests
+#### Shell Tests
 
 ```bash
-# Run all local suites
+# Run local integration tests
 ./tests/sh/run_all.sh
 
-# Run all cloud suites
+# Run cloud integration tests (requires cloud credentials)
 ./tests/sh/run_cloud.sh
+```
+
+### Configuration Implementation
+
+Configuration is loaded in priority order (lowest to highest):
+
+1. **Defaults** - Hardcoded in `Config::default()`
+2. **ENV vars** - Applied via `apply_env_overrides()`
+3. **Global config** - `~/.config/dunno/dunno.toml`
+4. **Local config** - `./dunno.toml`
+5. **CLI args** - Overrides passed to `Config::load()`
+
+Each source only overrides fields it explicitly defines (partial config support).
+
+### Context Retrieval Implementation
+
+Context queries are implemented in `src/context.rs` using SurrealQL:
+
+```rust
+// Task context query traverses:
+// Task -> belongs_to_module -> Module -> belongs_to_project -> Project
+// Collects has_context edges at each level
+```
+
+Results are:
+1. Flattened from nested graph structure
+2. Tagged with `node_type` for identification
+3. Deduplicated by record ID
+
+### Adding New Features
+
+#### 1. New Entity Type
+
+1. Add model to `src/models.rs`
+2. Create entity module in `src/db/surreal/entities/`
+3. Add CRUD operations
+4. Add CLI commands to `src/args.rs`
+5. Add dispatch in `src/main.rs`
+6. Add tests
+
+#### 2. New Knowledge Field
+
+No code changes needed! Knowledge is schemaless. Users can add any fields:
+
+```bash
+dunno add --field my_custom_field --value "anything" --link-to task:abc
+```
+
+#### 3. New Config Option
+
+1. Add field to `Config` struct in `src/config.rs`
+2. Add to `PartialConfig` for file loading
+3. Add env var in `apply_env_overrides()`
+4. Add CLI arg in `src/args.rs` if needed
+5. Update tests
+
+### Contribution Guidelines
+
+1. **Tests Required** - All new features must include tests
+2. **Test Isolation** - Tests must be thread-safe and use unique temp files
+3. **Error Handling** - Use `anyhow` for errors; provide meaningful messages
+4. **CLI Consistency** - Follow existing command patterns
+5. **Documentation** - Update README and inline docs
+
+### Release Process
+
+When ready to distribute:
+
+1. Update version in `Cargo.toml`
+2. Update `CHANGELOG.md`
+3. Run full test suite: `cargo test`
+4. Build release: `cargo build --release`
+5. Test binary: `./target/release/dunno --version`
+6. Create git tag: `git tag vX.Y.Z`
+7. Push tag: `git push origin vX.Y.Z`
+8. Create GitHub Release with binary
+
+### Distribution Setup (For Project Maintainers)
+
+The following sections describe how to set up distribution channels:
+
+#### Cargo (crates.io)
+
+Publish to crates.io for `cargo install` support:
+
+```bash
+cargo publish --dry-run
+cargo publish
+```
+
+#### Binary Releases
+
+Build for multiple targets to create release binaries:
+
+```bash
+# macOS (Intel)
+cargo build --release --target x86_64-apple-darwin
+
+# macOS (Apple Silicon)
+cargo build --release --target aarch64-apple-darwin
+
+# Linux
+cargo build --release --target x86_64-unknown-linux-gnu
+
+# Windows
+cargo build --release --target x86_64-pc-windows-msvc
+```
+
+#### Homebrew (macOS/Linux)
+
+Create a Homebrew formula:
+
+```ruby
+class Dunno < Formula
+  desc "Capture and retrieve coding knowledge"
+  homepage "https://github.com/yourusername/dunno"
+  url "https://github.com/yourusername/dunno/archive/v1.0.0.tar.gz"
+  sha256 "..."
+  
+  depends_on "rust" => :build
+  
+  def install
+    system "cargo", "install", *std_cargo_args
+  end
+end
+```
+
+### Troubleshooting
+
+**Test failures due to environment:**
+```bash
+# Run single-threaded to avoid race conditions
+cargo test -- --test-threads=1
+```
+
+**Database locked:**
+```bash
+# Kill any hanging dunno processes
+pkill -f dunno
+```
+
+**Reset local database:**
+```bash
+rm -rf ~/.local/share/dunno/
+# or for project-specific:
+rm -rf ./.dunno/
 ```

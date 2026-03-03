@@ -47,10 +47,10 @@ async fn dispatch_command(
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::Commands::Add {
-            kind,
-            content,
+            field_names,
+            field_values,
             link_to,
-        } => handle_add(kind, content, link_to, db).await,
+        } => handle_add(field_names, field_values, link_to, db).await,
         dunno::args::Commands::Link {
             from_id,
             edge,
@@ -95,12 +95,26 @@ fn handle_config_command(
 
 /// Ingests new knowledge items into the system.
 async fn handle_add(
-    kind: String,
-    content: String,
+    field_names: Vec<String>,
+    field_values: Vec<String>,
     link_to: Vec<String>,
     db: &dunno::db::DB,
 ) -> anyhow::Result<()> {
-    dunno::ingest::add_knowledge(kind, content, link_to, db).await?;
+    // Validate that field_names and field_values have the same length
+    if field_names.len() != field_values.len() {
+        return Err(anyhow::anyhow!(
+            "Number of --field flags ({}) must match number of --value flags ({})",
+            field_names.len(),
+            field_values.len()
+        ));
+    }
+
+    // Build a JSON object from paired --field and --value flags
+    let mut map = serde_json::Map::new();
+    for (key, value) in field_names.into_iter().zip(field_values.into_iter()) {
+        map.insert(key, serde_json::Value::String(value));
+    }
+    dunno::ingest::add_knowledge_schemaless(map, link_to, db).await?;
     print_success();
     Ok(())
 }
