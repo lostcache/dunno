@@ -356,6 +356,14 @@ async fn handle_task_command(
             let tasks = db.list_tasks().await?;
             println!("{}", serde_json::json!(tasks));
         }
+        dunno::args::TaskCommands::Delete { task_id } => {
+            let deleted = db.delete_task(&task_id).await?;
+            if deleted {
+                println!("{}", serde_json::json!({ "status": "ok", "deleted": task_id }));
+            } else {
+                return Err(anyhow::anyhow!("Task not found: {}", task_id));
+            }
+        }
     }
     Ok(())
 }

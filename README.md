@@ -199,6 +199,7 @@ dunno module list
 dunno task create --module-ids <id> --project-ids <id> "<name>" "<description>"
 dunno task list
 dunno task update <id> --status started
+dunno task delete <id>   # Delete a task by ID
 ```
 
 #### Knowledge Management
@@ -252,6 +253,18 @@ dunno add --field type --value mistake \
 ```bash
 # Before reviewing, get all context for a task
 dunno context --task-id task:ghi | jq '.[] | select(.fields.type == "mistake")'
+```
+
+**4. Cleaning Up:**
+```bash
+# List all tasks
+dunno task list
+
+# Delete a task that's no longer needed
+dunno task delete task:abc123
+
+# Verify deletion
+dunno task list
 ```
 
 ---

@@ -226,6 +226,9 @@ pub enum TaskCommands {
         )]
         status: Option<String>,
     },
+    Delete {
+        task_id: String,
+    },
     List,
 }
 
@@ -449,5 +452,26 @@ mod tests {
         } else {
             panic!("expected Add command");
         }
+    }
+
+    #[test]
+    fn task_delete_command_accepts_task_id() {
+        let args = Args::try_parse_from(["dunno", "task", "delete", "task:abc123"]);
+        assert!(args.is_ok(), "should parse task delete command");
+        if let Commands::Task { command } = args.unwrap().command {
+            if let TaskCommands::Delete { task_id } = command {
+                assert_eq!(task_id, "task:abc123");
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected Task command");
+        }
+    }
+
+    #[test]
+    fn task_delete_command_requires_task_id() {
+        let args = Args::try_parse_from(["dunno", "task", "delete"]);
+        assert!(args.is_err(), "should require task_id for delete command");
     }
 }

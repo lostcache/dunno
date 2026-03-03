@@ -140,6 +140,17 @@ impl DB {
         }
     }
 
+    /// Deletes a task by record id.
+    pub async fn delete_task(&self, task_id: &str) -> anyhow::Result<bool> {
+        let key = task_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(task_id);
+        
+        let deleted: Option<surrealdb::types::Value> = self.client.delete(("task", key)).await?;
+        Ok(deleted.is_some())
+    }
+
     /// Gets full context for a task including subtasks, files, and linked context (unified).
     pub async fn get_task_context(
         &self,
