@@ -1,5 +1,5 @@
-use crate::db::surreal::util::{json_to_surreal, surreal_to_json};
 use crate::db::surreal::DB;
+use crate::db::surreal::util::{json_to_surreal, surreal_to_json};
 
 /// Validates user story creation parameters.
 pub(crate) fn validate_user_story_params(title: &str, description: &str) -> anyhow::Result<()> {
@@ -55,7 +55,10 @@ impl DB {
     }
 
     /// Fetches a user story by record id.
-    pub async fn get_user_story(&self, id: &str) -> anyhow::Result<Option<crate::models::UserStory>> {
+    pub async fn get_user_story(
+        &self,
+        id: &str,
+    ) -> anyhow::Result<Option<crate::models::UserStory>> {
         self.get_record("user_story", id).await
     }
 
@@ -85,7 +88,8 @@ impl DB {
         user_story_id: &str,
     ) -> anyhow::Result<()> {
         self.link(user_story_id, "has_task", task_id).await?;
-        self.link(task_id, "belongs_to_story", user_story_id).await?;
+        self.link(task_id, "belongs_to_story", user_story_id)
+            .await?;
         Ok(())
     }
 
@@ -110,7 +114,8 @@ impl DB {
         user_story_id: &str,
     ) -> anyhow::Result<()> {
         self.link(user_story_id, "has_module", module_id).await?;
-        self.link(module_id, "belongs_to_user_story", user_story_id).await?;
+        self.link(module_id, "belongs_to_user_story", user_story_id)
+            .await?;
         Ok(())
     }
 
@@ -120,8 +125,10 @@ impl DB {
         submodule_id: &str,
         user_story_id: &str,
     ) -> anyhow::Result<()> {
-        self.link(user_story_id, "has_submodule", submodule_id).await?;
-        self.link(submodule_id, "belongs_to_user_story", user_story_id).await?;
+        self.link(user_story_id, "has_submodule", submodule_id)
+            .await?;
+        self.link(submodule_id, "belongs_to_user_story", user_story_id)
+            .await?;
         Ok(())
     }
 
@@ -208,34 +215,37 @@ mod tests {
 
     #[test]
     fn validate_user_story_params_rejects_empty_title() {
-        let err = validate_user_story_params("", "Description").expect_err("empty title should fail");
+        let err =
+            validate_user_story_params("", "Description").expect_err("empty title should fail");
         assert!(err.to_string().contains("title"));
     }
 
     #[test]
     fn validate_user_story_params_rejects_whitespace_only_title() {
-        let err =
-            validate_user_story_params("   ", "Description").expect_err("whitespace title should fail");
+        let err = validate_user_story_params("   ", "Description")
+            .expect_err("whitespace title should fail");
         assert!(err.to_string().contains("title"));
     }
 
     #[test]
     fn validate_user_story_params_rejects_empty_description() {
-        let err = validate_user_story_params("Title", "").expect_err("empty description should fail");
+        let err =
+            validate_user_story_params("Title", "").expect_err("empty description should fail");
         assert!(err.to_string().contains("description"));
     }
 
     #[test]
     fn validate_user_story_params_rejects_long_title() {
         let long_title = "a".repeat(256);
-        let err =
-            validate_user_story_params(&long_title, "Description").expect_err("long title should fail");
+        let err = validate_user_story_params(&long_title, "Description")
+            .expect_err("long title should fail");
         assert!(err.to_string().contains("too long"));
     }
 
     #[test]
     fn validate_user_story_params_accepts_max_length_title() {
         let max_title = "a".repeat(255);
-        validate_user_story_params(&max_title, "Description").expect("255 char title should be accepted");
+        validate_user_story_params(&max_title, "Description")
+            .expect("255 char title should be accepted");
     }
 }

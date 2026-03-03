@@ -1,5 +1,5 @@
-use crate::db::surreal::util::{json_to_surreal, surreal_to_json};
 use crate::db::surreal::DB;
+use crate::db::surreal::util::{json_to_surreal, surreal_to_json};
 
 /// Validates epic creation parameters.
 pub(crate) fn validate_epic_params(title: &str, description: &str) -> anyhow::Result<()> {
@@ -90,11 +90,7 @@ impl DB {
     }
 
     /// Links an existing task to an epic.
-    pub async fn link_task_to_epic(
-        &self,
-        task_id: &str,
-        epic_id: &str,
-    ) -> anyhow::Result<()> {
+    pub async fn link_task_to_epic(&self, task_id: &str, epic_id: &str) -> anyhow::Result<()> {
         self.link(epic_id, "has_task", task_id).await?;
         self.link(task_id, "belongs_to_epic", epic_id).await?;
         Ok(())

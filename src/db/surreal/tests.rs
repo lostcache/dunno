@@ -1132,7 +1132,8 @@ async fn test_freestanding_task() {
     assert!(db.get_task(&task_id).await.expect("get_task").is_some());
     let err = db.get_task_hierarchy(&task_id).await.unwrap_err();
     assert!(
-        err.to_string().contains("Failed to parse project from graph query")
+        err.to_string()
+            .contains("Failed to parse project from graph query")
             || err.to_string().contains("No project linked to task"),
         "freestanding task must fail get_task_hierarchy: {}",
         err
@@ -1608,7 +1609,7 @@ async fn test_update_nonexistent_task_returns_none() {
     let result = db
         .update_task("task:nonexistent", Some("New Name".to_string()), None, None)
         .await;
-    
+
     // Should either return None (if table exists but record doesn't) or an error (if table doesn't exist)
     match result {
         Ok(None) => (), // Expected: record not found
@@ -1988,7 +1989,9 @@ async fn test_get_task_hierarchy_freestanding_task() {
         .expect_err("Should fail for freestanding task");
     assert!(
         err.to_string().contains("No project linked to task")
-            || err.to_string().contains("Failed to parse project from graph query"),
+            || err
+                .to_string()
+                .contains("Failed to parse project from graph query"),
         "Expected error about no project linked, got: {}",
         err
     );
@@ -2049,7 +2052,11 @@ async fn test_user_story_crud() {
 
     // Create a user story
     let user_story = db
-        .create_user_story("As a user, I want login", "User authentication feature", &project_id)
+        .create_user_story(
+            "As a user, I want login",
+            "User authentication feature",
+            &project_id,
+        )
         .await
         .expect("create user story");
     assert!(user_story.id.is_some());
@@ -2109,7 +2116,12 @@ async fn test_user_story_task_linking() {
 
     // Create a task linked to both module and project
     let task = db
-        .create_task("Implement login", "Add JWT auth", Some(&module_id), Some(&project_id))
+        .create_task(
+            "Implement login",
+            "Add JWT auth",
+            Some(&module_id),
+            Some(&project_id),
+        )
         .await
         .expect("create task");
     let task_id = task.id.expect("id");
@@ -2164,7 +2176,11 @@ async fn test_user_story_module_linking() {
     let submodule_id = submodule.id.expect("id");
 
     let user_story = db
-        .create_user_story("As a user, I want data persistence", "Database layer", &project_id)
+        .create_user_story(
+            "As a user, I want data persistence",
+            "Database layer",
+            &project_id,
+        )
         .await
         .expect("create user story");
     let us_id = user_story.id.expect("id");
@@ -2236,10 +2252,7 @@ async fn test_epic_crud() {
     let epic_id = epic.id.as_ref().unwrap();
 
     // Fetch the epic
-    let fetched = db
-        .get_epic(epic_id)
-        .await
-        .expect("Failed to fetch epic");
+    let fetched = db.get_epic(epic_id).await.expect("Failed to fetch epic");
     assert!(fetched.is_some());
     let fetched = fetched.unwrap();
     assert_eq!(fetched.title, "Authentication Epic");
@@ -2336,7 +2349,12 @@ async fn test_epic_task_linking() {
 
     // Create a task linked to both module and project
     let task = db
-        .create_task("Implement login", "Add JWT auth", Some(&module_id), Some(&project_id))
+        .create_task(
+            "Implement login",
+            "Add JWT auth",
+            Some(&module_id),
+            Some(&project_id),
+        )
         .await
         .expect("create task");
     let task_id = task.id.expect("id");

@@ -273,6 +273,6 @@ impl DB {
 #[cfg(test)]
 mod tests;
 
+pub use entities::epics::get_epic_context_json;
 pub use entities::files::get_file_context_json;
 pub use entities::tasks::{get_subtask_context_json, get_task_context_json};
-pub use entities::epics::get_epic_context_json;
