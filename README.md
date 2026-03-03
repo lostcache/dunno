@@ -2,7 +2,7 @@
 
 `dunno` is a Rust CLI that captures coding knowledge and retrieves deterministic context for AI agents.
 
-Unlike traditional natural language search, `dunno` uses a strict graph hierarchy. Context (mistakes, style rules, and security details) is linked to nodes in this hierarchy and is inherited down the tree.
+Currently it just supports SurrealDB as a backend, but the architecture is designed to allow adding more backends in the future (e.g. SQLite, Postgres, etc.) without changing the core logic.
 
 ---
 
