@@ -13,6 +13,7 @@ pub(crate) const TABLES: &[&str] = &[
     "subtask",
     "todo_item",
     "context",
+    "user_story",
 ];
 
 /// Defines relation table schemas so Surrealist can visualize graph edges.
@@ -24,9 +25,9 @@ pub(crate) async fn define_schema(client: &Surreal<Any>) -> anyhow::Result<()> {
                 IN project|module|submodule \
                 OUT module|submodule|file;\
             DEFINE TABLE IF NOT EXISTS has_task TYPE RELATION \
-                IN project OUT task;\
+                IN project|user_story OUT task;\
             DEFINE TABLE IF NOT EXISTS belongs_to_project TYPE RELATION \
-                IN task|context OUT project;\
+                IN task|context|user_story OUT project;\
             DEFINE TABLE IF NOT EXISTS belongs_to_module TYPE RELATION \
                 IN task|context OUT module;\
             DEFINE TABLE IF NOT EXISTS has_subtask TYPE RELATION \
@@ -37,6 +38,16 @@ pub(crate) async fn define_schema(client: &Surreal<Any>) -> anyhow::Result<()> {
                 IN project|task|module|submodule|subtask OUT context;\
             DEFINE TABLE IF NOT EXISTS has_todo TYPE RELATION \
                 IN project OUT todo_item;\
+            DEFINE TABLE IF NOT EXISTS has_user_story TYPE RELATION \
+                IN project OUT user_story;\
+            DEFINE TABLE IF NOT EXISTS belongs_to_story TYPE RELATION \
+                IN task OUT user_story;\
+            DEFINE TABLE IF NOT EXISTS has_module TYPE RELATION \
+                IN user_story OUT module;\
+            DEFINE TABLE IF NOT EXISTS has_submodule TYPE RELATION \
+                IN user_story OUT submodule;\
+            DEFINE TABLE IF NOT EXISTS belongs_to_user_story TYPE RELATION \
+                IN module|submodule OUT user_story;\
             ",
         )
         .await?;

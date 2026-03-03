@@ -2031,3 +2031,180 @@ async fn test_link_context_with_invalid_context_id() {
         .expect_err("Should fail");
     assert!(err.to_string().contains("context record id"));
 }
+
+#[tokio::test]
+async fn test_user_story_crud() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // Create a project
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test Project".to_string(),
+            description: "For user story testing".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    // Create a user story
+    let user_story = db
+        .create_user_story("As a user, I want login", "User authentication feature", &project_id)
+        .await
+        .expect("create user story");
+    assert!(user_story.id.is_some());
+    assert_eq!(user_story.title, "As a user, I want login");
+    assert_eq!(user_story.description, "User authentication feature");
+
+    let us_id = user_story.id.as_ref().unwrap();
+
+    // Fetch the user story
+    let fetched = db
+        .get_user_story(us_id)
+        .await
+        .expect("Failed to fetch user story");
+    assert!(fetched.is_some());
+    let fetched = fetched.unwrap();
+    assert_eq!(fetched.title, "As a user, I want login");
+
+    // List user stories by project
+    let stories = db
+        .list_user_stories_by_project(&project_id)
+        .await
+        .expect("list user stories");
+    assert_eq!(stories.len(), 1);
+    assert_eq!(stories[0].title, "As a user, I want login");
+
+    // List all user stories (unfiltered)
+    let all_stories = db.list_user_stories().await.expect("list all user stories");
+    assert_eq!(all_stories.len(), 1);
+}
+
+#[tokio::test]
+async fn test_user_story_task_linking() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // Create project, module, and user story
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    let module = db
+        .create_module("Auth", "Auth module", Some(&project_id))
+        .await
+        .expect("create module");
+    let module_id = module.id.expect("id");
+
+    let user_story = db
+        .create_user_story("As a user, I want secure login", "Secure auth", &project_id)
+        .await
+        .expect("create user story");
+    let us_id = user_story.id.expect("id");
+
+    // Create a task linked to both module and project
+    let task = db
+        .create_task("Implement login", "Add JWT auth", Some(&module_id), Some(&project_id))
+        .await
+        .expect("create task");
+    let task_id = task.id.expect("id");
+
+    // Link task to user story
+    db.link_task_to_user_story(&task_id, &us_id)
+        .await
+        .expect("link task to user story");
+
+    // Verify the link by listing tasks for the user story
+    let tasks = db
+        .list_tasks_by_user_story(&us_id)
+        .await
+        .expect("list tasks by user story");
+    assert_eq!(tasks.len(), 1);
+    assert_eq!(tasks[0].name, "Implement login");
+
+    // Verify by listing user stories for the task
+    let stories = db
+        .list_user_stories_by_task(&task_id)
+        .await
+        .expect("list user stories by task");
+    assert_eq!(stories.len(), 1);
+    assert_eq!(stories[0].title, "As a user, I want secure login");
+}
+
+#[tokio::test]
+async fn test_user_story_module_linking() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // Create project, module, and user story
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    let module = db
+        .create_module("Core", "Core module", Some(&project_id))
+        .await
+        .expect("create module");
+    let module_id = module.id.expect("id");
+
+    let submodule = db
+        .create_submodule("Utils", "Utils submodule", Some(&module_id))
+        .await
+        .expect("create submodule");
+    let submodule_id = submodule.id.expect("id");
+
+    let user_story = db
+        .create_user_story("As a user, I want data persistence", "Database layer", &project_id)
+        .await
+        .expect("create user story");
+    let us_id = user_story.id.expect("id");
+
+    // Link module to user story
+    db.link_module_to_user_story(&module_id, &us_id)
+        .await
+        .expect("link module to user story");
+
+    // Link submodule to user story
+    db.link_submodule_to_user_story(&submodule_id, &us_id)
+        .await
+        .expect("link submodule to user story");
+
+    // Verify module link
+    let modules = db
+        .list_modules_by_user_story(&us_id)
+        .await
+        .expect("list modules by user story");
+    assert_eq!(modules.len(), 1);
+    assert_eq!(modules[0].name, "Core");
+
+    // Verify submodule link
+    let submodules = db
+        .list_submodules_by_user_story(&us_id)
+        .await
+        .expect("list submodules by user story");
+    assert_eq!(submodules.len(), 1);
+    assert_eq!(submodules[0].name, "Utils");
+
+    // Verify reverse lookups
+    let stories_from_module = db
+        .list_user_stories_by_module(&module_id)
+        .await
+        .expect("list user stories by module");
+    assert_eq!(stories_from_module.len(), 1);
+
+    let stories_from_submodule = db
+        .list_user_stories_by_submodule(&submodule_id)
+        .await
+        .expect("list user stories by submodule");
+    assert_eq!(stories_from_submodule.len(), 1);
+}

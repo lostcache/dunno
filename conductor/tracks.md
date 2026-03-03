@@ -24,7 +24,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Add User Story entity and relations to the project knowledge graph.
+## [~] Track: Add User Story entity and relations to the project knowledge graph.
 *Link: [./conductor/tracks/user_story_schema_20260225/](./conductor/tracks/user_story_schema_20260225/)*
 
 ---

@@ -4,3 +4,4 @@ pub mod modules;
 pub mod projects;
 pub mod tasks;
 pub mod todos;
+pub mod user_stories;

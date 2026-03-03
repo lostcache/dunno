@@ -1,3 +1,11 @@
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct UserStory {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub title: String,
+    pub description: String,
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskStatus {
@@ -242,5 +250,17 @@ mod tests {
         let json = to_string(&ctx).expect("Failed to serialize Context");
         assert!(json.contains("\"type\":\"mistake\""));
         assert!(json.contains("Avoid unwrap in production code"));
+    }
+
+    #[test]
+    fn test_user_story_model() {
+        let user_story = UserStory {
+            id: None,
+            title: "As a user, I want...".to_string(),
+            description: "User should be able to login".to_string(),
+        };
+        let json = to_string(&user_story).expect("Failed to serialize UserStory");
+        assert!(json.contains("As a user, I want..."));
+        assert!(json.contains("User should be able to login"));
     }
 }
