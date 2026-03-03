@@ -79,6 +79,12 @@ pub enum Commands {
         command: UserStoryCommands,
     },
 
+    #[command(about = "Manage epics.")]
+    Epic {
+        #[command(subcommand)]
+        command: EpicCommands,
+    },
+
     #[command(about = "Manage todo items.")]
     Todo {
         #[command(subcommand)]
@@ -98,16 +104,20 @@ pub enum Commands {
     )]
     Context {
         /// The Task ID to retrieve context for.
-        #[arg(long, value_name = "TASK_ID", conflicts_with_all = ["file_id", "subtask_id"])]
+        #[arg(long, value_name = "TASK_ID", conflicts_with_all = ["file_id", "subtask_id", "epic_id"])]
         task_id: Option<String>,
 
         /// The File ID to retrieve context for.
-        #[arg(long, value_name = "FILE_ID", conflicts_with_all = ["task_id", "subtask_id"])]
+        #[arg(long, value_name = "FILE_ID", conflicts_with_all = ["task_id", "subtask_id", "epic_id"])]
         file_id: Option<String>,
 
         /// The Subtask ID to retrieve context for.
-        #[arg(long, value_name = "SUBTASK_ID", conflicts_with_all = ["task_id", "file_id"])]
+        #[arg(long, value_name = "SUBTASK_ID", conflicts_with_all = ["task_id", "file_id", "epic_id"])]
         subtask_id: Option<String>,
+
+        /// The Epic ID to retrieve context for.
+        #[arg(long, value_name = "EPIC_ID", conflicts_with_all = ["task_id", "file_id", "subtask_id"])]
+        epic_id: Option<String>,
     },
 
     #[command(
@@ -197,6 +207,9 @@ pub enum TaskCommands {
         /// User Story ID(s) to link this task to. Optional.
         #[arg(long, value_name = "USER_STORY_ID")]
         user_story_ids: Vec<String>,
+        /// Epic ID(s) to link this task to. Optional.
+        #[arg(long, value_name = "EPIC_ID")]
+        epic_ids: Vec<String>,
         name: String,
         description: String,
     },
@@ -235,6 +248,26 @@ pub enum SubtaskCommands {
 pub enum UserStoryCommands {
     Create {
         /// Project ID to link this user story to.
+        #[arg(long, value_name = "PROJECT_ID")]
+        project_id: String,
+        /// Epic ID(s) to link this user story to. Optional.
+        #[arg(long, value_name = "EPIC_ID")]
+        epic_ids: Vec<String>,
+        title: String,
+        description: String,
+    },
+    List {
+        #[arg(long)]
+        project_id: Option<String>,
+        #[arg(long, value_name = "EPIC_ID")]
+        epic_id: Option<String>,
+    },
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum EpicCommands {
+    Create {
+        /// Project ID to link this epic to.
         #[arg(long, value_name = "PROJECT_ID")]
         project_id: String,
         title: String,

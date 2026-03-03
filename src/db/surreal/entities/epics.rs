@@ -1,0 +1,214 @@
+use crate::db::surreal::util::{json_to_surreal, surreal_to_json};
+use crate::db::surreal::DB;
+
+/// Validates epic creation parameters.
+pub(crate) fn validate_epic_params(title: &str, description: &str) -> anyhow::Result<()> {
+    if title.trim().is_empty() {
+        return Err(anyhow::anyhow!("Epic title cannot be empty"));
+    }
+    if description.trim().is_empty() {
+        return Err(anyhow::anyhow!("Epic description cannot be empty"));
+    }
+    if title.len() > 255 {
+        return Err(anyhow::anyhow!("Epic title too long (max 255 chars)"));
+    }
+    Ok(())
+}
+
+impl DB {
+    /// Internal helper: creates an epic record without any relationships.
+    pub(crate) async fn create_epic_record(
+        &self,
+        epic: &crate::models::Epic,
+    ) -> anyhow::Result<crate::models::Epic> {
+        let json = serde_json::to_value(epic)?;
+        let value = json_to_surreal(json);
+        let created: Option<surrealdb::types::Value> =
+            self.client.create("epic").content(value).await?;
+        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create epic"))?;
+        let result: crate::models::Epic = serde_json::from_value(surreal_to_json(val))?;
+        Ok(result)
+    }
+
+    /// Creates an epic and RELATEs it to its parent project with bidirectional edges.
+    pub async fn create_epic(
+        &self,
+        title: &str,
+        description: &str,
+        project_id: &str,
+    ) -> anyhow::Result<crate::models::Epic> {
+        validate_epic_params(title, description)?;
+
+        let epic = crate::models::Epic {
+            id: None,
+            title: title.to_string(),
+            description: description.to_string(),
+        };
+        let result = self.create_epic_record(&epic).await?;
+
+        if let Some(eid) = result.id.as_ref() {
+            self.link(project_id, "has_epic", eid).await?;
+            self.link(eid, "belongs_to_project", project_id).await?;
+        }
+
+        Ok(result)
+    }
+
+    /// Fetches an epic by record id.
+    pub async fn get_epic(&self, id: &str) -> anyhow::Result<Option<crate::models::Epic>> {
+        self.get_record("epic", id).await
+    }
+
+    /// Returns all epics (unfiltered).
+    pub async fn list_epics(&self) -> anyhow::Result<Vec<crate::models::Epic>> {
+        self.list_records("epic").await
+    }
+
+    /// Lists epics under a project via graph traversal.
+    pub async fn list_epics_by_project(
+        &self,
+        project_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::Epic>> {
+        self.query_graph_list(
+            "SELECT ->has_epic->epic.* AS items FROM ONLY type::record($pid)",
+            "pid",
+            project_id.to_string(),
+            "items",
+        )
+        .await
+    }
+
+    /// Links an existing user story to an epic.
+    pub async fn link_user_story_to_epic(
+        &self,
+        user_story_id: &str,
+        epic_id: &str,
+    ) -> anyhow::Result<()> {
+        self.link(epic_id, "has_user_story", user_story_id).await?;
+        self.link(user_story_id, "belongs_to_epic", epic_id).await?;
+        Ok(())
+    }
+
+    /// Links an existing task to an epic.
+    pub async fn link_task_to_epic(
+        &self,
+        task_id: &str,
+        epic_id: &str,
+    ) -> anyhow::Result<()> {
+        self.link(epic_id, "has_task", task_id).await?;
+        self.link(task_id, "belongs_to_epic", epic_id).await?;
+        Ok(())
+    }
+
+    /// Lists user stories linked to an epic.
+    pub async fn list_user_stories_by_epic(
+        &self,
+        epic_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::UserStory>> {
+        self.query_graph_list(
+            "SELECT ->has_user_story->user_story.* AS items FROM ONLY type::record($eid)",
+            "eid",
+            epic_id.to_string(),
+            "items",
+        )
+        .await
+    }
+
+    /// Lists tasks linked to an epic.
+    pub async fn list_tasks_by_epic(
+        &self,
+        epic_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::Task>> {
+        self.query_graph_list(
+            "SELECT ->has_task->task.* AS items FROM ONLY type::record($eid)",
+            "eid",
+            epic_id.to_string(),
+            "items",
+        )
+        .await
+    }
+
+    /// Lists epics linked to a user story.
+    pub async fn list_epics_by_user_story(
+        &self,
+        user_story_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::Epic>> {
+        self.query_graph_list(
+            "SELECT ->belongs_to_epic->epic.* AS items FROM ONLY type::record($usid)",
+            "usid",
+            user_story_id.to_string(),
+            "items",
+        )
+        .await
+    }
+
+    /// Lists epics linked to a task.
+    pub async fn list_epics_by_task(
+        &self,
+        task_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::Epic>> {
+        self.query_graph_list(
+            "SELECT ->belongs_to_epic->epic.* AS items FROM ONLY type::record($tid)",
+            "tid",
+            task_id.to_string(),
+            "items",
+        )
+        .await
+    }
+}
+
+/// Returns JSON-encoded context records directly linked to an epic.
+pub async fn get_epic_context_json(
+    epic_id: &str,
+    db: &crate::db::DB,
+) -> anyhow::Result<Vec<serde_json::Value>> {
+    let ctxs = db.get_linked_context(epic_id).await?;
+    Ok(ctxs
+        .into_iter()
+        .map(|c| serde_json::to_value(c).unwrap())
+        .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_epic_params_accepts_valid_input() {
+        validate_epic_params("Valid Title", "Valid Description")
+            .expect("should accept valid params");
+    }
+
+    #[test]
+    fn validate_epic_params_rejects_empty_title() {
+        let err = validate_epic_params("", "Description").expect_err("empty title should fail");
+        assert!(err.to_string().contains("title"));
+    }
+
+    #[test]
+    fn validate_epic_params_rejects_whitespace_only_title() {
+        let err =
+            validate_epic_params("   ", "Description").expect_err("whitespace title should fail");
+        assert!(err.to_string().contains("title"));
+    }
+
+    #[test]
+    fn validate_epic_params_rejects_empty_description() {
+        let err = validate_epic_params("Title", "").expect_err("empty description should fail");
+        assert!(err.to_string().contains("description"));
+    }
+
+    #[test]
+    fn validate_epic_params_rejects_long_title() {
+        let long_title = "a".repeat(256);
+        let err =
+            validate_epic_params(&long_title, "Description").expect_err("long title should fail");
+        assert!(err.to_string().contains("too long"));
+    }
+
+    #[test]
+    fn validate_epic_params_accepts_max_length_title() {
+        let max_title = "a".repeat(255);
+        validate_epic_params(&max_title, "Description").expect("255 char title should be accepted");
+    }
+}

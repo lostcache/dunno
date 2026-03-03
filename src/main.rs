@@ -63,11 +63,13 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
                 "has_user_story",
                 "has_module",
                 "has_submodule",
+                "has_epic",
                 "belongs_to_project",
                 "belongs_to_module",
                 "belongs_to_task",
                 "belongs_to_story",
                 "belongs_to_user_story",
+                "belongs_to_epic",
             ];
             if !ALLOWED_EDGES.contains(&edge.as_str()) {
                 return Err(anyhow::anyhow!(
@@ -195,6 +197,7 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
                 module_ids,
                 project_ids,
                 user_story_ids,
+                epic_ids,
                 name,
                 description,
             } => {
@@ -215,6 +218,10 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
                 if let Some(task_id) = &created.id {
                     for us_id in &user_story_ids {
                         db.link_task_to_user_story(task_id, us_id).await?;
+                    }
+                    // Link task to epics if provided
+                    for epic_id in &epic_ids {
+                        db.link_task_to_epic(task_id, epic_id).await?;
                     }
                 }
                 
@@ -306,14 +313,25 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
         dunno::args::Commands::UserStory { command } => match command {
             dunno::args::UserStoryCommands::Create {
                 project_id,
+                epic_ids,
                 title,
                 description,
             } => {
                 let created = db.create_user_story(&title, &description, &project_id).await?;
+                
+                // Link user story to epics if provided
+                if let Some(us_id) = &created.id {
+                    for epic_id in &epic_ids {
+                        db.link_user_story_to_epic(us_id, epic_id).await?;
+                    }
+                }
+                
                 println!("{}", serde_json::json!(created));
             }
-            dunno::args::UserStoryCommands::List { project_id } => {
-                let user_stories = if let Some(pid) = project_id {
+            dunno::args::UserStoryCommands::List { project_id, epic_id } => {
+                let user_stories = if let Some(eid) = epic_id {
+                    db.list_user_stories_by_epic(&eid).await?
+                } else if let Some(pid) = project_id {
                     db.list_user_stories_by_project(&pid).await?
                 } else {
                     db.list_user_stories().await?
@@ -321,10 +339,29 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
                 println!("{}", serde_json::json!(user_stories));
             }
         },
+        dunno::args::Commands::Epic { command } => match command {
+            dunno::args::EpicCommands::Create {
+                project_id,
+                title,
+                description,
+            } => {
+                let created = db.create_epic(&title, &description, &project_id).await?;
+                println!("{}", serde_json::json!(created));
+            }
+            dunno::args::EpicCommands::List { project_id } => {
+                let epics = if let Some(pid) = project_id {
+                    db.list_epics_by_project(&pid).await?
+                } else {
+                    db.list_epics().await?
+                };
+                println!("{}", serde_json::json!(epics));
+            }
+        },
         dunno::args::Commands::Context {
             task_id,
             file_id,
             subtask_id,
+            epic_id,
         } => {
             if let Some(t_id) = task_id {
                 let results = dunno::context::get_task_context(&t_id, &db).await?;
@@ -335,9 +372,12 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
             } else if let Some(st_id) = subtask_id {
                 let results = dunno::context::get_subtask_context(&st_id, &db).await?;
                 println!("{}", serde_json::json!({ "results": results }));
+            } else if let Some(e_id) = epic_id {
+                let results = dunno::context::get_epic_context(&e_id, &db).await?;
+                println!("{}", serde_json::json!({ "results": results }));
             } else {
                 return Err(anyhow::anyhow!(
-                    "One of --task-id, --file-id, or --subtask-id must be provided"
+                    "One of --task-id, --file-id, --subtask-id, or --epic-id must be provided"
                 ));
             }
         }

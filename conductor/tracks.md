@@ -29,7 +29,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Add Epic entity and relations between Project, User Story, and Task.
+## [X] Track: Add Epic entity and relations between Project, User Story, and Task.
 *Link: [./conductor/tracks/epic_schema_20260225/](./conductor/tracks/epic_schema_20260225/)*
 
 ---

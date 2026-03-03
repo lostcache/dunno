@@ -110,6 +110,33 @@ dunno task create --module-ids module:def --project-ids project:abc "Implement J
 dunno subtask create --task-ids task:ghi "Write tests" "Add unit tests"
 ```
 
+### Epics (Optional)
+
+Epics provide a higher-level grouping above user stories for agile workflow management:
+
+```bash
+# Create an epic linked to a project
+dunno epic create --project-id project:abc "Authentication Epic" "Complete auth system"
+# Returns: {"id":"epic:mno","title":"Authentication Epic","description":"Complete auth system"}
+
+# List epics for a project
+dunno epic list --project-id project:abc
+
+# Create a user story linked to an epic
+dunno user-story create --project-id project:abc --epic-ids epic:mno "As a user, I want login" "Authentication feature"
+
+# Create a task linked to an epic
+dunno task create --module-ids module:def --project-ids project:abc --epic-ids epic:mno "Implement login" "Add JWT auth"
+
+# Link existing user story to epic
+dunno link --from-id epic:mno --edge has_user_story --to-ids user_story:jkl
+dunno link --from-id user_story:jkl --edge belongs_to_epic --to-ids epic:mno
+
+# Link existing task to epic
+dunno link --from-id epic:mno --edge has_task --to-ids task:ghi
+dunno link --from-id task:ghi --edge belongs_to_epic --to-ids epic:mno
+```
+
 ### User Stories (Optional)
 
 User stories provide an additional layer between projects and tasks for agile workflow management:
@@ -170,6 +197,9 @@ dunno context --file-id file:456
 
 # By subtask
 dunno context --subtask-id subtask:stu
+
+# By epic
+dunno context --epic-id epic:mno
 ```
 
 Returns a JSON array of all linked context items directly linked to the requested node.
@@ -196,8 +226,12 @@ You can link context at project, module, submodule, task, or subtask. Context re
 - `dunno subtask create --task-ids <ID> [--task-ids <ID> ...] <NAME> <DESC>` / `list --task-id <ID>`
 
 ### User Stories
-- `dunno user-story create --project-id <ID> <TITLE> <DESC>` — create linked to project.
-- `dunno user-story list [--project-id <ID>]` — list all or filter by project.
+- `dunno user-story create --project-id <ID> [--epic-ids <ID> ...] <TITLE> <DESC>` — create linked to project, optionally to epics.
+- `dunno user-story list [--project-id <ID>] [--epic-id <ID>]` — list all or filter by project or epic.
+
+### Epics
+- `dunno epic create --project-id <ID> <TITLE> <DESC>` — create linked to project.
+- `dunno epic list [--project-id <ID>]` — list all or filter by project.
 
 ### Work Queue
 - `dunno todo create --project-ids <ID> [--project-ids <ID> ...] <CONTENT>` / `list --project-id <ID>`
@@ -205,7 +239,7 @@ You can link context at project, module, submodule, task, or subtask. Context re
 ### Generic Linking
 - `dunno link --from <ID> --edge <EDGE> --to <ID> [--to <ID> ...]`
   - `--from` / `--to` are record IDs like `project:abc`, `module:def`, `task:ghi`.
-  - `--edge` must be one of: `contains`, `has_task`, `has_subtask`, `has_todo`, `has_context`, `has_user_story`, `has_module`, `has_submodule`, `belongs_to_project`, `belongs_to_module`, `belongs_to_task`, `belongs_to_story`, `belongs_to_user_story`.
+  - `--edge` must be one of: `contains`, `has_task`, `has_subtask`, `has_todo`, `has_context`, `has_user_story`, `has_module`, `has_submodule`, `has_epic`, `belongs_to_project`, `belongs_to_module`, `belongs_to_task`, `belongs_to_story`, `belongs_to_user_story`, `belongs_to_epic`.
 
 ### Recommended Patterns (AI Agent)
 
@@ -242,25 +276,31 @@ The database uses SurrealDB with explicit graph relation types for visualization
 | Edge | From | To |
 |------|------|----|
 | `contains` | project, module, submodule | module, submodule, file |
-| `has_task` | project | task |
-| `belongs_to_project` | task, mistake, style_rule, security_detail | project |
-| `belongs_to_module` | task, mistake, style_rule, security_detail | module |
+| `has_task` | project, user_story, epic | task |
+| `belongs_to_project` | task, context, user_story, epic | project |
+| `belongs_to_module` | task, context | module |
 | `has_subtask` | task | subtask |
-| `belongs_to_task` | subtask, mistake, style_rule, security_detail | task |
-| `has_mistake` | project, task, module, submodule, subtask | mistake |
-| `has_style` | project, task, module, submodule, subtask | style_rule |
-| `has_security_detail` | project, task, module, submodule, subtask | security_detail |
+| `belongs_to_task` | subtask, context | task |
+| `has_context` | project, task, module, submodule, subtask | context |
 | `has_todo` | project | todo_item |
+| `has_user_story` | project, epic | user_story |
+| `belongs_to_story` | task | user_story |
+| `has_module` | user_story | module |
+| `has_submodule` | user_story | submodule |
+| `belongs_to_user_story` | module, submodule | user_story |
+| `has_epic` | project | epic |
+| `belongs_to_epic` | user_story, task | epic |
 
 ## Development
 
 ### Context retrieval (implementation)
 
-Task, file, and subtask context are implemented in `src/context.rs` as single SurrealQL queries:
+Task, file, subtask, and epic context are implemented in `src/context.rs` as single SurrealQL queries:
 
-- **Task context:** Task `->belongs_to_module->` Module, Task `->belongs_to_project->` Project; collect `->has_mistake->`, `->has_style->`, `->has_security_detail->` at each level.
-- **File context:** File `<-contains<-` Submodule (if any) `<-contains<-` Module `<-contains<-` Project; collect has_mistake, has_style, has_security_detail at each level.
-- **Subtask context:** Subtask `->belongs_to_task->` Task `->belongs_to_module->` Module `->belongs_to_project->` Project; collect has_mistake, has_style, has_security_detail at each level.
+- **Task context:** Task `->belongs_to_module->` Module, Task `->belongs_to_project->` Project; collect `->has_context->` at each level.
+- **File context:** File `<-contains<-` Submodule (if any) `<-contains<-` Module `<-contains<-` Project; collect `->has_context->` at each level.
+- **Subtask context:** Subtask `->belongs_to_task->` Task `->belongs_to_module->` Module `->belongs_to_project->` Project; collect `->has_context->` at each level.
+- **Epic context:** Epic `->belongs_to_project->` Project; collect `->has_context->` at epic and project levels.
 
 Results are flattened, tagged with `node_type`, and deduplicated by id.
 

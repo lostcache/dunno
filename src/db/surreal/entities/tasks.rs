@@ -329,8 +329,25 @@ impl DB {
                     subtask_id: Some(from_id.to_string()),
                 })
             }
+            "epic" => {
+                let project_id = self
+                    .first_record_id_from_query(
+                        "SELECT ->belongs_to_project->project AS p FROM ONLY type::record($eid)",
+                        "eid",
+                        from_id.to_string(),
+                        "p",
+                    )
+                    .await?;
+                Ok(StructuralHierarchy {
+                    project_id,
+                    module_id: None,
+                    submodule_id: None,
+                    task_id: None,
+                    subtask_id: None,
+                })
+            }
             _ => Err(anyhow::anyhow!(
-                "resolve_structural_hierarchy: from_id must be project, module, submodule, task, or subtask; got {:?}",
+                "resolve_structural_hierarchy: from_id must be project, module, submodule, task, subtask, or epic; got {:?}",
                 table
             )),
         }

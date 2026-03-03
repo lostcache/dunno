@@ -25,11 +25,11 @@ The knowledge graph database is built around core entities connected by native S
 | 3 | **Module** | `module` | A functional area or component within a Project. |
 | 4 | **Submodule** | `submodule` | An optional grouping within a Module. |
 | 5 | **File** | `file` | A source file mapped by name and path. |
-| 6 | **StyleRule** | `style_rule` | Coding style rules (description + example). |
-| 7 | **Mistake** | `mistake` | Known pitfalls (content + category + tags). |
-| 8 | **SecurityDetail** | `security_detail` | Security constraints (content + severity + category + tags). |
+| 6 | **Epic** | `epic` | A high-level feature grouping for agile workflow. |
+| 7 | **UserStory** | `user_story` | A user-centric feature description linked to epics. |
+| 8 | **Context** | `context` | Unified knowledge node (mistake, style_rule, security_detail). |
 
-Supporting entities: `Project` (top-level container), `TaskUpdate` (append-only task log), `TodoItem` (work queue).
+Supporting entities: `Project` (top-level container), `Epic` (high-level feature grouping), `UserStory` (user-centric feature), `TodoItem` (work queue), `TaskUpdate` (append-only task log).
 
 ### Relations (Graph Edges via RELATE)
 
@@ -44,9 +44,23 @@ All relationships are expressed as native SurrealDB graph edges, not FK fields.
 
 **Knowledge links** (via `has_context` edge table):
 - Any structural node can link to any knowledge node:
-  - `node -> has_context -> mistake`
-  - `node -> has_context -> style_rule`
-  - `node -> has_context -> security_detail`
+  - `node -> has_context -> context`
+
+**Epic hierarchy** (via `has_epic` and `belongs_to_epic` edge tables):
+- `project -> has_epic -> epic`
+- `epic -> belongs_to_project -> project`
+- `epic -> has_user_story -> user_story`
+- `user_story -> belongs_to_epic -> epic`
+- `epic -> has_task -> task`
+- `task -> belongs_to_epic -> epic`
+
+**User story hierarchy** (via `has_user_story` and related edge tables):
+- `project -> has_user_story -> user_story`
+- `user_story -> belongs_to_project -> project`
+- `user_story -> has_module -> module`
+- `module -> belongs_to_user_story -> user_story`
+- `user_story -> has_task -> task`
+- `task -> belongs_to_story -> user_story`
 
 **Work queue** (via `has_todo` edge table):
 - `project -> has_todo -> todo_item`

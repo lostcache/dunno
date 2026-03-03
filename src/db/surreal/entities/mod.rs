@@ -1,3 +1,4 @@
+pub mod epics;
 pub mod files;
 pub mod knowledge;
 pub mod modules;

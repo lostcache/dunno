@@ -6,6 +6,14 @@ pub struct UserStory {
     pub description: String,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct Epic {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub title: String,
+    pub description: String,
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskStatus {
@@ -262,5 +270,17 @@ mod tests {
         let json = to_string(&user_story).expect("Failed to serialize UserStory");
         assert!(json.contains("As a user, I want..."));
         assert!(json.contains("User should be able to login"));
+    }
+
+    #[test]
+    fn test_epic_model() {
+        let epic = Epic {
+            id: None,
+            title: "Authentication Epic".to_string(),
+            description: "Implement complete authentication system".to_string(),
+        };
+        let json = to_string(&epic).expect("Failed to serialize Epic");
+        assert!(json.contains("Authentication Epic"));
+        assert!(json.contains("Implement complete authentication system"));
     }
 }

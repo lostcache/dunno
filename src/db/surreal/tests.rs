@@ -2208,3 +2208,208 @@ async fn test_user_story_module_linking() {
         .expect("list user stories by submodule");
     assert_eq!(stories_from_submodule.len(), 1);
 }
+
+#[tokio::test]
+async fn test_epic_crud() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // Create a project
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test Project".to_string(),
+            description: "For epic testing".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    // Create an epic
+    let epic = db
+        .create_epic("Authentication Epic", "Complete auth system", &project_id)
+        .await
+        .expect("create epic");
+    assert!(epic.id.is_some());
+    assert_eq!(epic.title, "Authentication Epic");
+    assert_eq!(epic.description, "Complete auth system");
+
+    let epic_id = epic.id.as_ref().unwrap();
+
+    // Fetch the epic
+    let fetched = db
+        .get_epic(epic_id)
+        .await
+        .expect("Failed to fetch epic");
+    assert!(fetched.is_some());
+    let fetched = fetched.unwrap();
+    assert_eq!(fetched.title, "Authentication Epic");
+
+    // List epics by project
+    let epics = db
+        .list_epics_by_project(&project_id)
+        .await
+        .expect("list epics");
+    assert_eq!(epics.len(), 1);
+    assert_eq!(epics[0].title, "Authentication Epic");
+
+    // List all epics (unfiltered)
+    let all_epics = db.list_epics().await.expect("list all epics");
+    assert_eq!(all_epics.len(), 1);
+}
+
+#[tokio::test]
+async fn test_epic_user_story_linking() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // Create project and epic
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    let epic = db
+        .create_epic("Auth Epic", "Authentication features", &project_id)
+        .await
+        .expect("create epic");
+    let epic_id = epic.id.expect("id");
+
+    // Create a user story
+    let user_story = db
+        .create_user_story("As a user, I want login", "Login feature", &project_id)
+        .await
+        .expect("create user story");
+    let us_id = user_story.id.expect("id");
+
+    // Link user story to epic
+    db.link_user_story_to_epic(&us_id, &epic_id)
+        .await
+        .expect("link user story to epic");
+
+    // Verify the link by listing user stories for the epic
+    let stories = db
+        .list_user_stories_by_epic(&epic_id)
+        .await
+        .expect("list user stories by epic");
+    assert_eq!(stories.len(), 1);
+    assert_eq!(stories[0].title, "As a user, I want login");
+
+    // Verify by listing epics for the user story
+    let epics = db
+        .list_epics_by_user_story(&us_id)
+        .await
+        .expect("list epics by user story");
+    assert_eq!(epics.len(), 1);
+    assert_eq!(epics[0].title, "Auth Epic");
+}
+
+#[tokio::test]
+async fn test_epic_task_linking() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // Create project, module, and epic
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    let module = db
+        .create_module("Auth", "Auth module", Some(&project_id))
+        .await
+        .expect("create module");
+    let module_id = module.id.expect("id");
+
+    let epic = db
+        .create_epic("Auth Epic", "Authentication features", &project_id)
+        .await
+        .expect("create epic");
+    let epic_id = epic.id.expect("id");
+
+    // Create a task linked to both module and project
+    let task = db
+        .create_task("Implement login", "Add JWT auth", Some(&module_id), Some(&project_id))
+        .await
+        .expect("create task");
+    let task_id = task.id.expect("id");
+
+    // Link task to epic
+    db.link_task_to_epic(&task_id, &epic_id)
+        .await
+        .expect("link task to epic");
+
+    // Verify the link by listing tasks for the epic
+    let tasks = db
+        .list_tasks_by_epic(&epic_id)
+        .await
+        .expect("list tasks by epic");
+    assert_eq!(tasks.len(), 1);
+    assert_eq!(tasks[0].name, "Implement login");
+
+    // Verify by listing epics for the task
+    let epics = db
+        .list_epics_by_task(&task_id)
+        .await
+        .expect("list epics by task");
+    assert_eq!(epics.len(), 1);
+    assert_eq!(epics[0].title, "Auth Epic");
+}
+
+#[tokio::test]
+async fn test_epic_context() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // Create project and epic
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    let epic = db
+        .create_epic("Security Epic", "Security hardening", &project_id)
+        .await
+        .expect("create epic");
+    let epic_id = epic.id.expect("id");
+
+    // Create and link context to epic
+    let ctx = db
+        .create_context(&crate::models::Context {
+            id: None,
+            context_type: "security".to_string(),
+            content: Some("Use rate limiting".to_string()),
+            description: None,
+            example: None,
+            severity: Some("high".to_string()),
+            category: None,
+            tags: None,
+        })
+        .await
+        .expect("create context");
+    let ctx_id = ctx.id.as_ref().expect("id");
+
+    db.link_context(&epic_id, ctx_id)
+        .await
+        .expect("link context to epic");
+
+    // Verify context retrieval
+    let contexts = db
+        .get_linked_context(&epic_id)
+        .await
+        .expect("get epic context");
+    assert_eq!(contexts.len(), 1);
+    assert_eq!(contexts[0].context_type, "security");
+    assert_eq!(contexts[0].content.as_ref().unwrap(), "Use rate limiting");
+}
