@@ -118,7 +118,7 @@ def seed():
             dunno,
             "module",
             "create",
-            "--project-id",
+            "--project-ids",
             p1_id,
             "auth",
             "User authentication and authorization",
@@ -129,7 +129,7 @@ def seed():
             dunno,
             "module",
             "create",
-            "--project-id",
+            "--project-ids",
             p1_id,
             "products",
             "Product catalog and inventory management",
@@ -140,7 +140,7 @@ def seed():
             dunno,
             "module",
             "create",
-            "--project-id",
+            "--project-ids",
             p1_id,
             "orders",
             "Order processing and payment handling",
@@ -162,7 +162,7 @@ def seed():
             dunno,
             "module",
             "create",
-            "--project-id",
+            "--project-ids",
             p2_id,
             "boards",
             "Kanban board management",
@@ -173,7 +173,7 @@ def seed():
             dunno,
             "module",
             "create",
-            "--project-id",
+            "--project-ids",
             p2_id,
             "tasks",
             "Task CRUD operations",
@@ -184,7 +184,7 @@ def seed():
             dunno,
             "module",
             "create",
-            "--project-id",
+            "--project-ids",
             p2_id,
             "calendar",
             "Calendar view integration",
@@ -206,7 +206,7 @@ def seed():
             dunno,
             "submodule",
             "create",
-            "--module-id",
+            "--module-ids",
             m1_1_id,
             "jwt",
             "JWT token handling",
@@ -217,7 +217,7 @@ def seed():
             dunno,
             "submodule",
             "create",
-            "--module-id",
+            "--module-ids",
             m1_1_id,
             "oauth",
             "OAuth2 provider integration",
@@ -228,7 +228,7 @@ def seed():
             dunno,
             "submodule",
             "create",
-            "--module-id",
+            "--module-ids",
             m1_2_id,
             "search",
             "Product search with filters",
@@ -246,28 +246,28 @@ def seed():
     # 5. Create files
     print("Creating files...")
     f1 = run_cmd(
-        [dunno, "file", "create", "--parent-id", sm1_id, "jwt.rs", "src/auth/jwt.rs"]
+        [dunno, "file", "create", "--parent-ids", sm1_id, "jwt.rs", "src/auth/jwt.rs"]
     )
     f2 = run_cmd(
         [
             dunno,
             "file",
             "create",
-            "--parent-id",
+            "--parent-ids",
             sm2_id,
             "oauth.rs",
             "src/auth/oauth.rs",
         ]
     )
     f3 = run_cmd(
-        [dunno, "file", "create", "--parent-id", sm1_id, "mod.rs", "src/auth/mod.rs"]
+        [dunno, "file", "create", "--parent-ids", sm1_id, "mod.rs", "src/auth/mod.rs"]
     )
     f4 = run_cmd(
         [
             dunno,
             "file",
             "create",
-            "--parent-id",
+            "--parent-ids",
             m1_2_id,
             "product.rs",
             "src/products/product.rs",
@@ -278,7 +278,7 @@ def seed():
             dunno,
             "file",
             "create",
-            "--parent-id",
+            "--parent-ids",
             m1_2_id,
             "inventory.rs",
             "src/products/inventory.rs",
@@ -289,7 +289,7 @@ def seed():
             dunno,
             "file",
             "create",
-            "--parent-id",
+            "--parent-ids",
             sm3_id,
             "search.rs",
             "src/products/search.rs",
@@ -310,9 +310,9 @@ def seed():
             dunno,
             "task",
             "create",
-            "--module-id",
+            "--module-ids",
             m1_1_id,
-            "--project-id",
+            "--project-ids",
             p1_id,
             "Implement JWT refresh tokens",
             "Add refresh token rotation for better security",
@@ -323,9 +323,9 @@ def seed():
             dunno,
             "task",
             "create",
-            "--module-id",
+            "--module-ids",
             m1_1_id,
-            "--project-id",
+            "--project-ids",
             p1_id,
             "Add OAuth2 Google login",
             "Integrate Google as an OAuth2 provider",
@@ -336,9 +336,9 @@ def seed():
             dunno,
             "task",
             "create",
-            "--module-id",
+            "--module-ids",
             m1_2_id,
-            "--project-id",
+            "--project-ids",
             p1_id,
             "Product search with filters",
             "Implement advanced search with category and price filters",
@@ -349,9 +349,9 @@ def seed():
             dunno,
             "task",
             "create",
-            "--module-id",
+            "--module-ids",
             m1_3_id,
-            "--project-id",
+            "--project-ids",
             p1_id,
             "Stripe payment integration",
             "Add Stripe for payment processing",
@@ -362,9 +362,9 @@ def seed():
             dunno,
             "task",
             "create",
-            "--module-id",
+            "--module-ids",
             m2_1_id,
-            "--project-id",
+            "--project-ids",
             p2_id,
             "Drag and drop cards",
             "Implement drag and drop for kanban cards",
@@ -375,9 +375,9 @@ def seed():
             dunno,
             "task",
             "create",
-            "--module-id",
+            "--module-ids",
             m2_2_id,
-            "--project-id",
+            "--project-ids",
             p2_id,
             "Task due dates",
             "Add due date functionality to tasks",
@@ -388,9 +388,9 @@ def seed():
             dunno,
             "task",
             "create",
-            "--module-id",
+            "--module-ids",
             m2_3_id,
-            "--project-id",
+            "--project-ids",
             p2_id,
             "Calendar sync",
             "Sync tasks with Google Calendar",
@@ -425,7 +425,7 @@ def seed():
             dunno,
             "subtask",
             "create",
-            "--task-id",
+            "--task-ids",
             t1_id,
             "Add refresh token table",
             "Create database table for refresh tokens",
@@ -436,7 +436,7 @@ def seed():
             dunno,
             "subtask",
             "create",
-            "--task-id",
+            "--task-ids",
             t1_id,
             "Implement token rotation",
             "Rotate refresh tokens on each use",
@@ -447,7 +447,7 @@ def seed():
             dunno,
             "subtask",
             "create",
-            "--task-id",
+            "--task-ids",
             t2_id,
             "Register Google OAuth app",
             "Set up Google Cloud project",
@@ -458,7 +458,7 @@ def seed():
             dunno,
             "subtask",
             "create",
-            "--task-id",
+            "--task-ids",
             t3_id,
             "Add Elasticsearch",
             "Set up Elasticsearch for search",
@@ -469,7 +469,7 @@ def seed():
             dunno,
             "subtask",
             "create",
-            "--task-id",
+            "--task-ids",
             t4_id,
             "Stripe API integration",
             "Connect to Stripe API",
@@ -480,7 +480,7 @@ def seed():
             dunno,
             "subtask",
             "create",
-            "--task-id",
+            "--task-ids",
             t5_id,
             "Frontend drag-drop",
             "Implement React DnD",
@@ -491,7 +491,7 @@ def seed():
             dunno,
             "subtask",
             "create",
-            "--task-id",
+            "--task-ids",
             t6_id,
             "Date picker component",
             "Add date picker UI",
@@ -513,25 +513,25 @@ def seed():
             dunno,
             "todo",
             "create",
-            "--project-id",
+            "--project-ids",
             p1_id,
             "Add unit tests for auth module",
         ]
     )
     todo2 = run_cmd(
-        [dunno, "todo", "create", "--project-id", p1_id, "Set up CI/CD pipeline"]
+        [dunno, "todo", "create", "--project-ids", p1_id, "Set up CI/CD pipeline"]
     )
     todo3 = run_cmd(
-        [dunno, "todo", "create", "--project-id", p1_id, "Add API documentation"]
+        [dunno, "todo", "create", "--project-ids", p1_id, "Add API documentation"]
     )
     todo4 = run_cmd(
-        [dunno, "todo", "create", "--project-id", p2_id, "Design mobile app mockups"]
+        [dunno, "todo", "create", "--project-ids", p2_id, "Design mobile app mockups"]
     )
     todo5 = run_cmd(
-        [dunno, "todo", "create", "--project-id", p2_id, "User testing sessions"]
+        [dunno, "todo", "create", "--project-ids", p2_id, "User testing sessions"]
     )
     todo6 = run_cmd(
-        [dunno, "todo", "create", "--project-id", p2_id, "Performance optimization"]
+        [dunno, "todo", "create", "--project-ids", p2_id, "Performance optimization"]
     )
 
     print(f"  Created 6 todo items")
@@ -546,9 +546,13 @@ def seed():
         [
             dunno,
             "add",
-            "--type",
+            "--field",
+            "type",
+            "--value",
             "mistake",
-            "--content",
+            "--field",
+            "content",
+            "--value",
             "Using unwrap() on user input - should use match or if let",
             "--link-to",
             m1_1_id,
@@ -559,9 +563,13 @@ def seed():
         [
             dunno,
             "add",
-            "--type",
+            "--field",
+            "type",
+            "--value",
             "mistake",
-            "--content",
+            "--field",
+            "content",
+            "--value",
             "Project-wide: avoid global mutable state",
             "--link-to",
             p1_id,
@@ -572,9 +580,13 @@ def seed():
         [
             dunno,
             "add",
-            "--type",
+            "--field",
+            "type",
+            "--value",
             "style",
-            "--content",
+            "--field",
+            "content",
+            "--value",
             "Submodule-level: use same error type in this submodule",
             "--link-to",
             sm1_id,
@@ -585,9 +597,13 @@ def seed():
         [
             dunno,
             "add",
-            "--type",
+            "--field",
+            "type",
+            "--value",
             "mistake",
-            "--content",
+            "--field",
+            "content",
+            "--value",
             "Task-level: do not log tokens in production",
             "--link-to",
             t1_id,
@@ -598,9 +614,13 @@ def seed():
         [
             dunno,
             "add",
-            "--type",
+            "--field",
+            "type",
+            "--value",
             "mistake",
-            "--content",
+            "--field",
+            "content",
+            "--value",
             "Subtask-level: refresh token table must be migrated",
             "--link-to",
             st1_id,
@@ -611,9 +631,13 @@ def seed():
         [
             dunno,
             "add",
-            "--type",
+            "--field",
+            "type",
+            "--value",
             "mistake",
-            "--content",
+            "--field",
+            "content",
+            "--value",
             "Forgetting to index database columns used in WHERE clauses",
             "--link-to",
             m1_2_id,
@@ -624,9 +648,13 @@ def seed():
         [
             dunno,
             "add",
-            "--type",
+            "--field",
+            "type",
+            "--value",
             "mistake",
-            "--content",
+            "--field",
+            "content",
+            "--value",
             "Not validating CSRF tokens on form submissions",
             "--link-to",
             m1_3_id,
@@ -637,9 +665,13 @@ def seed():
         [
             dunno,
             "add",
-            "--type",
+            "--field",
+            "type",
+            "--value",
             "style",
-            "--content",
+            "--field",
+            "content",
+            "--value",
             "Prefer functional style for iterators: vec.iter().map(...).collect()",
             "--link-to",
             m2_2_id,
@@ -650,9 +682,13 @@ def seed():
         [
             dunno,
             "add",
-            "--type",
+            "--field",
+            "type",
+            "--value",
             "style",
-            "--content",
+            "--field",
+            "content",
+            "--value",
             "Use consistent naming: snake_case for variables, CamelCase for types",
             "--link-to",
             m2_1_id,
@@ -663,9 +699,13 @@ def seed():
         [
             dunno,
             "add",
-            "--type",
+            "--field",
+            "type",
+            "--value",
             "security",
-            "--content",
+            "--field",
+            "content",
+            "--value",
             "SQL injection risk - use parameterized queries instead of string concatenation",
             "--link-to",
             m1_2_id,
@@ -676,9 +716,13 @@ def seed():
         [
             dunno,
             "add",
-            "--type",
+            "--field",
+            "type",
+            "--value",
             "security",
-            "--content",
+            "--field",
+            "content",
+            "--value",
             "XSS vulnerability - sanitize user input before rendering HTML",
             "--link-to",
             m2_1_id,
@@ -689,9 +733,13 @@ def seed():
         [
             dunno,
             "add",
-            "--type",
+            "--field",
+            "type",
+            "--value",
             "security",
-            "--content",
+            "--field",
+            "content",
+            "--value",
             "Rate limiting not implemented on login endpoint",
             "--link-to",
             m1_1_id,
@@ -709,7 +757,9 @@ def seed():
     print(f"Tasks: 7")
     print(f"Subtasks: 7")
     print(f"Todo items: 6")
-    print(f"Knowledge entries: 12 (linked at project, module, submodule, task, subtask)")
+    print(
+        f"Knowledge entries: 12 (linked at project, module, submodule, task, subtask)"
+    )
 
 
 def main():
