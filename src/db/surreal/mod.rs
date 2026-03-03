@@ -1,13 +1,11 @@
 //! SurrealDB backend: client, connection, and generic helpers.
 
-mod convert;
 mod entities;
-mod schema;
 mod flatten_context;
+mod schema;
+mod util;
 
-use convert::{is_missing_table_error, surreal_to_json};
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DB {
     pub(crate) client: surrealdb::Surreal<surrealdb::engine::any::Any>,
 }
@@ -147,15 +145,19 @@ impl DB {
         Ok(db)
     }
 
+    /// Deletes all records from all tables.
+    pub async fn purge_database(&self) -> anyhow::Result<()> {
+        for table in schema::TABLES {
+            let sql = format!("DELETE {}", table);
+            self.client.query(&sql).await?;
+        }
+        Ok(())
+    }
+
     // --- Generic Helpers ---
 
     /// Creates a RELATE edge between two record ids. Public for the generic `dunno link` CLI.
-    pub async fn link(
-        &self,
-        from_id: &str,
-        edge_table: &str,
-        to_id: &str,
-    ) -> anyhow::Result<()> {
+    pub async fn link(&self, from_id: &str, edge_table: &str, to_id: &str) -> anyhow::Result<()> {
         let sql = format!(
             "LET $f = type::record($from); \
              LET $t = type::record($to); \
@@ -175,15 +177,15 @@ impl DB {
         id: &str,
     ) -> anyhow::Result<Option<T>> {
         let key = id.split_once(':').map(|(_, key)| key).unwrap_or(id);
-        let fetched: Option<surrealdb::types::Value> =
-            match self.client.select((table, key)).await {
-                Ok(value) => value,
-                Err(err) if is_missing_table_error(&err) => None,
-                Err(err) => return Err(err.into()),
-            };
+        let fetched: Option<surrealdb::types::Value> = match self.client.select((table, key)).await
+        {
+            Ok(value) => value,
+            Err(err) if util::is_missing_table_error(&err) => None,
+            Err(err) => return Err(err.into()),
+        };
 
         if let Some(val) = fetched {
-            let json = surreal_to_json(val);
+            let json = util::surreal_to_json(val);
             Ok(Some(serde_json::from_value(json)?))
         } else {
             Ok(None)
@@ -196,12 +198,12 @@ impl DB {
     ) -> anyhow::Result<Vec<T>> {
         let fetched: Vec<surrealdb::types::Value> = match self.client.select(table).await {
             Ok(values) => values,
-            Err(err) if is_missing_table_error(&err) => Vec::new(),
+            Err(err) if util::is_missing_table_error(&err) => Vec::new(),
             Err(err) => return Err(err.into()),
         };
         let mut out = Vec::with_capacity(fetched.len());
         for val in fetched {
-            let json = surreal_to_json(val);
+            let json = util::surreal_to_json(val);
             out.push(serde_json::from_value(json)?);
         }
         Ok(out)
@@ -226,7 +228,7 @@ impl DB {
             None => return Ok(Vec::new()),
         };
 
-        let json = surreal_to_json(row);
+        let json = util::surreal_to_json(row);
         let items = match json.get(field) {
             Some(serde_json::Value::Array(outer)) => {
                 let mut flat = Vec::new();
@@ -264,12 +266,12 @@ impl DB {
             .bind((key.to_string(), value))
             .await?;
         let val: surrealdb::types::Value = response.take(take_index)?;
-        Ok(surreal_to_json(val))
+        Ok(util::surreal_to_json(val))
     }
 }
 
 #[cfg(test)]
 mod tests;
 
-pub use entities::tasks::{get_subtask_context_json, get_task_context_json};
 pub use entities::files::get_file_context_json;
+pub use entities::tasks::{get_subtask_context_json, get_task_context_json};

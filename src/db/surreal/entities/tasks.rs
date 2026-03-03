@@ -1,5 +1,19 @@
-use crate::db::surreal::convert::{json_to_surreal, surreal_to_json};
-use crate::db::surreal::{StructuralHierarchy, DB};
+use crate::db::surreal::util::{json_to_surreal, surreal_to_json};
+use crate::db::surreal::{DB, StructuralHierarchy};
+
+/// Validates task creation parameters.
+pub(crate) fn validate_task_params(name: &str, description: &str) -> anyhow::Result<()> {
+    if name.trim().is_empty() {
+        return Err(anyhow::anyhow!("Task name cannot be empty"));
+    }
+    if description.trim().is_empty() {
+        return Err(anyhow::anyhow!("Task description cannot be empty"));
+    }
+    if name.len() > 255 {
+        return Err(anyhow::anyhow!("Task name too long (max 255 chars)"));
+    }
+    Ok(())
+}
 
 impl DB {
     /// Internal helper: creates a task record without any relationships.
@@ -24,6 +38,8 @@ impl DB {
         module_id: Option<&str>,
         project_id: Option<&str>,
     ) -> anyhow::Result<crate::models::Task> {
+        validate_task_params(name, description)?;
+
         let task = crate::models::Task {
             id: None,
             name: name.to_string(),
@@ -32,30 +48,17 @@ impl DB {
         };
         let result = self.create_task_record(&task).await?;
 
-        match (module_id, project_id, result.id.as_ref()) {
-            (Some(mid), Some(pid), Some(tid)) => {
-                self.link(pid, "has_task", tid).await?;
-                self.link(tid, "belongs_to_project", pid).await?;
-                self.link(tid, "belongs_to_module", mid).await?;
-            }
-            (None, None, _) => {
-                // Freestanding task: no relationships.
-            }
-            _ => {
-                return Err(anyhow::anyhow!(
-                    "create_task: when linking, both module_id and project_id must be provided"
-                ));
-            }
+        if let (Some(mid), Some(pid), Some(tid)) = (module_id, project_id, result.id.as_ref()) {
+            self.link(pid, "has_task", tid).await?;
+            self.link(tid, "belongs_to_project", pid).await?;
+            self.link(tid, "belongs_to_module", mid).await?;
         }
 
         Ok(result)
     }
 
     /// Fetches a task by record id.
-    pub async fn get_task(
-        &self,
-        id: &str,
-    ) -> anyhow::Result<Option<crate::models::Task>> {
+    pub async fn get_task(&self, id: &str) -> anyhow::Result<Option<crate::models::Task>> {
         self.get_record("task", id).await
     }
 
@@ -271,14 +274,15 @@ impl DB {
                     )
                     .await?;
                 let project_id = match &module_id {
-                    Some(mid) => self
-                        .first_record_id_from_query(
+                    Some(mid) => {
+                        self.first_record_id_from_query(
                             "SELECT <-contains<-project AS p FROM ONLY type::record($mid)",
                             "mid",
                             mid.clone(),
                             "p",
                         )
-                        .await?,
+                        .await?
+                    }
                     None => None,
                 };
                 Ok(StructuralHierarchy {
@@ -313,11 +317,7 @@ impl DB {
                     Some(tid) => {
                         let h = self.get_task_hierarchy(tid).await?;
                         let sub = h.submodule.as_ref().map(|s| s.id.clone());
-                        (
-                            Some(h.project_id),
-                            Some(h.module_id),
-                            sub,
-                        )
+                        (Some(h.project_id), Some(h.module_id), sub)
                     }
                     None => (None, None, None),
                 };
@@ -471,10 +471,7 @@ impl DB {
     }
 
     /// Fetches a subtask by record id.
-    pub async fn get_subtask(
-        &self,
-        id: &str,
-    ) -> anyhow::Result<Option<crate::models::Subtask>> {
+    pub async fn get_subtask(&self, id: &str) -> anyhow::Result<Option<crate::models::Subtask>> {
         self.get_record("subtask", id).await
     }
 
@@ -517,3 +514,46 @@ pub async fn get_subtask_context_json(
         .collect())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_task_params_accepts_valid_input() {
+        validate_task_params("Valid Name", "Valid Description")
+            .expect("should accept valid params");
+    }
+
+    #[test]
+    fn validate_task_params_rejects_empty_name() {
+        let err = validate_task_params("", "Description").expect_err("empty name should fail");
+        assert!(err.to_string().contains("name"));
+    }
+
+    #[test]
+    fn validate_task_params_rejects_whitespace_only_name() {
+        let err =
+            validate_task_params("   ", "Description").expect_err("whitespace name should fail");
+        assert!(err.to_string().contains("name"));
+    }
+
+    #[test]
+    fn validate_task_params_rejects_empty_description() {
+        let err = validate_task_params("Name", "").expect_err("empty description should fail");
+        assert!(err.to_string().contains("description"));
+    }
+
+    #[test]
+    fn validate_task_params_rejects_long_name() {
+        let long_name = "a".repeat(256);
+        let err =
+            validate_task_params(&long_name, "Description").expect_err("long name should fail");
+        assert!(err.to_string().contains("too long"));
+    }
+
+    #[test]
+    fn validate_task_params_accepts_max_length_name() {
+        let max_name = "a".repeat(255);
+        validate_task_params(&max_name, "Description").expect("255 char name should be accepted");
+    }
+}

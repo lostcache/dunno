@@ -1,5 +1,3 @@
-
-
 //! Public context API: re-exported from the db layer.
 //!
 //! This keeps `dunno::context::*` stable while allowing the underlying

@@ -64,7 +64,9 @@ pub async fn add_knowledge(
 mod tests {
     #[tokio::test]
     async fn test_add_mistake() {
-        let db = crate::db::DB::new("mem://").await.expect("Failed to init DB");
+        let db = crate::db::DB::new("mem://")
+            .await
+            .expect("Failed to init DB");
 
         let result = crate::ingest::add_knowledge(
             "mistake".to_string(),
@@ -89,7 +91,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_knowledge_with_link() {
-        let db = crate::db::DB::new("mem://").await.expect("Failed to init DB");
+        let db = crate::db::DB::new("mem://")
+            .await
+            .expect("Failed to init DB");
 
         let project = db
             .create_project(&crate::models::Project {

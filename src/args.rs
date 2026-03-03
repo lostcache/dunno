@@ -240,3 +240,33 @@ pub enum TodoCommands {
 pub enum ConfigCommands {
     Show,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn context_command_enforces_mutual_exclusion_of_ids() {
+        // TASK_ID and FILE_ID together should be rejected by clap.
+        let result = Args::try_parse_from([
+            "dunno",
+            "context",
+            "--task-id",
+            "task:1",
+            "--file-id",
+            "file:2",
+        ]);
+        assert!(result.is_err(), "expected clap to reject conflicting ids");
+
+        // Single id variants should parse successfully.
+        let task_ok = Args::try_parse_from(["dunno", "context", "--task-id", "task:1"]);
+        assert!(task_ok.is_ok());
+
+        let file_ok = Args::try_parse_from(["dunno", "context", "--file-id", "file:2"]);
+        assert!(file_ok.is_ok());
+
+        let subtask_ok = Args::try_parse_from(["dunno", "context", "--subtask-id", "subtask:3"]);
+        assert!(subtask_ok.is_ok());
+    }
+}

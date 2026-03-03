@@ -1,7 +1,7 @@
 //! SurrealDB relation table schemas and table list for maintenance.
 
-use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
+use surrealdb::engine::any::Any;
 
 /// Table names used by purge_database. Keep in sync with DEFINE TABLE usage.
 pub(crate) const TABLES: &[&str] = &[

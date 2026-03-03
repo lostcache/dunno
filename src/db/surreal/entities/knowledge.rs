@@ -1,5 +1,16 @@
-use crate::db::surreal::convert::{json_to_surreal, surreal_to_json};
 use crate::db::surreal::DB;
+use crate::db::surreal::util::{json_to_surreal, surreal_to_json};
+
+fn ensure_context_record_id(to_context_id: &str) -> anyhow::Result<()> {
+    if to_context_id.starts_with("context:") {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!(
+            "link_context: to_context_id must be a context record id; got {:?}",
+            to_context_id
+        ))
+    }
+}
 
 impl DB {
     /// Creates a new context record.
@@ -16,10 +27,7 @@ impl DB {
     }
 
     /// Fetches a context record by id.
-    pub async fn get_context(
-        &self,
-        id: &str,
-    ) -> anyhow::Result<Option<crate::models::Context>> {
+    pub async fn get_context(&self, id: &str) -> anyhow::Result<Option<crate::models::Context>> {
         self.get_record("context", id).await
     }
 
@@ -42,12 +50,7 @@ impl DB {
 
     /// Links a structural node to a context record via has_context and creates reverse belongs_to_* edges.
     pub async fn link_context(&self, from_id: &str, to_context_id: &str) -> anyhow::Result<()> {
-        if !to_context_id.starts_with("context:") {
-            return Err(anyhow::anyhow!(
-                "link_context: to_context_id must be a context record id; got {:?}",
-                to_context_id
-            ));
-        }
+        ensure_context_record_id(to_context_id)?;
         self.link(from_id, "has_context", to_context_id).await?;
 
         let hierarchy = self.resolve_structural_hierarchy(from_id).await?;
@@ -64,10 +67,7 @@ impl DB {
     }
 
     /// Returns structural node ids (project, module, task) that this context record belongs to.
-    pub async fn get_belongs_to_targets(
-        &self,
-        context_id: &str,
-    ) -> anyhow::Result<Vec<String>> {
+    pub async fn get_belongs_to_targets(&self, context_id: &str) -> anyhow::Result<Vec<String>> {
         let mut out = Vec::new();
         for (edge, table) in [
             ("belongs_to_project", "project"),
@@ -87,5 +87,24 @@ impl DB {
             }
         }
         Ok(out)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ensure_context_record_id_accepts_context_ids() {
+        ensure_context_record_id("context:1").expect("should accept context record id");
+    }
+
+    #[test]
+    fn ensure_context_record_id_rejects_non_context_ids() {
+        let err = ensure_context_record_id("task:1").expect_err("should reject non-context id");
+        assert!(
+            err.to_string()
+                .contains("to_context_id must be a context record id")
+        );
     }
 }

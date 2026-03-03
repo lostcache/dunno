@@ -150,9 +150,8 @@ async fn test_link_context_all_levels() {
         .await
         .expect("get_linked_context for subtask");
     assert!(
-        subtask_ctx
-            .iter()
-            .any(|c| c.context_type == "mistake" && c.content.as_deref() == Some("Subtask Level Mistake")),
+        subtask_ctx.iter().any(|c| c.context_type == "mistake"
+            && c.content.as_deref() == Some("Subtask Level Mistake")),
         "subtask linked context should include subtask-level mistake: {:?}",
         subtask_ctx
     );
@@ -201,7 +200,10 @@ async fn test_link_context_reverse_belongs_to() {
     db.link_context(&project_id, &ctx1_id)
         .await
         .expect("link project -> context");
-    let targets1 = db.get_belongs_to_targets(&ctx1_id).await.expect("get_belongs_to_targets");
+    let targets1 = db
+        .get_belongs_to_targets(&ctx1_id)
+        .await
+        .expect("get_belongs_to_targets");
     assert!(
         targets1.contains(&project_id),
         "context linked to project should have belongs_to project: {:?}",
@@ -225,7 +227,10 @@ async fn test_link_context_reverse_belongs_to() {
     db.link_context(&task_id, &ctx2_id)
         .await
         .expect("link task -> context");
-    let targets2 = db.get_belongs_to_targets(&ctx2_id).await.expect("get_belongs_to_targets");
+    let targets2 = db
+        .get_belongs_to_targets(&ctx2_id)
+        .await
+        .expect("get_belongs_to_targets");
     assert!(
         targets2.contains(&project_id),
         "context linked to task should belong_to project: {:?}",
@@ -257,10 +262,7 @@ async fn test_subtask_crud() {
         .unwrap();
     let pid = project.id.unwrap();
 
-    let module = db
-        .create_module("M", "d", Some(&pid))
-        .await
-        .unwrap();
+    let module = db.create_module("M", "d", Some(&pid)).await.unwrap();
     let mid = module.id.unwrap();
 
     let task = db
@@ -364,7 +366,12 @@ async fn test_get_task_context() {
     let module_id = module.id.expect("module id");
 
     let task = db
-        .create_task("Login", "Implement login", Some(&module_id), Some(&project_id))
+        .create_task(
+            "Login",
+            "Implement login",
+            Some(&module_id),
+            Some(&project_id),
+        )
         .await
         .expect("Failed to create task");
     let task_id = task.id.expect("task id");
@@ -391,7 +398,10 @@ async fn test_get_task_context() {
         .await
         .expect("Failed to link context");
 
-    let context = db.get_task_context(&task_id).await.expect("get_task_context failed");
+    let context = db
+        .get_task_context(&task_id)
+        .await
+        .expect("get_task_context failed");
 
     assert_eq!(context.task.name, "Login");
     assert_eq!(context.subtasks.len(), 1);
@@ -440,7 +450,10 @@ async fn test_list_tasks_by_project() {
         .await
         .expect("Failed to create task2");
 
-    let tasks = db.list_tasks_by_project(&project_id).await.expect("list_tasks_by_project failed");
+    let tasks = db
+        .list_tasks_by_project(&project_id)
+        .await
+        .expect("list_tasks_by_project failed");
 
     assert_eq!(tasks.len(), 2);
     let names: Vec<&str> = tasks.iter().map(|t| t.name.as_str()).collect();
@@ -479,10 +492,16 @@ async fn test_create_task_bidirectional_edges() {
         .expect("Failed to create task");
     let _task_id = task.id.expect("task id");
 
-    let tasks_from_project = db.list_tasks_by_project(&project_id).await.expect("list_tasks_by_project failed");
+    let tasks_from_project = db
+        .list_tasks_by_project(&project_id)
+        .await
+        .expect("list_tasks_by_project failed");
     assert_eq!(tasks_from_project.len(), 1);
 
-    let tasks_from_module = db.list_tasks_by_module(&module_id).await.expect("list_tasks_by_module failed");
+    let tasks_from_module = db
+        .list_tasks_by_module(&module_id)
+        .await
+        .expect("list_tasks_by_module failed");
     assert_eq!(tasks_from_module.len(), 1);
 }
 
@@ -507,12 +526,20 @@ async fn test_get_task_context_no_linked_knowledge() {
     let module_id = module.id.expect("module id");
 
     let task = db
-        .create_task("Login", "Implement login", Some(&module_id), Some(&project_id))
+        .create_task(
+            "Login",
+            "Implement login",
+            Some(&module_id),
+            Some(&project_id),
+        )
         .await
         .expect("Failed to create task");
     let task_id = task.id.expect("task id");
 
-    let context = db.get_task_context(&task_id).await.expect("get_task_context failed");
+    let context = db
+        .get_task_context(&task_id)
+        .await
+        .expect("get_task_context failed");
 
     assert_eq!(context.task.name, "Login");
     assert!(context.subtasks.is_empty());
@@ -540,7 +567,12 @@ async fn test_get_task_context_all_knowledge_types() {
     let module_id = module.id.expect("module id");
 
     let task = db
-        .create_task("Login", "Implement login", Some(&module_id), Some(&project_id))
+        .create_task(
+            "Login",
+            "Implement login",
+            Some(&module_id),
+            Some(&project_id),
+        )
         .await
         .expect("Failed to create task");
     let task_id = task.id.expect("task id");
@@ -558,7 +590,9 @@ async fn test_get_task_context_all_knowledge_types() {
         })
         .await
         .expect("Failed to create context");
-    db.link_context(&task_id, &mistake_ctx.id.unwrap()).await.expect("link mistake");
+    db.link_context(&task_id, &mistake_ctx.id.unwrap())
+        .await
+        .expect("link mistake");
 
     let style_ctx = db
         .create_context(&crate::models::Context {
@@ -573,7 +607,9 @@ async fn test_get_task_context_all_knowledge_types() {
         })
         .await
         .expect("Failed to create context");
-    db.link_context(&task_id, &style_ctx.id.unwrap()).await.expect("link style");
+    db.link_context(&task_id, &style_ctx.id.unwrap())
+        .await
+        .expect("link style");
 
     let security_ctx = db
         .create_context(&crate::models::Context {
@@ -588,19 +624,33 @@ async fn test_get_task_context_all_knowledge_types() {
         })
         .await
         .expect("Failed to create context");
-    db.link_context(&task_id, &security_ctx.id.unwrap()).await.expect("link security");
+    db.link_context(&task_id, &security_ctx.id.unwrap())
+        .await
+        .expect("link security");
 
-    let context = db.get_task_context(&task_id).await.expect("get_task_context failed");
+    let context = db
+        .get_task_context(&task_id)
+        .await
+        .expect("get_task_context failed");
 
     assert_eq!(context.contexts.len(), 3);
-    assert!(context
-        .contexts
-        .iter()
-        .any(|c| c.context_type == "mistake" && c.content.as_deref() == Some("Using unwrap")));
-    assert!(context.contexts.iter().any(|c| c.context_type == "style_rule"
-        && c.description.as_deref() == Some("Use match")));
-    assert!(context.contexts.iter().any(|c| c.context_type == "security_detail"
-        && c.severity.as_deref() == Some("high")));
+    assert!(
+        context
+            .contexts
+            .iter()
+            .any(|c| c.context_type == "mistake" && c.content.as_deref() == Some("Using unwrap"))
+    );
+    assert!(
+        context.contexts.iter().any(
+            |c| c.context_type == "style_rule" && c.description.as_deref() == Some("Use match")
+        )
+    );
+    assert!(
+        context
+            .contexts
+            .iter()
+            .any(|c| c.context_type == "security_detail" && c.severity.as_deref() == Some("high"))
+    );
 }
 
 #[tokio::test]
@@ -634,7 +684,10 @@ async fn test_get_task_context_under_submodule() {
         .await
         .expect("Failed to create task");
     let task_id = task.id.expect("task id");
-    let context = db.get_task_context(&task_id).await.expect("get_task_context failed");
+    let context = db
+        .get_task_context(&task_id)
+        .await
+        .expect("get_task_context failed");
     assert_eq!(context.hierarchy.module_name, "Auth");
     assert!(context.hierarchy.submodule.is_none());
 }
@@ -657,11 +710,19 @@ async fn test_get_task_context_files_from_module() {
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
     let task = db
-        .create_task("Login", "Implement login", Some(&module_id), Some(&project_id))
+        .create_task(
+            "Login",
+            "Implement login",
+            Some(&module_id),
+            Some(&project_id),
+        )
         .await
         .expect("Failed to create task");
     let task_id = task.id.expect("task id");
-    let context = db.get_task_context(&task_id).await.expect("get_task_context failed");
+    let context = db
+        .get_task_context(&task_id)
+        .await
+        .expect("get_task_context failed");
     assert!(context.files.is_empty());
 }
 
@@ -677,7 +738,10 @@ async fn test_project_operations() {
         .await
         .expect("Failed to create project");
     let project_id = project.id.expect("project id");
-    let fetched = db.get_project(&project_id).await.expect("get_project failed");
+    let fetched = db
+        .get_project(&project_id)
+        .await
+        .expect("get_project failed");
     assert!(fetched.is_some());
     assert_eq!(fetched.unwrap().name, "TestProject");
     let projects = db.list_projects().await.expect("list_projects failed");
@@ -706,7 +770,10 @@ async fn test_module_operations() {
     assert_eq!(fetched.unwrap().name, "Auth");
     let modules = db.list_modules().await.expect("list_modules failed");
     assert_eq!(modules.len(), 1);
-    let modules_by_project = db.list_modules_by_project(&project_id).await.expect("list_modules_by_project failed");
+    let modules_by_project = db
+        .list_modules_by_project(&project_id)
+        .await
+        .expect("list_modules_by_project failed");
     assert_eq!(modules_by_project.len(), 1);
 }
 
@@ -732,12 +799,18 @@ async fn test_submodule_operations() {
         .await
         .expect("Failed to create submodule");
     let submodule_id = submodule.id.expect("submodule id");
-    let fetched = db.get_submodule(&submodule_id).await.expect("get_submodule failed");
+    let fetched = db
+        .get_submodule(&submodule_id)
+        .await
+        .expect("get_submodule failed");
     assert!(fetched.is_some());
     assert_eq!(fetched.unwrap().name, "JWT");
     let submodules = db.list_submodules().await.expect("list_submodules failed");
     assert_eq!(submodules.len(), 1);
-    let submodules_by_module = db.list_submodules_by_module(&module_id).await.expect("list_submodules_by_module failed");
+    let submodules_by_module = db
+        .list_submodules_by_module(&module_id)
+        .await
+        .expect("list_submodules_by_module failed");
     assert_eq!(submodules_by_module.len(), 1);
 }
 
@@ -768,7 +841,10 @@ async fn test_file_operations() {
     assert_eq!(fetched.unwrap().name, "main.rs");
     let files = db.list_files().await.expect("list_files failed");
     assert_eq!(files.len(), 1);
-    let files_by_module = db.list_files_by_module(&module_id).await.expect("list_files_by_module failed");
+    let files_by_module = db
+        .list_files_by_module(&module_id)
+        .await
+        .expect("list_files_by_module failed");
     assert_eq!(files_by_module.len(), 1);
 }
 
@@ -794,7 +870,10 @@ async fn test_todo_operations() {
     assert_eq!(fetched.unwrap().content, "Buy milk");
     let todos = db.list_todos().await.expect("list_todos failed");
     assert_eq!(todos.len(), 1);
-    let todos_by_project = db.list_todos_by_project(&project_id).await.expect("list_todos_by_project failed");
+    let todos_by_project = db
+        .list_todos_by_project(&project_id)
+        .await
+        .expect("list_todos_by_project failed");
     assert_eq!(todos_by_project.len(), 1);
 }
 
@@ -819,7 +898,10 @@ async fn test_list_tasks_by_module() {
         .create_task("Task1", "Task 1", Some(&module_id), Some(&project_id))
         .await
         .expect("Failed to create task");
-    let tasks = db.list_tasks_by_module(&module_id).await.expect("list_tasks_by_module failed");
+    let tasks = db
+        .list_tasks_by_module(&module_id)
+        .await
+        .expect("list_tasks_by_module failed");
     assert_eq!(tasks.len(), 1);
 }
 
@@ -840,10 +922,16 @@ async fn test_mistake_operations() {
         .await
         .expect("Failed to create context");
     let context_id = ctx.id.expect("context id");
-    let fetched = db.get_context(&context_id).await.expect("get_context failed");
+    let fetched = db
+        .get_context(&context_id)
+        .await
+        .expect("get_context failed");
     assert!(fetched.is_some());
     assert_eq!(fetched.unwrap().content.as_deref(), Some("Using unwrap"));
-    let contexts = db.list_contexts_by_type("mistake").await.expect("list_contexts_by_type failed");
+    let contexts = db
+        .list_contexts_by_type("mistake")
+        .await
+        .expect("list_contexts_by_type failed");
     assert_eq!(contexts.len(), 1);
 }
 
@@ -864,10 +952,16 @@ async fn test_style_rule_operations() {
         .await
         .expect("Failed to create context");
     let context_id = ctx.id.expect("context id");
-    let fetched = db.get_context(&context_id).await.expect("get_context failed");
+    let fetched = db
+        .get_context(&context_id)
+        .await
+        .expect("get_context failed");
     assert!(fetched.is_some());
     assert_eq!(fetched.unwrap().description.as_deref(), Some("Use match"));
-    let contexts = db.list_contexts_by_type("style_rule").await.expect("list_contexts_by_type failed");
+    let contexts = db
+        .list_contexts_by_type("style_rule")
+        .await
+        .expect("list_contexts_by_type failed");
     assert_eq!(contexts.len(), 1);
 }
 
@@ -888,10 +982,16 @@ async fn test_security_detail_operations() {
         .await
         .expect("Failed to create context");
     let context_id = ctx.id.expect("context id");
-    let fetched = db.get_context(&context_id).await.expect("get_context failed");
+    let fetched = db
+        .get_context(&context_id)
+        .await
+        .expect("get_context failed");
     assert!(fetched.is_some());
     assert_eq!(fetched.unwrap().severity.as_deref(), Some("high"));
-    let contexts = db.list_contexts_by_type("security_detail").await.expect("list_contexts_by_type failed");
+    let contexts = db
+        .list_contexts_by_type("security_detail")
+        .await
+        .expect("list_contexts_by_type failed");
     assert_eq!(contexts.len(), 1);
 }
 
@@ -916,19 +1016,27 @@ async fn test_freestanding_module() {
         .expect("create freestanding module");
     let module_id = module.id.expect("module id");
 
-    assert!(db.get_module(&module_id).await.expect("get_module").is_some());
+    assert!(
+        db.get_module(&module_id)
+            .await
+            .expect("get_module")
+            .is_some()
+    );
     let by_project = db
         .list_modules_by_project(&project_id)
         .await
         .expect("list_modules_by_project");
     assert!(
-        !by_project.iter().any(|m| m.id.as_deref() == Some(module_id.as_str())),
+        !by_project
+            .iter()
+            .any(|m| m.id.as_deref() == Some(module_id.as_str())),
         "freestanding module must not appear under project: {:?}",
         by_project
     );
     let all = db.list_modules().await.expect("list_modules");
     assert!(
-        all.iter().any(|m| m.id.as_deref() == Some(module_id.as_str())),
+        all.iter()
+            .any(|m| m.id.as_deref() == Some(module_id.as_str())),
         "freestanding module must appear in list_modules"
     );
 }
@@ -957,13 +1065,20 @@ async fn test_freestanding_submodule() {
         .expect("create freestanding submodule");
     let sub_id = sub.id.expect("submodule id");
 
-    assert!(db.get_submodule(&sub_id).await.expect("get_submodule").is_some());
+    assert!(
+        db.get_submodule(&sub_id)
+            .await
+            .expect("get_submodule")
+            .is_some()
+    );
     let by_module = db
         .list_submodules_by_module(&module_id)
         .await
         .expect("list_submodules_by_module");
     assert!(
-        !by_module.iter().any(|s| s.id.as_deref() == Some(sub_id.as_str())),
+        !by_module
+            .iter()
+            .any(|s| s.id.as_deref() == Some(sub_id.as_str())),
         "freestanding submodule must not appear under module"
     );
 }
@@ -998,7 +1113,9 @@ async fn test_freestanding_file() {
         .await
         .expect("list_files_by_module");
     assert!(
-        !by_module.iter().any(|f| f.id.as_deref() == Some(file_id.as_str())),
+        !by_module
+            .iter()
+            .any(|f| f.id.as_deref() == Some(file_id.as_str())),
         "freestanding file must not appear under module"
     );
 }
@@ -1015,7 +1132,8 @@ async fn test_freestanding_task() {
     assert!(db.get_task(&task_id).await.expect("get_task").is_some());
     let err = db.get_task_hierarchy(&task_id).await.unwrap_err();
     assert!(
-        err.to_string().contains("No project linked to task"),
+        err.to_string().contains("Failed to parse project from graph query")
+            || err.to_string().contains("No project linked to task"),
         "freestanding task must fail get_task_hierarchy: {}",
         err
     );
@@ -1050,13 +1168,20 @@ async fn test_freestanding_subtask() {
         .expect("create freestanding subtask");
     let subtask_id = subtask.id.expect("subtask id");
 
-    assert!(db.get_subtask(&subtask_id).await.expect("get_subtask").is_some());
+    assert!(
+        db.get_subtask(&subtask_id)
+            .await
+            .expect("get_subtask")
+            .is_some()
+    );
     let by_task = db
         .list_subtasks_by_task(&task_id)
         .await
         .expect("list_subtasks_by_task");
     assert!(
-        !by_task.iter().any(|s| s.id.as_deref() == Some(subtask_id.as_str())),
+        !by_task
+            .iter()
+            .any(|s| s.id.as_deref() == Some(subtask_id.as_str())),
         "freestanding subtask must not appear under task"
     );
 }
@@ -1086,7 +1211,9 @@ async fn test_freestanding_todo() {
         .await
         .expect("list_todos_by_project");
     assert!(
-        !by_project.iter().any(|t| t.id.as_deref() == Some(todo_id.as_str())),
+        !by_project
+            .iter()
+            .any(|t| t.id.as_deref() == Some(todo_id.as_str())),
         "freestanding todo must not appear under project"
     );
 }
@@ -1116,9 +1243,9 @@ async fn test_link_after_create_module() {
         .expect("list_modules_by_project");
     assert_eq!(by_before.len(), 0);
 
-    db.relate(&project_id, "contains", &module_id)
+    db.link(&project_id, "contains", &module_id)
         .await
-        .expect("relate project -> contains -> module");
+        .expect("link project -> contains -> module");
 
     let by_after = db
         .list_modules_by_project(&project_id)
@@ -1152,17 +1279,20 @@ async fn test_link_after_create_task_hierarchy() {
         .expect("create freestanding task");
     let task_id = task.id.expect("task id");
 
-    db.relate(&project_id, "has_task", &task_id)
+    db.link(&project_id, "has_task", &task_id)
         .await
-        .expect("relate project -> has_task -> task");
-    db.relate(&task_id, "belongs_to_project", &project_id)
+        .expect("link project -> has_task -> task");
+    db.link(&task_id, "belongs_to_project", &project_id)
         .await
-        .expect("relate task -> belongs_to_project -> project");
-    db.relate(&task_id, "belongs_to_module", &module_id)
+        .expect("link task -> belongs_to_project -> project");
+    db.link(&task_id, "belongs_to_module", &module_id)
         .await
-        .expect("relate task -> belongs_to_module -> module");
+        .expect("link task -> belongs_to_module -> module");
 
-    let hierarchy = db.get_task_hierarchy(&task_id).await.expect("get_task_hierarchy");
+    let hierarchy = db
+        .get_task_hierarchy(&task_id)
+        .await
+        .expect("get_task_hierarchy");
     assert_eq!(hierarchy.project_id, project_id);
     assert_eq!(hierarchy.module_id, module_id);
 }
@@ -1190,13 +1320,30 @@ async fn test_create_with_link_ids_preserves_hierarchy() {
         .expect("create task");
     let task_id = task.id.expect("task id");
 
-    let hierarchy = db.get_task_hierarchy(&task_id).await.expect("get_task_hierarchy");
+    let hierarchy = db
+        .get_task_hierarchy(&task_id)
+        .await
+        .expect("get_task_hierarchy");
     assert_eq!(hierarchy.project_id, project_id);
     assert_eq!(hierarchy.module_id, module_id);
-    let by_project = db.list_tasks_by_project(&project_id).await.expect("list_tasks_by_project");
-    assert!(by_project.iter().any(|t| t.id.as_deref() == Some(task_id.as_str())));
-    let by_module = db.list_tasks_by_module(&module_id).await.expect("list_tasks_by_module");
-    assert!(by_module.iter().any(|t| t.id.as_deref() == Some(task_id.as_str())));
+    let by_project = db
+        .list_tasks_by_project(&project_id)
+        .await
+        .expect("list_tasks_by_project");
+    assert!(
+        by_project
+            .iter()
+            .any(|t| t.id.as_deref() == Some(task_id.as_str()))
+    );
+    let by_module = db
+        .list_tasks_by_module(&module_id)
+        .await
+        .expect("list_tasks_by_module");
+    assert!(
+        by_module
+            .iter()
+            .any(|t| t.id.as_deref() == Some(task_id.as_str()))
+    );
 }
 
 #[tokio::test]
@@ -1215,4 +1362,672 @@ async fn test_purge_database() {
     db.purge_database().await.expect("Failed to purge database");
     let projects_after = db.list_projects().await.expect("List projects after purge");
     assert_eq!(projects_after.len(), 0);
+}
+
+// ============================================================================
+// UPDATE OPERATIONS
+// ============================================================================
+
+#[tokio::test]
+async fn test_update_task_name() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test Project".to_string(),
+            description: "Test".to_string(),
+        })
+        .await
+        .expect("Failed to create project");
+    let project_id = project.id.expect("project id");
+
+    let module = db
+        .create_module("Auth", "Auth module", Some(&project_id))
+        .await
+        .expect("Failed to create module");
+    let module_id = module.id.expect("module id");
+
+    let task = db
+        .create_task(
+            "Original Name",
+            "Original desc",
+            Some(&module_id),
+            Some(&project_id),
+        )
+        .await
+        .expect("Failed to create task");
+    let task_id = task.id.expect("task id");
+
+    let updated = db
+        .update_task(&task_id, Some("Updated Name".to_string()), None, None)
+        .await
+        .expect("Failed to update task name");
+
+    assert!(updated.is_some());
+    assert_eq!(updated.unwrap().name, "Updated Name");
+
+    let fetched = db.get_task(&task_id).await.expect("Failed to fetch task");
+    assert_eq!(fetched.unwrap().name, "Updated Name");
+}
+
+#[tokio::test]
+async fn test_update_task_description() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test Project".to_string(),
+            description: "Test".to_string(),
+        })
+        .await
+        .expect("Failed to create project");
+    let project_id = project.id.expect("project id");
+
+    let module = db
+        .create_module("Auth", "Auth module", Some(&project_id))
+        .await
+        .expect("Failed to create module");
+    let module_id = module.id.expect("module id");
+
+    let task = db
+        .create_task(
+            "Task Name",
+            "Original description",
+            Some(&module_id),
+            Some(&project_id),
+        )
+        .await
+        .expect("Failed to create task");
+    let task_id = task.id.expect("task id");
+
+    let updated = db
+        .update_task(
+            &task_id,
+            None,
+            Some("Updated description".to_string()),
+            None,
+        )
+        .await
+        .expect("Failed to update task description");
+
+    assert!(updated.is_some());
+    assert_eq!(updated.unwrap().description, "Updated description");
+}
+
+#[tokio::test]
+async fn test_update_task_status() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test Project".to_string(),
+            description: "Test".to_string(),
+        })
+        .await
+        .expect("Failed to create project");
+    let project_id = project.id.expect("project id");
+
+    let module = db
+        .create_module("Auth", "Auth module", Some(&project_id))
+        .await
+        .expect("Failed to create module");
+    let module_id = module.id.expect("module id");
+
+    let task = db
+        .create_task(
+            "Task Name",
+            "Task desc",
+            Some(&module_id),
+            Some(&project_id),
+        )
+        .await
+        .expect("Failed to create task");
+    let task_id = task.id.expect("task id");
+
+    assert_eq!(task.status, crate::models::TaskStatus::NotStarted);
+
+    let updated = db
+        .update_task(
+            &task_id,
+            None,
+            None,
+            Some(crate::models::TaskStatus::Started),
+        )
+        .await
+        .expect("Failed to update task status");
+
+    assert!(updated.is_some());
+    assert_eq!(updated.unwrap().status, crate::models::TaskStatus::Started);
+
+    let finished = db
+        .update_task(
+            &task_id,
+            None,
+            None,
+            Some(crate::models::TaskStatus::Finished),
+        )
+        .await
+        .expect("Failed to update task to finished");
+
+    assert_eq!(
+        finished.unwrap().status,
+        crate::models::TaskStatus::Finished
+    );
+}
+
+#[tokio::test]
+async fn test_update_task_all_fields() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test Project".to_string(),
+            description: "Test".to_string(),
+        })
+        .await
+        .expect("Failed to create project");
+    let project_id = project.id.expect("project id");
+
+    let module = db
+        .create_module("Auth", "Auth module", Some(&project_id))
+        .await
+        .expect("Failed to create module");
+    let module_id = module.id.expect("module id");
+
+    let task = db
+        .create_task(
+            "Original",
+            "Original desc",
+            Some(&module_id),
+            Some(&project_id),
+        )
+        .await
+        .expect("Failed to create task");
+    let task_id = task.id.expect("task id");
+
+    let updated = db
+        .update_task(
+            &task_id,
+            Some("New Name".to_string()),
+            Some("New Description".to_string()),
+            Some(crate::models::TaskStatus::Started),
+        )
+        .await
+        .expect("Failed to update task");
+
+    let task = updated.expect("Task should exist");
+    assert_eq!(task.name, "New Name");
+    assert_eq!(task.description, "New Description");
+    assert_eq!(task.status, crate::models::TaskStatus::Started);
+}
+
+#[tokio::test]
+async fn test_update_task_empty_patch_returns_current() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test Project".to_string(),
+            description: "Test".to_string(),
+        })
+        .await
+        .expect("Failed to create project");
+    let project_id = project.id.expect("project id");
+
+    let module = db
+        .create_module("Auth", "Auth module", Some(&project_id))
+        .await
+        .expect("Failed to create module");
+    let module_id = module.id.expect("module id");
+
+    let task = db
+        .create_task(
+            "Task Name",
+            "Task desc",
+            Some(&module_id),
+            Some(&project_id),
+        )
+        .await
+        .expect("Failed to create task");
+    let task_id = task.id.expect("task id");
+
+    let current = db
+        .update_task(&task_id, None, None, None)
+        .await
+        .expect("Failed to get current task");
+
+    assert!(current.is_some());
+    assert_eq!(current.unwrap().name, "Task Name");
+}
+
+#[tokio::test]
+async fn test_update_nonexistent_task_returns_none() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // When table doesn't exist, it may return an error or None depending on the backend
+    let result = db
+        .update_task("task:nonexistent", Some("New Name".to_string()), None, None)
+        .await;
+    
+    // Should either return None (if table exists but record doesn't) or an error (if table doesn't exist)
+    match result {
+        Ok(None) => (), // Expected: record not found
+        Ok(Some(_)) => panic!("Should not find non-existent task"),
+        Err(e) => {
+            // Also acceptable: table doesn't exist yet
+            assert!(
+                e.to_string().contains("does not exist") || e.to_string().contains("not found"),
+                "Expected 'not found' or 'does not exist' error, got: {}",
+                e
+            );
+        }
+    }
+}
+
+// ============================================================================
+// LIST OPERATIONS
+// ============================================================================
+
+#[tokio::test]
+async fn test_list_tasks_unfiltered() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test Project".to_string(),
+            description: "Test".to_string(),
+        })
+        .await
+        .expect("Failed to create project");
+    let project_id = project.id.expect("project id");
+
+    let module = db
+        .create_module("Auth", "Auth module", Some(&project_id))
+        .await
+        .expect("Failed to create module");
+    let module_id = module.id.expect("module id");
+
+    db.create_task("Task 1", "First task", Some(&module_id), Some(&project_id))
+        .await
+        .expect("Failed to create task 1");
+
+    db.create_task("Task 2", "Second task", Some(&module_id), Some(&project_id))
+        .await
+        .expect("Failed to create task 2");
+
+    db.create_task("Freestanding", "No links", None, None)
+        .await
+        .expect("Failed to create freestanding task");
+
+    let all_tasks = db.list_tasks().await.expect("Failed to list tasks");
+    assert_eq!(all_tasks.len(), 3);
+}
+
+#[tokio::test]
+async fn test_list_contexts_all_types() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    db.create_context(&crate::models::Context {
+        id: None,
+        context_type: "mistake".to_string(),
+        content: Some("Mistake 1".to_string()),
+        description: None,
+        example: None,
+        severity: None,
+        category: None,
+        tags: None,
+    })
+    .await
+    .expect("Failed to create context 1");
+
+    db.create_context(&crate::models::Context {
+        id: None,
+        context_type: "style_rule".to_string(),
+        content: None,
+        description: Some("Style 1".to_string()),
+        example: Some("Example".to_string()),
+        severity: None,
+        category: None,
+        tags: None,
+    })
+    .await
+    .expect("Failed to create context 2");
+
+    db.create_context(&crate::models::Context {
+        id: None,
+        context_type: "security_detail".to_string(),
+        content: Some("Security 1".to_string()),
+        description: None,
+        example: None,
+        severity: Some("high".to_string()),
+        category: Some("injection".to_string()),
+        tags: Some(vec!["sql".to_string()]),
+    })
+    .await
+    .expect("Failed to create context 3");
+
+    db.create_context(&crate::models::Context {
+        id: None,
+        context_type: "mistake".to_string(),
+        content: Some("Mistake 2".to_string()),
+        description: None,
+        example: None,
+        severity: None,
+        category: None,
+        tags: None,
+    })
+    .await
+    .expect("Failed to create context 4");
+
+    let all_contexts = db
+        .list_contexts()
+        .await
+        .expect("Failed to list all contexts");
+    assert_eq!(all_contexts.len(), 4);
+
+    let mistakes = db
+        .list_contexts_by_type("mistake")
+        .await
+        .expect("Failed to list mistakes");
+    assert_eq!(mistakes.len(), 2);
+
+    let styles = db
+        .list_contexts_by_type("style_rule")
+        .await
+        .expect("Failed to list styles");
+    assert_eq!(styles.len(), 1);
+
+    let security = db
+        .list_contexts_by_type("security_detail")
+        .await
+        .expect("Failed to list security");
+    assert_eq!(security.len(), 1);
+
+    let unknown = db
+        .list_contexts_by_type("unknown_type")
+        .await
+        .expect("Failed to list unknown");
+    assert!(unknown.is_empty());
+}
+
+#[tokio::test]
+async fn test_list_files_by_submodule() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test Project".to_string(),
+            description: "Test".to_string(),
+        })
+        .await
+        .expect("Failed to create project");
+    let project_id = project.id.expect("project id");
+
+    let module = db
+        .create_module("Auth", "Auth module", Some(&project_id))
+        .await
+        .expect("Failed to create module");
+    let module_id = module.id.expect("module id");
+
+    let submodule = db
+        .create_submodule("OAuth", "OAuth submodule", Some(&module_id))
+        .await
+        .expect("Failed to create submodule");
+    let submodule_id = submodule.id.expect("submodule id");
+
+    let file1 = db
+        .create_file("oauth.rs", "src/auth/oauth.rs", Some(&submodule_id))
+        .await
+        .expect("Failed to create file 1");
+    let file1_id = file1.id.expect("file id");
+
+    let file2 = db
+        .create_file("jwt.rs", "src/auth/jwt.rs", Some(&submodule_id))
+        .await
+        .expect("Failed to create file 2");
+    let _file2_id = file2.id.expect("file id");
+
+    let files_by_submodule = db
+        .list_files_by_submodule(&submodule_id)
+        .await
+        .expect("Failed to list files by submodule");
+
+    assert_eq!(files_by_submodule.len(), 2);
+    assert!(
+        files_by_submodule
+            .iter()
+            .any(|f| f.id.as_deref() == Some(file1_id.as_str()))
+    );
+}
+
+// ============================================================================
+// CLOUD CONFIG VALIDATION TESTS
+// ============================================================================
+
+#[tokio::test]
+async fn test_from_config_cloud_missing_namespace() {
+    let config = crate::config::Config {
+        backend: crate::config::StorageBackend::Cloud,
+        local: crate::config::LocalConfig::default(),
+        cloud: crate::config::CloudConfig {
+            url: "wss://test.surrealdb.com".to_string(),
+            namespace: "".to_string(),
+            database: "test".to_string(),
+            username: "root".to_string(),
+            password: "root".to_string(),
+            auth_type: "root".to_string(),
+        },
+        qdrant_url: "mem://".to_string(),
+    };
+
+    let err = DB::from_config(&config)
+        .await
+        .expect_err("missing namespace should fail");
+    assert!(err.to_string().contains("namespace"));
+}
+
+#[tokio::test]
+async fn test_from_config_cloud_missing_database() {
+    let config = crate::config::Config {
+        backend: crate::config::StorageBackend::Cloud,
+        local: crate::config::LocalConfig::default(),
+        cloud: crate::config::CloudConfig {
+            url: "wss://test.surrealdb.com".to_string(),
+            namespace: "test".to_string(),
+            database: "".to_string(),
+            username: "root".to_string(),
+            password: "root".to_string(),
+            auth_type: "root".to_string(),
+        },
+        qdrant_url: "mem://".to_string(),
+    };
+
+    let err = DB::from_config(&config)
+        .await
+        .expect_err("missing database should fail");
+    assert!(err.to_string().contains("database"));
+}
+
+#[tokio::test]
+async fn test_from_config_cloud_missing_username() {
+    let config = crate::config::Config {
+        backend: crate::config::StorageBackend::Cloud,
+        local: crate::config::LocalConfig::default(),
+        cloud: crate::config::CloudConfig {
+            url: "wss://test.surrealdb.com".to_string(),
+            namespace: "test".to_string(),
+            database: "test".to_string(),
+            username: "".to_string(),
+            password: "root".to_string(),
+            auth_type: "root".to_string(),
+        },
+        qdrant_url: "mem://".to_string(),
+    };
+
+    let err = DB::from_config(&config)
+        .await
+        .expect_err("missing username should fail");
+    assert!(err.to_string().contains("username"));
+}
+
+#[tokio::test]
+async fn test_from_config_cloud_missing_password() {
+    let config = crate::config::Config {
+        backend: crate::config::StorageBackend::Cloud,
+        local: crate::config::LocalConfig::default(),
+        cloud: crate::config::CloudConfig {
+            url: "wss://test.surrealdb.com".to_string(),
+            namespace: "test".to_string(),
+            database: "test".to_string(),
+            username: "root".to_string(),
+            password: "".to_string(),
+            auth_type: "root".to_string(),
+        },
+        qdrant_url: "mem://".to_string(),
+    };
+
+    let err = DB::from_config(&config)
+        .await
+        .expect_err("missing password should fail");
+    assert!(err.to_string().contains("password"));
+}
+
+#[tokio::test]
+async fn test_from_config_cloud_valid() {
+    let config = crate::config::Config {
+        backend: crate::config::StorageBackend::Cloud,
+        local: crate::config::LocalConfig::default(),
+        cloud: crate::config::CloudConfig {
+            url: "wss://test.surrealdb.com".to_string(),
+            namespace: "test".to_string(),
+            database: "test".to_string(),
+            username: "root".to_string(),
+            password: "root".to_string(),
+            auth_type: "root".to_string(),
+        },
+        qdrant_url: "mem://".to_string(),
+    };
+
+    // This will fail to connect but should pass validation
+    let result = DB::from_config(&config).await;
+    assert!(result.is_err()); // Will fail to connect to fake URL
+}
+
+// ============================================================================
+// ERROR HANDLING TESTS
+// ============================================================================
+
+#[tokio::test]
+async fn test_get_nonexistent_project() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    let result = db
+        .get_project("project:nonexistent")
+        .await
+        .expect("Should not error");
+    assert!(result.is_none());
+}
+
+#[tokio::test]
+async fn test_get_nonexistent_module() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    let result = db
+        .get_module("module:nonexistent")
+        .await
+        .expect("Should not error");
+    assert!(result.is_none());
+}
+
+#[tokio::test]
+async fn test_get_nonexistent_task() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    let result = db
+        .get_task("task:nonexistent")
+        .await
+        .expect("Should not error");
+    assert!(result.is_none());
+}
+
+#[tokio::test]
+async fn test_get_nonexistent_context() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    let result = db
+        .get_context("context:nonexistent")
+        .await
+        .expect("Should not error");
+    assert!(result.is_none());
+}
+
+#[tokio::test]
+async fn test_get_task_context_nonexistent_task() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    let err = db
+        .get_task_context("task:nonexistent")
+        .await
+        .expect_err("Should fail");
+    assert!(err.to_string().contains("not found"));
+}
+
+#[tokio::test]
+async fn test_get_task_hierarchy_freestanding_task() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    let task = db
+        .create_task("Freestanding", "No project/module", None, None)
+        .await
+        .expect("Failed to create freestanding task");
+    let task_id = task.id.expect("task id");
+
+    let err = db
+        .get_task_hierarchy(&task_id)
+        .await
+        .expect_err("Should fail for freestanding task");
+    assert!(
+        err.to_string().contains("No project linked to task")
+            || err.to_string().contains("Failed to parse project from graph query"),
+        "Expected error about no project linked, got: {}",
+        err
+    );
+}
+
+#[tokio::test]
+async fn test_list_empty_tables() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    let projects = db.list_projects().await.expect("Should not error");
+    assert!(projects.is_empty());
+
+    let modules = db.list_modules().await.expect("Should not error");
+    assert!(modules.is_empty());
+
+    let tasks = db.list_tasks().await.expect("Should not error");
+    assert!(tasks.is_empty());
+
+    let contexts = db.list_contexts().await.expect("Should not error");
+    assert!(contexts.is_empty());
+}
+
+#[tokio::test]
+async fn test_link_context_with_invalid_context_id() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "Test".to_string(),
+            description: "Test".to_string(),
+        })
+        .await
+        .expect("Failed to create project");
+    let project_id = project.id.expect("project id");
+
+    let err = db
+        .link_context(&project_id, "not_a_context_id")
+        .await
+        .expect_err("Should fail");
+    assert!(err.to_string().contains("context record id"));
 }

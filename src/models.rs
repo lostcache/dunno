@@ -129,6 +129,23 @@ mod tests {
     use serde_json::to_string;
 
     #[test]
+    fn task_status_parse_accepts_known_values() {
+        assert_eq!(
+            TaskStatus::parse("not_started"),
+            Some(TaskStatus::NotStarted)
+        );
+        assert_eq!(TaskStatus::parse("started"), Some(TaskStatus::Started));
+        assert_eq!(TaskStatus::parse("finished"), Some(TaskStatus::Finished));
+    }
+
+    #[test]
+    fn task_status_parse_rejects_unknown_values() {
+        assert_eq!(TaskStatus::parse("in_progress"), None);
+        assert_eq!(TaskStatus::parse(""), None);
+        assert_eq!(TaskStatus::parse("NOT_STARTED"), None);
+    }
+
+    #[test]
     fn test_project_model() {
         let project = Project {
             id: None,

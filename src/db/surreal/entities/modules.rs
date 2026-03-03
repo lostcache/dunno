@@ -1,5 +1,5 @@
-use crate::db::surreal::convert::{json_to_surreal, surreal_to_json};
 use crate::db::surreal::DB;
+use crate::db::surreal::util::{ensure_record_id, json_to_surreal, surreal_to_json};
 
 impl DB {
     /// Internal helper: creates a module record without any relationships.
@@ -31,16 +31,14 @@ impl DB {
         };
         let result = self.create_module_record(&module).await?;
         if let (Some(pid), Some(mid)) = (project_id, result.id.as_ref()) {
+            ensure_record_id("project", pid)?;
             self.link(pid, "contains", mid).await?;
         }
         Ok(result)
     }
 
     /// Fetches a module by record id.
-    pub async fn get_module(
-        &self,
-        id: &str,
-    ) -> anyhow::Result<Option<crate::models::Module>> {
+    pub async fn get_module(&self, id: &str) -> anyhow::Result<Option<crate::models::Module>> {
         self.get_record("module", id).await
     }
 
@@ -49,6 +47,7 @@ impl DB {
         &self,
         project_id: &str,
     ) -> anyhow::Result<Vec<crate::models::Module>> {
+        ensure_record_id("project", project_id)?;
         self.query_graph_list(
             "SELECT ->contains->module.* AS items FROM ONLY type::record($pid)",
             "pid",
@@ -92,6 +91,7 @@ impl DB {
         };
         let result = self.create_submodule_record(&submodule).await?;
         if let (Some(mid), Some(sub_id)) = (module_id, result.id.as_ref()) {
+            ensure_record_id("module", mid)?;
             self.link(mid, "contains", sub_id).await?;
         }
         Ok(result)
@@ -115,6 +115,7 @@ impl DB {
         &self,
         module_id: &str,
     ) -> anyhow::Result<Vec<crate::models::Submodule>> {
+        ensure_record_id("module", module_id)?;
         self.query_graph_list(
             "SELECT ->contains->submodule.* AS items FROM ONLY type::record($mid)",
             "mid",
@@ -122,5 +123,26 @@ impl DB {
             "items",
         )
         .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn project_id_must_have_project_prefix_for_module_ops() {
+        ensure_record_id("project", "project:abc")
+            .expect("list_modules_by_project accepts project:id");
+        let err = ensure_record_id("project", "module:1").expect_err("wrong table rejected");
+        assert!(err.to_string().contains("Expected record id"));
+    }
+
+    #[test]
+    fn module_id_must_have_module_prefix_for_submodule_ops() {
+        ensure_record_id("module", "module:xyz")
+            .expect("list_submodules_by_module accepts module:id");
+        let err = ensure_record_id("module", "project:1").expect_err("wrong table rejected");
+        assert!(err.to_string().contains("Expected record id"));
     }
 }

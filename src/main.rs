@@ -101,11 +101,7 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
                 description,
             } => {
                 let created = db
-                    .create_module(
-                        &name,
-                        &description,
-                        project_ids.first().map(String::as_str),
-                    )
+                    .create_module(&name, &description, project_ids.first().map(String::as_str))
                     .await?;
                 let module_id = match &created.id {
                     Some(id) => id.as_str(),
@@ -131,11 +127,7 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
                 description,
             } => {
                 let created = db
-                    .create_submodule(
-                        &name,
-                        &description,
-                        module_ids.first().map(String::as_str),
-                    )
+                    .create_submodule(&name, &description, module_ids.first().map(String::as_str))
                     .await?;
                 let sub_id = match &created.id {
                     Some(id) => id.as_str(),
@@ -202,10 +194,7 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
             } => {
                 let (mid, pid) = match (module_ids.len(), project_ids.len()) {
                     (0, 0) => (None, None),
-                    (1, 1) => (
-                        Some(module_ids[0].as_str()),
-                        Some(project_ids[0].as_str()),
-                    ),
+                    (1, 1) => (Some(module_ids[0].as_str()), Some(project_ids[0].as_str())),
                     _ => {
                         return Err(anyhow::anyhow!(
                             "Task create: provide either no module/project IDs (freestanding) or exactly one of each (linked). Got {} module_ids and {} project_ids",
@@ -214,9 +203,7 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
                         ));
                     }
                 };
-                let created = db
-                    .create_task(&name, &description, mid, pid)
-                    .await?;
+                let created = db.create_task(&name, &description, mid, pid).await?;
                 println!("{}", serde_json::json!(created));
             }
             dunno::args::TaskCommands::Update {
@@ -257,11 +244,7 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
                 description,
             } => {
                 let created = db
-                    .create_subtask(
-                        &name,
-                        &description,
-                        task_ids.first().map(String::as_str),
-                    )
+                    .create_subtask(&name, &description, task_ids.first().map(String::as_str))
                     .await?;
                 let stid = match &created.id {
                     Some(id) => id.as_str(),
@@ -328,7 +311,10 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
         }
         dunno::args::Commands::Purge => {
             db.purge_database().await?;
-            println!("{}", serde_json::json!({ "status": "ok", "message": "Database purged successfully" }));
+            println!(
+                "{}",
+                serde_json::json!({ "status": "ok", "message": "Database purged successfully" })
+            );
         }
         dunno::args::Commands::Config { .. } => {
             unreachable!("config command returns before DB init")

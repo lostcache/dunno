@@ -101,7 +101,10 @@ impl Config {
         Self::load_from_path(cli_backend, &Self::config_file_path())
     }
 
-    fn load_from_path(cli_backend: Option<&str>, config_path: &std::path::Path) -> anyhow::Result<Self> {
+    fn load_from_path(
+        cli_backend: Option<&str>,
+        config_path: &std::path::Path,
+    ) -> anyhow::Result<Self> {
         let mut config = Self::default();
         config.apply_config_file(config_path)?;
         config.apply_env_overrides()?;
@@ -144,8 +147,14 @@ impl Config {
         if !path.exists() {
             return Ok(());
         }
-        let raw = anyhow::Context::context(std::fs::read_to_string(path), format!("Failed to read config file at {}", path.display()))?;
-        let parsed: PartialConfig = anyhow::Context::context(toml::from_str(&raw), format!("Failed to parse TOML at {}", path.display()))?;
+        let raw = anyhow::Context::context(
+            std::fs::read_to_string(path),
+            format!("Failed to read config file at {}", path.display()),
+        )?;
+        let parsed: PartialConfig = anyhow::Context::context(
+            toml::from_str(&raw),
+            format!("Failed to parse TOML at {}", path.display()),
+        )?;
         self.merge_partial(parsed)?;
         Ok(())
     }

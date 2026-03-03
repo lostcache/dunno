@@ -1,5 +1,18 @@
-use crate::db::surreal::convert::{json_to_surreal, surreal_to_json};
 use crate::db::surreal::DB;
+use crate::db::surreal::util::{json_to_surreal, surreal_to_json};
+
+fn ensure_one_of_record_ids<'a>(tables: &[&'a str], id: &'a str) -> anyhow::Result<&'a str> {
+    for table in tables {
+        if id.starts_with(&format!("{table}:")) {
+            return Ok(*table);
+        }
+    }
+    Err(anyhow::anyhow!(
+        "Expected record id for one of {:?}, got {:?}",
+        tables,
+        id
+    ))
+}
 
 impl DB {
     /// Internal helper: creates a file record without any relationships.
@@ -30,16 +43,14 @@ impl DB {
         };
         let result = self.create_file_record(&file).await?;
         if let (Some(pid), Some(fid)) = (parent_id, result.id.as_ref()) {
+            let _ = ensure_one_of_record_ids(&["module", "submodule"], pid)?;
             self.link(pid, "contains", fid).await?;
         }
         Ok(result)
     }
 
     /// Fetches a file by record id.
-    pub async fn get_file(
-        &self,
-        id: &str,
-    ) -> anyhow::Result<Option<crate::models::File>> {
+    pub async fn get_file(&self, id: &str) -> anyhow::Result<Option<crate::models::File>> {
         self.get_record("file", id).await
     }
 
@@ -53,6 +64,7 @@ impl DB {
         &self,
         module_id: &str,
     ) -> anyhow::Result<Vec<crate::models::File>> {
+        let _ = ensure_one_of_record_ids(&["module"], module_id)?;
         self.query_graph_list(
             "SELECT ->contains->file.* AS items FROM ONLY type::record($mid)",
             "mid",
@@ -67,6 +79,7 @@ impl DB {
         &self,
         submodule_id: &str,
     ) -> anyhow::Result<Vec<crate::models::File>> {
+        let _ = ensure_one_of_record_ids(&["submodule"], submodule_id)?;
         self.query_graph_list(
             "SELECT ->contains->file.* AS items FROM ONLY type::record($sid)",
             "sid",
@@ -74,6 +87,33 @@ impl DB {
             "items",
         )
         .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ensure_one_of_record_ids_accepts_expected_tables() {
+        let table = ensure_one_of_record_ids(&["module", "submodule"], "module:1")
+            .expect("should accept module record id");
+        assert_eq!(table, "module");
+
+        let table = ensure_one_of_record_ids(&["module", "submodule"], "submodule:1")
+            .expect("should accept submodule record id");
+        assert_eq!(table, "submodule");
+    }
+
+    #[test]
+    fn ensure_one_of_record_ids_rejects_other_tables_or_missing_prefix() {
+        let err = ensure_one_of_record_ids(&["module", "submodule"], "project:1")
+            .expect_err("should reject project record id");
+        assert!(err.to_string().contains("Expected record id"));
+
+        let err =
+            ensure_one_of_record_ids(&["module"], "1").expect_err("should reject missing prefix");
+        assert!(err.to_string().contains("Expected record id"));
     }
 }
 
@@ -92,6 +132,7 @@ pub async fn get_file_context_json(
     let raw = db
         .query_raw_json(sql, "fid", file_id.to_string(), 2)
         .await?;
-    Ok(crate::db::surreal::flatten_context::flatten_context_result(raw))
+    Ok(crate::db::surreal::flatten_context::flatten_context_result(
+        raw,
+    ))
 }
-

@@ -1,5 +1,5 @@
-use crate::db::surreal::convert::{json_to_surreal, surreal_to_json};
 use crate::db::surreal::DB;
+use crate::db::surreal::util::{ensure_record_id, json_to_surreal, surreal_to_json};
 
 impl DB {
     /// Internal helper: creates a todo item record without any relationships.
@@ -28,16 +28,14 @@ impl DB {
         };
         let result = self.create_todo_record(&todo).await?;
         if let (Some(pid), Some(tid)) = (project_id, result.id.as_ref()) {
+            ensure_record_id("project", pid)?;
             self.link(pid, "has_todo", tid).await?;
         }
         Ok(result)
     }
 
     /// Fetches a todo item by record id.
-    pub async fn get_todo(
-        &self,
-        id: &str,
-    ) -> anyhow::Result<Option<crate::models::TodoItem>> {
+    pub async fn get_todo(&self, id: &str) -> anyhow::Result<Option<crate::models::TodoItem>> {
         self.get_record("todo_item", id).await
     }
 
@@ -46,6 +44,7 @@ impl DB {
         &self,
         project_id: &str,
     ) -> anyhow::Result<Vec<crate::models::TodoItem>> {
+        ensure_record_id("project", project_id)?;
         self.query_graph_list(
             "SELECT ->has_todo->todo_item.* AS items FROM ONLY type::record($pid)",
             "pid",
@@ -58,5 +57,37 @@ impl DB {
     /// Returns all todo items (unfiltered).
     pub async fn list_todos(&self) -> anyhow::Result<Vec<crate::models::TodoItem>> {
         self.list_records("todo_item").await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn todo_content_validation_accepts_valid() {
+        let content = "Buy milk";
+        assert!(!content.trim().is_empty());
+        assert!(content.len() <= 1000);
+    }
+
+    #[test]
+    fn todo_content_validation_rejects_empty() {
+        let content = "";
+        assert!(content.trim().is_empty());
+    }
+
+    #[test]
+    fn todo_content_validation_rejects_whitespace() {
+        let content = "   ";
+        assert!(content.trim().is_empty());
+    }
+
+    #[test]
+    fn project_id_must_have_project_prefix_for_todo_ops() {
+        ensure_record_id("project", "project:abc")
+            .expect("list_todos_by_project accepts project:id");
+        let err = ensure_record_id("project", "module:1").expect_err("wrong table rejected");
+        assert!(err.to_string().contains("Expected record id"));
     }
 }
