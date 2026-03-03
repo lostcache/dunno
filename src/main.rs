@@ -60,9 +60,14 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
                 "has_subtask",
                 "has_todo",
                 "has_context",
+                "has_user_story",
+                "has_module",
+                "has_submodule",
                 "belongs_to_project",
                 "belongs_to_module",
                 "belongs_to_task",
+                "belongs_to_story",
+                "belongs_to_user_story",
             ];
             if !ALLOWED_EDGES.contains(&edge.as_str()) {
                 return Err(anyhow::anyhow!(
@@ -189,6 +194,7 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
             dunno::args::TaskCommands::Create {
                 module_ids,
                 project_ids,
+                user_story_ids,
                 name,
                 description,
             } => {
@@ -204,6 +210,14 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
                     }
                 };
                 let created = db.create_task(&name, &description, mid, pid).await?;
+                
+                // Link task to user stories if provided
+                if let Some(task_id) = &created.id {
+                    for us_id in &user_story_ids {
+                        db.link_task_to_user_story(task_id, us_id).await?;
+                    }
+                }
+                
                 println!("{}", serde_json::json!(created));
             }
             dunno::args::TaskCommands::Update {
@@ -287,6 +301,24 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
             dunno::args::TodoCommands::List { project_id } => {
                 let todos = db.list_todos_by_project(&project_id).await?;
                 println!("{}", serde_json::json!(todos));
+            }
+        },
+        dunno::args::Commands::UserStory { command } => match command {
+            dunno::args::UserStoryCommands::Create {
+                project_id,
+                title,
+                description,
+            } => {
+                let created = db.create_user_story(&title, &description, &project_id).await?;
+                println!("{}", serde_json::json!(created));
+            }
+            dunno::args::UserStoryCommands::List { project_id } => {
+                let user_stories = if let Some(pid) = project_id {
+                    db.list_user_stories_by_project(&pid).await?
+                } else {
+                    db.list_user_stories().await?
+                };
+                println!("{}", serde_json::json!(user_stories));
             }
         },
         dunno::args::Commands::Context {

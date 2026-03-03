@@ -73,6 +73,12 @@ pub enum Commands {
         command: SubtaskCommands,
     },
 
+    #[command(about = "Manage user stories.")]
+    UserStory {
+        #[command(subcommand)]
+        command: UserStoryCommands,
+    },
+
     #[command(about = "Manage todo items.")]
     Todo {
         #[command(subcommand)]
@@ -188,6 +194,9 @@ pub enum TaskCommands {
         /// Project ID (single). Use with one module_id to link task.
         #[arg(long, value_name = "PROJECT_ID")]
         project_ids: Vec<String>,
+        /// User Story ID(s) to link this task to. Optional.
+        #[arg(long, value_name = "USER_STORY_ID")]
+        user_story_ids: Vec<String>,
         name: String,
         description: String,
     },
@@ -219,6 +228,21 @@ pub enum SubtaskCommands {
     List {
         #[arg(long)]
         task_id: String,
+    },
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum UserStoryCommands {
+    Create {
+        /// Project ID to link this user story to.
+        #[arg(long, value_name = "PROJECT_ID")]
+        project_id: String,
+        title: String,
+        description: String,
+    },
+    List {
+        #[arg(long)]
+        project_id: Option<String>,
     },
 }
 
