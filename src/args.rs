@@ -518,4 +518,139 @@ mod tests {
         assert_eq!(parsed.backend, Some("cloud".to_string()));
         assert!(parsed.pretty, "pretty should be true");
     }
+
+    #[test]
+    fn pretty_flag_works_with_context_command() {
+        let args =
+            Args::try_parse_from(["dunno", "--pretty", "context", "--task-id", "task:abc123"]);
+        assert!(args.is_ok(), "should parse --pretty with context command");
+        assert!(args.unwrap().pretty, "pretty should be true");
+    }
+
+    #[test]
+    fn pretty_flag_works_with_epic_commands() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "--pretty",
+            "epic",
+            "list",
+            "--project-id",
+            "project:abc",
+        ]);
+        assert!(args.is_ok(), "should parse --pretty with epic list");
+        assert!(args.unwrap().pretty, "pretty should be true");
+
+        let args2 = Args::try_parse_from([
+            "dunno",
+            "--pretty",
+            "epic",
+            "create",
+            "--project-id",
+            "project:abc",
+            "Title",
+            "Description",
+        ]);
+        assert!(args2.is_ok(), "should parse --pretty with epic create");
+        assert!(args2.unwrap().pretty, "pretty should be true");
+    }
+
+    #[test]
+    fn pretty_flag_works_with_user_story_commands() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "--pretty",
+            "user-story",
+            "list",
+            "--project-id",
+            "project:abc",
+        ]);
+        assert!(args.is_ok(), "should parse --pretty with user-story list");
+        assert!(args.unwrap().pretty, "pretty should be true");
+
+        let args2 = Args::try_parse_from([
+            "dunno",
+            "--pretty",
+            "user-story",
+            "create",
+            "--project-id",
+            "project:abc",
+            "As a user",
+            "I want to",
+        ]);
+        assert!(
+            args2.is_ok(),
+            "should parse --pretty with user-story create"
+        );
+        assert!(args2.unwrap().pretty, "pretty should be true");
+    }
+
+    #[test]
+    fn pretty_flag_works_with_todo_commands() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "--pretty",
+            "todo",
+            "list",
+            "--project-id",
+            "project:abc",
+        ]);
+        assert!(args.is_ok(), "should parse --pretty with todo list");
+        assert!(args.unwrap().pretty, "pretty should be true");
+
+        let args2 = Args::try_parse_from([
+            "dunno",
+            "--pretty",
+            "todo",
+            "create",
+            "--project-ids",
+            "project:abc",
+            "Review code",
+        ]);
+        assert!(args2.is_ok(), "should parse --pretty with todo create");
+        assert!(args2.unwrap().pretty, "pretty should be true");
+    }
+
+    #[test]
+    fn pretty_flag_works_with_file_commands() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "--pretty",
+            "file",
+            "create",
+            "--parent-ids",
+            "module:abc",
+            "main.rs",
+            "src/main.rs",
+        ]);
+        assert!(args.is_ok(), "should parse --pretty with file create");
+        assert!(args.unwrap().pretty, "pretty should be true");
+
+        let args2 = Args::try_parse_from([
+            "dunno",
+            "--pretty",
+            "file",
+            "list",
+            "--module-id",
+            "module:abc",
+        ]);
+        assert!(args2.is_ok(), "should parse --pretty with file list");
+        assert!(args2.unwrap().pretty, "pretty should be true");
+    }
+
+    #[test]
+    fn pretty_flag_works_with_link_command() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "--pretty",
+            "link",
+            "--from-id",
+            "project:abc",
+            "--edge",
+            "contains",
+            "--to-ids",
+            "module:def",
+        ]);
+        assert!(args.is_ok(), "should parse --pretty with link command");
+        assert!(args.unwrap().pretty, "pretty should be true");
+    }
 }

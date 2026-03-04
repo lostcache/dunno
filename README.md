@@ -114,7 +114,7 @@ Dunno uses a layered configuration system on a **per-field basis** (highest to l
 #### Global CLI Flags
 
 - `--backend <BACKEND>` - Override storage backend (`local` or `cloud`)
-- `--pretty` - Format output with indentation for better readability
+- `--pretty` - Format output with indentation for better readability (applies to **all** JSON output)
 
 ```bash
 # View config in JSON format (default)
@@ -122,6 +122,11 @@ dunno config show
 
 # View config in human-readable format
 dunno config show --pretty
+
+# Pretty output works with all commands
+dunno project list --pretty
+dunno task list --pretty
+dunno context --task-id task:abc --pretty
 ```
 
 #### Config File Locations

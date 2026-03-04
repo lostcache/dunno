@@ -37,43 +37,44 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
     }
 
     let db = dunno::db::DB::from_config(&config).await?;
-    dispatch_command(args.command, &db).await
+    dispatch_command(args.command, &db, args.pretty).await
 }
 
 /// Routes commands to their specialized handlers.
 async fn dispatch_command(
     command: dunno::args::Commands,
     db: &dunno::db::DB,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::Commands::Add {
             field_names,
             field_values,
             link_to,
-        } => handle_add(field_names, field_values, link_to, db).await,
+        } => handle_add(field_names, field_values, link_to, db, pretty).await,
         dunno::args::Commands::Link {
             from_id,
             edge,
             to_ids,
-        } => handle_link(from_id, edge, to_ids, db).await,
-        dunno::args::Commands::Project { command } => handle_project_command(command, db).await,
-        dunno::args::Commands::Module { command } => handle_module_command(command, db).await,
-        dunno::args::Commands::Submodule { command } => handle_submodule_command(command, db).await,
-        dunno::args::Commands::File { command } => handle_file_command(command, db).await,
-        dunno::args::Commands::Task { command } => handle_task_command(command, db).await,
-        dunno::args::Commands::Subtask { command } => handle_subtask_command(command, db).await,
-        dunno::args::Commands::Todo { command } => handle_todo_command(command, db).await,
+        } => handle_link(from_id, edge, to_ids, db, pretty).await,
+        dunno::args::Commands::Project { command } => handle_project_command(command, db, pretty).await,
+        dunno::args::Commands::Module { command } => handle_module_command(command, db, pretty).await,
+        dunno::args::Commands::Submodule { command } => handle_submodule_command(command, db, pretty).await,
+        dunno::args::Commands::File { command } => handle_file_command(command, db, pretty).await,
+        dunno::args::Commands::Task { command } => handle_task_command(command, db, pretty).await,
+        dunno::args::Commands::Subtask { command } => handle_subtask_command(command, db, pretty).await,
+        dunno::args::Commands::Todo { command } => handle_todo_command(command, db, pretty).await,
         dunno::args::Commands::UserStory { command } => {
-            handle_user_story_command(command, db).await
+            handle_user_story_command(command, db, pretty).await
         }
-        dunno::args::Commands::Epic { command } => handle_epic_command(command, db).await,
+        dunno::args::Commands::Epic { command } => handle_epic_command(command, db, pretty).await,
         dunno::args::Commands::Context {
             task_id,
             file_id,
             subtask_id,
             epic_id,
-        } => handle_context(task_id, file_id, subtask_id, epic_id, db).await,
-        dunno::args::Commands::Purge => handle_purge(db).await,
+        } => handle_context(task_id, file_id, subtask_id, epic_id, db, pretty).await,
+        dunno::args::Commands::Purge => handle_purge(db, pretty).await,
         dunno::args::Commands::Config { .. } => {
             unreachable!("config command handled before db init")
         }
@@ -104,6 +105,7 @@ async fn handle_add(
     field_values: Vec<String>,
     link_to: Vec<String>,
     db: &dunno::db::DB,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     // Validate that field_names and field_values have the same length
     if field_names.len() != field_values.len() {
@@ -120,7 +122,7 @@ async fn handle_add(
         map.insert(key, serde_json::Value::String(value));
     }
     dunno::ingest::add_knowledge_schemaless(map, link_to, db).await?;
-    print_success();
+    print_json(serde_json::json!({ "status": "ok" }), pretty);
     Ok(())
 }
 
@@ -130,6 +132,7 @@ async fn handle_link(
     edge: String,
     to_ids: Vec<String>,
     db: &dunno::db::DB,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     const ALLOWED_EDGES: &[&str] = &[
         "contains",
@@ -165,7 +168,7 @@ async fn handle_link(
         db.link(&from_id, &edge, to_id).await?;
     }
 
-    print_success();
+    print_json(serde_json::json!({ "status": "ok" }), pretty);
     Ok(())
 }
 
@@ -173,6 +176,7 @@ async fn handle_link(
 async fn handle_project_command(
     command: dunno::args::ProjectCommands,
     db: &dunno::db::DB,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::ProjectCommands::Create { name, description } => {
@@ -182,11 +186,11 @@ async fn handle_project_command(
                 description,
             };
             let created = db.create_project(&project).await?;
-            println!("{}", serde_json::json!(created));
+            print_json(serde_json::json!(created), pretty);
         }
         dunno::args::ProjectCommands::List => {
             let projects = db.list_projects().await?;
-            println!("{}", serde_json::json!(projects));
+            print_json(serde_json::json!(projects), pretty);
         }
     }
     Ok(())
@@ -196,6 +200,7 @@ async fn handle_project_command(
 async fn handle_module_command(
     command: dunno::args::ModuleCommands,
     db: &dunno::db::DB,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::ModuleCommands::Create {
@@ -210,7 +215,7 @@ async fn handle_module_command(
             let module_id = match &created.id {
                 Some(id) => id.as_str(),
                 None => {
-                    println!("{}", serde_json::json!(created));
+                    print_json(serde_json::json!(created), pretty);
                     return Ok(());
                 }
             };
@@ -219,11 +224,11 @@ async fn handle_module_command(
                 db.link(pid, "contains", module_id).await?;
             }
 
-            println!("{}", serde_json::json!(created));
+            print_json(serde_json::json!(created), pretty);
         }
         dunno::args::ModuleCommands::List => {
             let modules = db.list_modules().await?;
-            println!("{}", serde_json::json!(modules));
+            print_json(serde_json::json!(modules), pretty);
         }
     }
     Ok(())
@@ -233,6 +238,7 @@ async fn handle_module_command(
 async fn handle_submodule_command(
     command: dunno::args::SubmoduleCommands,
     db: &dunno::db::DB,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::SubmoduleCommands::Create {
@@ -247,7 +253,7 @@ async fn handle_submodule_command(
             let sub_id = match &created.id {
                 Some(id) => id.as_str(),
                 None => {
-                    println!("{}", serde_json::json!(created));
+                    print_json(serde_json::json!(created), pretty);
                     return Ok(());
                 }
             };
@@ -256,14 +262,14 @@ async fn handle_submodule_command(
                 db.link(mid, "contains", sub_id).await?;
             }
 
-            println!("{}", serde_json::json!(created));
+            print_json(serde_json::json!(created), pretty);
         }
         dunno::args::SubmoduleCommands::List { module_id } => {
             let submodules = match module_id {
                 Some(mid) => db.list_submodules_by_module(&mid).await?,
                 None => db.list_submodules().await?,
             };
-            println!("{}", serde_json::json!(submodules));
+            print_json(serde_json::json!(submodules), pretty);
         }
     }
     Ok(())
@@ -273,6 +279,7 @@ async fn handle_submodule_command(
 async fn handle_file_command(
     command: dunno::args::FileCommands,
     db: &dunno::db::DB,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::FileCommands::Create {
@@ -287,7 +294,7 @@ async fn handle_file_command(
             let file_id = match &created.id {
                 Some(id) => id.as_str(),
                 None => {
-                    println!("{}", serde_json::json!(created));
+                    print_json(serde_json::json!(created), pretty);
                     return Ok(());
                 }
             };
@@ -296,7 +303,7 @@ async fn handle_file_command(
                 db.link(pid, "contains", file_id).await?;
             }
 
-            println!("{}", serde_json::json!(created));
+            print_json(serde_json::json!(created), pretty);
         }
         dunno::args::FileCommands::List {
             module_id,
@@ -307,7 +314,7 @@ async fn handle_file_command(
                 (_, Some(sid)) => db.list_files_by_submodule(&sid).await?,
                 (None, None) => db.list_files().await?,
             };
-            println!("{}", serde_json::json!(files));
+            print_json(serde_json::json!(files), pretty);
         }
     }
     Ok(())
@@ -317,6 +324,7 @@ async fn handle_file_command(
 async fn handle_task_command(
     command: dunno::args::TaskCommands,
     db: &dunno::db::DB,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::TaskCommands::Create {
@@ -339,7 +347,7 @@ async fn handle_task_command(
                 }
             }
 
-            println!("{}", serde_json::json!(created));
+            print_json(serde_json::json!(created), pretty);
         }
         dunno::args::TaskCommands::Update {
             task_id,
@@ -353,18 +361,18 @@ async fn handle_task_command(
                 .await?;
 
             match updated {
-                Some(task) => println!("{}", serde_json::json!(task)),
+                Some(task) => print_json(serde_json::json!(task), pretty),
                 None => return Err(anyhow::anyhow!("Task not found: {}", task_id)),
             }
         }
         dunno::args::TaskCommands::List => {
             let tasks = db.list_tasks().await?;
-            println!("{}", serde_json::json!(tasks));
+            print_json(serde_json::json!(tasks), pretty);
         }
         dunno::args::TaskCommands::Delete { task_id } => {
             let deleted = db.delete_task(&task_id).await?;
             if deleted {
-                println!("{}", serde_json::json!({ "status": "ok", "deleted": task_id }));
+                print_json(serde_json::json!({ "status": "ok", "deleted": task_id }), pretty);
             } else {
                 return Err(anyhow::anyhow!("Task not found: {}", task_id));
             }
@@ -411,6 +419,7 @@ fn parse_optional_status(
 async fn handle_subtask_command(
     command: dunno::args::SubtaskCommands,
     db: &dunno::db::DB,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::SubtaskCommands::Create {
@@ -425,7 +434,7 @@ async fn handle_subtask_command(
             let stid = match &created.id {
                 Some(id) => id.as_str(),
                 None => {
-                    println!("{}", serde_json::json!(created));
+                    print_json(serde_json::json!(created), pretty);
                     return Ok(());
                 }
             };
@@ -435,11 +444,11 @@ async fn handle_subtask_command(
                 db.link(stid, "belongs_to_task", tid).await?;
             }
 
-            println!("{}", serde_json::json!(created));
+            print_json(serde_json::json!(created), pretty);
         }
         dunno::args::SubtaskCommands::List { task_id } => {
             let subtasks = db.list_subtasks_by_task(&task_id).await?;
-            println!("{}", serde_json::json!(subtasks));
+            print_json(serde_json::json!(subtasks), pretty);
         }
     }
     Ok(())
@@ -449,6 +458,7 @@ async fn handle_subtask_command(
 async fn handle_todo_command(
     command: dunno::args::TodoCommands,
     db: &dunno::db::DB,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::TodoCommands::Create {
@@ -462,7 +472,7 @@ async fn handle_todo_command(
             let todo_id = match &created.id {
                 Some(id) => id.as_str(),
                 None => {
-                    println!("{}", serde_json::json!(created));
+                    print_json(serde_json::json!(created), pretty);
                     return Ok(());
                 }
             };
@@ -471,11 +481,11 @@ async fn handle_todo_command(
                 db.link(pid, "has_todo", todo_id).await?;
             }
 
-            println!("{}", serde_json::json!(created));
+            print_json(serde_json::json!(created), pretty);
         }
         dunno::args::TodoCommands::List { project_id } => {
             let todos = db.list_todos_by_project(&project_id).await?;
-            println!("{}", serde_json::json!(todos));
+            print_json(serde_json::json!(todos), pretty);
         }
     }
     Ok(())
@@ -485,6 +495,7 @@ async fn handle_todo_command(
 async fn handle_user_story_command(
     command: dunno::args::UserStoryCommands,
     db: &dunno::db::DB,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::UserStoryCommands::Create {
@@ -503,7 +514,7 @@ async fn handle_user_story_command(
                 }
             }
 
-            println!("{}", serde_json::json!(created));
+            print_json(serde_json::json!(created), pretty);
         }
         dunno::args::UserStoryCommands::List {
             project_id,
@@ -514,7 +525,7 @@ async fn handle_user_story_command(
                 (_, Some(pid)) => db.list_user_stories_by_project(&pid).await?,
                 (None, None) => db.list_user_stories().await?,
             };
-            println!("{}", serde_json::json!(user_stories));
+            print_json(serde_json::json!(user_stories), pretty);
         }
     }
     Ok(())
@@ -524,6 +535,7 @@ async fn handle_user_story_command(
 async fn handle_epic_command(
     command: dunno::args::EpicCommands,
     db: &dunno::db::DB,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::EpicCommands::Create {
@@ -532,14 +544,14 @@ async fn handle_epic_command(
             description,
         } => {
             let created = db.create_epic(&title, &description, &project_id).await?;
-            println!("{}", serde_json::json!(created));
+            print_json(serde_json::json!(created), pretty);
         }
         dunno::args::EpicCommands::List { project_id } => {
             let epics = match project_id {
                 Some(pid) => db.list_epics_by_project(&pid).await?,
                 None => db.list_epics().await?,
             };
-            println!("{}", serde_json::json!(epics));
+            print_json(serde_json::json!(epics), pretty);
         }
     }
     Ok(())
@@ -552,6 +564,7 @@ async fn handle_context(
     subtask_id: Option<String>,
     epic_id: Option<String>,
     db: &dunno::db::DB,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     let results = match (task_id, file_id, subtask_id, epic_id) {
         (Some(t_id), _, _, _) => dunno::context::get_task_context(&t_id, db).await?,
@@ -565,26 +578,21 @@ async fn handle_context(
         }
     };
 
-    println!("{}", serde_json::json!({ "results": results }));
+    print_json(serde_json::json!({ "results": results }), pretty);
     Ok(())
 }
 
 /// Destructive operation to clear all data.
-async fn handle_purge(db: &dunno::db::DB) -> anyhow::Result<()> {
+async fn handle_purge(db: &dunno::db::DB, pretty: bool) -> anyhow::Result<()> {
     db.purge_database().await?;
-    println!(
-        "{}",
+    print_json(
         serde_json::json!({
             "status": "ok",
             "message": "Database purged successfully"
-        })
+        }),
+        pretty,
     );
     Ok(())
-}
-
-/// Prints standardized success response.
-fn print_success() {
-    println!("{}", serde_json::json!({ "status": "ok" }));
 }
 
 /// Prints machine-readable JSON error for CLI integration.
@@ -597,4 +605,13 @@ fn print_error_json(kind: &str, message: String) {
             "error": message
         })
     );
+}
+
+/// Prints JSON output with optional pretty formatting.
+fn print_json(value: serde_json::Value, pretty: bool) {
+    if pretty {
+        println!("{}", serde_json::to_string_pretty(&value).unwrap_or_default());
+    } else {
+        println!("{}", value);
+    }
 }
