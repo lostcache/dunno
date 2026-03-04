@@ -33,7 +33,7 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
     let config = dunno::config::Config::load(args.backend.as_deref())?;
 
     if let dunno::args::Commands::Config { command } = &args.command {
-        return handle_config_command(command, &config);
+        return handle_config_command(command, &config, args.pretty);
     }
 
     let db = dunno::db::DB::from_config(&config).await?;
@@ -84,10 +84,15 @@ async fn dispatch_command(
 fn handle_config_command(
     command: &dunno::args::ConfigCommands,
     config: &dunno::config::Config,
+    pretty: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::ConfigCommands::Show => {
-            println!("{}", config.redacted_json());
+            if pretty {
+                print!("{}", config.formatted());
+            } else {
+                println!("{}", config.redacted_json());
+            }
         }
     }
     Ok(())

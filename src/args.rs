@@ -12,6 +12,10 @@ pub struct Args {
     #[arg(long, global = true, value_name = "BACKEND")]
     pub backend: Option<String>,
 
+    /// Format output with indentation for better readability.
+    #[arg(long, global = true)]
+    pub pretty: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -473,5 +477,45 @@ mod tests {
     fn task_delete_command_requires_task_id() {
         let args = Args::try_parse_from(["dunno", "task", "delete"]);
         assert!(args.is_err(), "should require task_id for delete command");
+    }
+
+    #[test]
+    fn pretty_flag_defaults_to_false() {
+        let args = Args::try_parse_from(["dunno", "config", "show"]);
+        assert!(args.is_ok(), "should parse config show command");
+        assert!(!args.unwrap().pretty, "pretty should default to false");
+    }
+
+    #[test]
+    fn pretty_flag_can_be_set_true() {
+        let args = Args::try_parse_from(["dunno", "--pretty", "config", "show"]);
+        assert!(args.is_ok(), "should parse with --pretty flag");
+        assert!(
+            args.unwrap().pretty,
+            "pretty should be true when flag is provided"
+        );
+    }
+
+    #[test]
+    fn pretty_flag_works_with_any_command() {
+        let args = Args::try_parse_from(["dunno", "--pretty", "task", "list"]);
+        assert!(args.is_ok(), "should parse --pretty with task list");
+        assert!(args.unwrap().pretty, "pretty should be true");
+
+        let args2 = Args::try_parse_from([
+            "dunno", "--pretty", "add", "--field", "type", "--value", "test",
+        ]);
+        assert!(args2.is_ok(), "should parse --pretty with add command");
+        assert!(args2.unwrap().pretty, "pretty should be true");
+    }
+
+    #[test]
+    fn pretty_flag_works_with_backend_flag() {
+        let args =
+            Args::try_parse_from(["dunno", "--backend", "cloud", "--pretty", "config", "show"]);
+        assert!(args.is_ok(), "should parse both --backend and --pretty");
+        let parsed = args.unwrap();
+        assert_eq!(parsed.backend, Some("cloud".to_string()));
+        assert!(parsed.pretty, "pretty should be true");
     }
 }

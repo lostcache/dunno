@@ -105,11 +105,24 @@ dunno context --task-id task:ghi
 
 Dunno uses a layered configuration system on a **per-field basis** (highest to lowest priority):
 
-1. **CLI flags** (`--backend`)
+1. **CLI flags** (`--backend`, `--pretty`)
 2. **Local project config** (`./dunno.toml`)
 3. **Global user config** (`~/.config/dunno/dunno.toml`)
 4. **Environment variables**
 5. **Built-in defaults**
+
+#### Global CLI Flags
+
+- `--backend <BACKEND>` - Override storage backend (`local` or `cloud`)
+- `--pretty` - Format output with indentation for better readability
+
+```bash
+# View config in JSON format (default)
+dunno config show
+
+# View config in human-readable format
+dunno config show --pretty
+```
 
 #### Config File Locations
 

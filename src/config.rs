@@ -175,6 +175,47 @@ impl Config {
         })
     }
 
+    pub fn formatted(&self) -> String {
+        let backend_str = match self.backend {
+            StorageBackend::Local => "local".to_string(),
+            StorageBackend::Cloud => "cloud".to_string(),
+        };
+
+        let mut output = String::new();
+        output.push_str("=== Configuration ===\n\n");
+        output.push_str(&format!("Backend: {}\n\n", backend_str));
+
+        match self.backend {
+            StorageBackend::Local => {
+                output.push_str("--- Local Storage ---\n");
+                output.push_str(&format!("Database Path: {}\n", self.local.path));
+            }
+            StorageBackend::Cloud => {
+                output.push_str("--- Cloud Settings ---\n");
+                output.push_str(&format!("URL: {}\n", self.cloud.url));
+                output.push_str(&format!("Namespace: {}\n", self.cloud.namespace));
+                output.push_str(&format!("Database: {}\n", self.cloud.database));
+                output.push_str(&format!("Username: {}\n", self.cloud.username));
+                let password_display = if self.cloud.password.is_empty() {
+                    "(not set)".to_string()
+                } else {
+                    "***redacted***".to_string()
+                };
+                output.push_str(&format!("Password: {}\n", password_display));
+                output.push_str(&format!("Auth Type: {}\n", self.cloud.auth_type));
+            }
+        }
+
+        output.push_str("\n--- Vector Store ---\n");
+        output.push_str(&format!("Qdrant URL: {}\n", self.qdrant_url));
+
+        output.push_str("\n--- Config File Paths ---\n");
+        output.push_str(&format!("Global: {}\n", Self::global_config_path().display()));
+        output.push_str(&format!("Local: {}\n", Self::local_config_path().display()));
+
+        output
+    }
+
     fn apply_config_file(&mut self, path: &std::path::Path) -> anyhow::Result<()> {
         if !path.exists() {
             return Ok(());
@@ -806,5 +847,37 @@ url = "wss://partial.example.com"
         assert_eq!(loaded.cloud.database, "");
 
         let _ = std::fs::remove_file(config_path);
+    }
+
+    #[test]
+    fn test_formatted_output_local_backend() {
+        let config = Config::default();
+        let formatted = config.formatted();
+
+        assert!(formatted.contains("Backend: local"));
+        assert!(formatted.contains("Local Storage"));
+        assert!(formatted.contains("Database Path:"));
+        assert!(formatted.contains("Config File Paths"));
+    }
+
+    #[test]
+    fn test_formatted_output_cloud_backend() {
+        let mut config = Config::default();
+        config.backend = StorageBackend::Cloud;
+        config.cloud.url = "wss://test.surrealdb.com".to_string();
+        config.cloud.namespace = "test_ns".to_string();
+        config.cloud.database = "test_db".to_string();
+        config.cloud.username = "test_user".to_string();
+        config.cloud.password = "secret_password".to_string();
+
+        let formatted = config.formatted();
+
+        assert!(formatted.contains("Backend: cloud"));
+        assert!(formatted.contains("Cloud Settings"));
+        assert!(formatted.contains("wss://test.surrealdb.com"));
+        assert!(formatted.contains("test_ns"));
+        assert!(formatted.contains("test_db"));
+        assert!(formatted.contains("test_user"));
+        assert!(formatted.contains("***redacted***"));
     }
 }
