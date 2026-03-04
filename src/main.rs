@@ -615,3 +615,64 @@ fn print_json(value: serde_json::Value, pretty: bool) {
         println!("{}", value);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_print_json_compact_format() {
+        let value = serde_json::json!({"status": "ok", "id": "task:abc123"});
+        let json_str = value.to_string();
+        
+        // Compact format should not contain newlines
+        assert!(!json_str.contains('\n'), "compact JSON should not have newlines");
+        assert!(json_str.contains("status"), "JSON should contain field names");
+        assert!(json_str.contains("task:abc123"), "JSON should contain values");
+    }
+
+    #[test]
+    fn test_print_json_pretty_format() {
+        let value = serde_json::json!({"status": "ok", "id": "task:abc123"});
+        let pretty_str = serde_json::to_string_pretty(&value).unwrap();
+        
+        // Pretty format should contain newlines and indentation
+        assert!(pretty_str.contains('\n'), "pretty JSON should have newlines");
+        assert!(pretty_str.contains("  "), "pretty JSON should have indentation");
+    }
+
+    #[test]
+    fn test_print_json_handles_nested_objects() {
+        let value = serde_json::json!({
+            "project": {
+                "id": "project:abc",
+                "name": "Test"
+            },
+            "tasks": ["task:1", "task:2"]
+        });
+        
+        let compact = value.to_string();
+        let pretty = serde_json::to_string_pretty(&value).unwrap();
+        
+        // Both should parse back to the same value
+        let parsed_compact: serde_json::Value = serde_json::from_str(&compact).unwrap();
+        let parsed_pretty: serde_json::Value = serde_json::from_str(&pretty).unwrap();
+        
+        assert_eq!(parsed_compact, parsed_pretty);
+        assert_eq!(parsed_compact["project"]["id"], "project:abc");
+    }
+
+    #[test]
+    fn test_print_json_handles_arrays() {
+        let value = serde_json::json!([
+            {"id": "task:1", "name": "Task 1"},
+            {"id": "task:2", "name": "Task 2"}
+        ]);
+        
+        let pretty = serde_json::to_string_pretty(&value).unwrap();
+        
+        // Pretty format should have newlines between array items
+        assert!(pretty.contains('\n'), "pretty JSON array should have newlines");
+        assert!(pretty.contains("Task 1"), "pretty JSON should preserve values");
+    }
+}

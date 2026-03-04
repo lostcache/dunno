@@ -243,6 +243,49 @@ dunno context --epic-id <id>
 dunno link --from-id <id> --edge <type> --to-ids <id> [<id> ...]
 ```
 
+#### Output Formatting
+
+All commands that return JSON support the `--pretty` flag for formatted output:
+
+```bash
+# Default: compact JSON
+dunno project list
+# Output: [{"id":"project:abc","name":"My App",...}]
+
+# Pretty-printed JSON with indentation
+dunno project list --pretty
+# Output:
+# [
+#   {
+#     "id": "project:abc",
+#     "name": "My App",
+#     ...
+#   }
+# ]
+```
+
+**Commands supporting --pretty:**
+- `config show` - Human-readable text format (not JSON)
+- `project list/create`
+- `module list/create`
+- `submodule list/create`
+- `file list/create`
+- `task list/create/update/delete`
+- `subtask list/create`
+- `todo list/create`
+- `user-story list/create`
+- `epic list/create`
+- `context` (task, file, subtask, epic)
+- `link`
+- `add`
+- `purge`
+
+The `--pretty` flag is global and can be placed before any command:
+```bash
+dunno --pretty task list
+dunno task list --pretty  # Both work
+```
+
 ### Common Workflows
 
 **1. Starting a New Feature:**
