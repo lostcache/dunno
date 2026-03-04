@@ -151,7 +151,7 @@ impl DB {
         Ok(deleted.is_some())
     }
 
-    /// Gets full context for a task including subtasks, files, and linked context (unified).
+    /// Gets full context for a task including files and linked context (unified).
     pub async fn get_task_context(
         &self,
         task_id: &str,
@@ -161,7 +161,6 @@ impl DB {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Task not found: {}", task_id))?;
 
-        let subtasks = self.list_subtasks_by_task(task_id).await?;
         let hierarchy = self.get_task_hierarchy(task_id).await?;
         let files = self.get_files_from_hierarchy(&hierarchy).await?;
 
@@ -169,7 +168,6 @@ impl DB {
 
         Ok(crate::models::TaskContext {
             task,
-            subtasks,
             files,
             contexts,
             hierarchy,
@@ -256,7 +254,6 @@ impl DB {
                 module_id: None,
                 submodule_id: None,
                 task_id: None,
-                subtask_id: None,
             }),
             "module" => {
                 let project_id = self
@@ -272,7 +269,6 @@ impl DB {
                     module_id: Some(from_id.to_string()),
                     submodule_id: None,
                     task_id: None,
-                    subtask_id: None,
                 })
             }
             "submodule" => {
@@ -301,7 +297,6 @@ impl DB {
                     module_id,
                     submodule_id: Some(from_id.to_string()),
                     task_id: None,
-                    subtask_id: None,
                 })
             }
             "task" => {
@@ -312,32 +307,6 @@ impl DB {
                     module_id: Some(hierarchy.module_id),
                     submodule_id,
                     task_id: Some(from_id.to_string()),
-                    subtask_id: None,
-                })
-            }
-            "subtask" => {
-                let task_id = self
-                    .first_record_id_from_query(
-                        "SELECT ->belongs_to_task->task AS t FROM ONLY type::record($stid)",
-                        "stid",
-                        from_id.to_string(),
-                        "t",
-                    )
-                    .await?;
-                let (project_id, module_id, submodule_id) = match &task_id {
-                    Some(tid) => {
-                        let h = self.get_task_hierarchy(tid).await?;
-                        let sub = h.submodule.as_ref().map(|s| s.id.clone());
-                        (Some(h.project_id), Some(h.module_id), sub)
-                    }
-                    None => (None, None, None),
-                };
-                Ok(StructuralHierarchy {
-                    project_id,
-                    module_id,
-                    submodule_id,
-                    task_id,
-                    subtask_id: Some(from_id.to_string()),
                 })
             }
             "epic" => {
@@ -354,11 +323,10 @@ impl DB {
                     module_id: None,
                     submodule_id: None,
                     task_id: None,
-                    subtask_id: None,
                 })
             }
             _ => Err(anyhow::anyhow!(
-                "resolve_structural_hierarchy: from_id must be project, module, submodule, task, subtask, or epic; got {:?}",
+                "resolve_structural_hierarchy: from_id must be project, module, submodule, task, or epic; got {:?}",
                 table
             )),
         }
@@ -447,7 +415,7 @@ impl DB {
         Ok(vec![])
     }
 
-    /// Fetches all context records linked to a structural node (project, task, module, submodule, subtask).
+    /// Fetches all context records linked to a structural node (project, task, module, submodule).
     pub(crate) async fn get_linked_context(
         &self,
         structural_id: &str,
@@ -460,62 +428,6 @@ impl DB {
         )
         .await
     }
-
-    /// Internal helper: creates a subtask record without any relationships.
-    pub(crate) async fn create_subtask_record(
-        &self,
-        subtask: &crate::models::Subtask,
-    ) -> anyhow::Result<crate::models::Subtask> {
-        let json = serde_json::to_value(subtask)?;
-        let value = json_to_surreal(json);
-        let created: Option<surrealdb::types::Value> =
-            self.client.create("subtask").content(value).await?;
-        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create subtask"))?;
-        let result: crate::models::Subtask = serde_json::from_value(surreal_to_json(val))?;
-        Ok(result)
-    }
-
-    /// Creates a subtask and optionally RELATEs it to its parent task.
-    pub async fn create_subtask(
-        &self,
-        name: &str,
-        description: &str,
-        task_id: Option<&str>,
-    ) -> anyhow::Result<crate::models::Subtask> {
-        let subtask = crate::models::Subtask {
-            id: None,
-            name: name.to_string(),
-            description: description.to_string(),
-            status: crate::models::TaskStatus::NotStarted,
-        };
-        let result = self.create_subtask_record(&subtask).await?;
-
-        if let (Some(tid), Some(stid)) = (task_id, result.id.as_ref()) {
-            self.link(tid, "has_subtask", stid).await?;
-            self.link(stid, "belongs_to_task", tid).await?;
-        }
-
-        Ok(result)
-    }
-
-    /// Fetches a subtask by record id.
-    pub async fn get_subtask(&self, id: &str) -> anyhow::Result<Option<crate::models::Subtask>> {
-        self.get_record("subtask", id).await
-    }
-
-    /// Lists subtasks under a task via has_subtask relationship.
-    pub async fn list_subtasks_by_task(
-        &self,
-        task_id: &str,
-    ) -> anyhow::Result<Vec<crate::models::Subtask>> {
-        self.query_graph_list(
-            "SELECT ->has_subtask->subtask.* AS items FROM ONLY type::record($tid)",
-            "tid",
-            task_id.to_string(),
-            "items",
-        )
-        .await
-    }
 }
 
 /// Returns JSON-encoded context records directly linked to a task.
@@ -524,18 +436,6 @@ pub async fn get_task_context_json(
     db: &crate::db::DB,
 ) -> anyhow::Result<Vec<serde_json::Value>> {
     let ctxs = db.get_linked_context(task_id).await?;
-    Ok(ctxs
-        .into_iter()
-        .map(|c| serde_json::to_value(c).unwrap())
-        .collect())
-}
-
-/// Returns JSON-encoded context records directly linked to a subtask.
-pub async fn get_subtask_context_json(
-    subtask_id: &str,
-    db: &crate::db::DB,
-) -> anyhow::Result<Vec<serde_json::Value>> {
-    let ctxs = db.get_linked_context(subtask_id).await?;
     Ok(ctxs
         .into_iter()
         .map(|c| serde_json::to_value(c).unwrap())

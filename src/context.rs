@@ -3,4 +3,4 @@
 //! This keeps `dunno::context::*` stable while allowing the underlying
 //! implementations to live in the database backend modules.
 
-pub use crate::db::{get_epic_context, get_file_context, get_subtask_context, get_task_context};
+pub use crate::db::{get_epic_context, get_file_context, get_task_context};

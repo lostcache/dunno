@@ -182,7 +182,7 @@ Project → Module → Submodule (optional) → File
 
 **Work Tracking:**
 ```
-Project → Module → Task → Subtask (optional)
+Project → Module → Task
 ```
 
 **Optional Layers:**
@@ -234,7 +234,6 @@ dunno add --field type --value style --field language --value rust --field rule 
 ```bash
 dunno context --task-id <id>
 dunno context --file-id <id>
-dunno context --subtask-id <id>
 dunno context --epic-id <id>
 ```
 
@@ -341,7 +340,6 @@ src/
 | Submodule | `submodule:<id>` | Nested code unit |
 | File | `file:<id>` | Source file reference |
 | Task | `task:<id>` | Work item |
-| Subtask | `subtask:<id>` | Sub-work item |
 | Epic | `epic:<id>` | Large feature group |
 | UserStory | `user_story:<id>` | User-centric feature |
 | Context | `context:<id>` | Knowledge entry |
@@ -353,15 +351,14 @@ src/
 |------|------|-----|---------|
 | `contains` | project, module, submodule | module, submodule, file | Structural containment |
 | `has_task` | project, epic, user_story | task | Task assignment |
-| `has_subtask` | task | subtask | Subtask grouping |
 | `has_context` | *any structural* | context | Knowledge linking |
 | `has_user_story` | project, epic | user_story | Story grouping |
 | `has_epic` | project | epic | Epic grouping |
 | `has_todo` | project | todo_item | Todo tracking |
 | `belongs_to_project` | task, context, user_story, epic | project | Reverse link |
 | `belongs_to_module` | task, context | module | Reverse link |
-| `belongs_to_task` | subtask, context | task | Reverse link |
 | `belongs_to_story` | task | user_story | Reverse link |
+| `belongs_to_user_story` | module, submodule | user_story | Reverse link |
 | `belongs_to_epic` | user_story, task | epic | Reverse link |
 
 ### Development Setup

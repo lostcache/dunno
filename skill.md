@@ -17,7 +17,7 @@ Project -> Module -> Submodule (optional) -> File/s (path)
 
 ### Work Tracking Path
 ```
-Project -> Module -> Task -> Subtask (optional)
+Project -> Module -> Task
 ```
 
 ### Knowledge Entities
@@ -27,7 +27,6 @@ Knowledge can be attached to any structural node:
 - **Submodule**: Knowledge for sub-components
 - **File**: Knowledge tied to specific files
 - **Task**: Knowledge related to specific work items
-- **Subtask**: Granular knowledge for sub-tasks
 
 **Note**: Context retrieval is direct-only (not inherited). Query the specific node you need context for.
 
@@ -82,10 +81,6 @@ dunno file create --parent-ids module:def "auth.rs" "src/auth.rs"
 # Create a task (requires both --module-ids and --project-ids, or neither for freestanding)
 dunno task create --module-ids module:def --project-ids project:abc "Implement JWT" "Add JWT authentication"
 # Returns: {"id":"task:mno",...}
-
-# Create a subtask
-dunno subtask create --task-ids task:mno "Write tests" "Unit tests for JWT"
-# Returns: {"id":"subtask:pqr",...}
 ```
 
 **AI Agent Pattern**: Capture IDs from JSON output for subsequent commands.
@@ -142,9 +137,6 @@ dunno context --task-id task:mno
 
 # Get context for a file
 dunno context --file-id file:jkl
-
-# Get context for a subtask
-dunno context --subtask-id subtask:pqr
 
 # Get context for an epic
 dunno context --epic-id epic:stu
@@ -208,15 +200,12 @@ dunno link --from-id project:abc --edge contains --to-ids module:def
 - `has_context` - Node has knowledge (any structural node -> context)
 - `belongs_to_project` - Child belongs to project
 - `belongs_to_module` - Child belongs to module
-- `belongs_to_task` - Child belongs to task
+- `belongs_to_story` - Child belongs to user story
 - `belongs_to_user_story` - Child belongs to user story
 - `belongs_to_epic` - Child belongs to epic
 - `has_user_story` - Parent has user story
 - `has_epic` - Parent has epic
 - `has_todo` - Parent has todo
-- `has_subtask` - Task has subtask
-- `has_module` - User story has module
-- `has_submodule` - User story has submodule
 
 ## Best Practices for AI Agents
 
@@ -535,6 +524,70 @@ while read -r line; do
     --field content --value "$content" \
     --link-to "$module"
 done < knowledge_list.txt
+```
+
+### Workflow 5: AI Agent Task Planning and Execution
+
+Complete workflow for planning and executing tasks with proper context retrieval:
+
+#### Step 1: Create a todo to track the work item
+#### Step 2: Query the task to check if already exists and whether to add as a subtask.
+#### Step 3: Query the knowledge base for code structure and existing context
+#### Step 4: Create a task linked to the appropriate module/submodule/epic
+#### Step 5: Update task with a detailed plan as knowledge
+```bash
+# Step 6: Query knowledge base again for relevant patterns before implementation
+# Get context specific to the task
+dunno context --task-id "$TASK_ID" | jq '.results[]'
+
+# Step 7: After completion, capture insights and lessons learned
+dunno add \
+  --field type --value insight \
+  --field content --value "JWT tokens should have short expiry with refresh token pattern" \
+  --field related_task --value "$TASK_ID" \
+  --link-to "$TASK_ID" \
+  --link-to module:def
+```
+
+**AI Agent Best Practices for Task Planning**:
+
+1. **Always query before planning**: Retrieve existing context from project, module, and relevant files
+2. **Create todos first**: Track work items before creating detailed tasks
+3. **Link strategically**: Attach tasks to the most specific module/submodule and relevant epics
+4. **Store plans as knowledge**: Use `--field type --value plan` to document implementation approach
+5. **Query task context before coding**: Always run `dunno context --task-id <id>` before implementation
+6. **Capture learnings**: After task completion, add insights linked to the task and relevant modules
+
+**Example: Full Planning Session**:
+
+```bash
+# 1. Initial query - understand existing structure
+dunno context --project-id project:abc | jq '.results[] | {type, content}'
+
+# 2. Create tracking todo
+TODO=$(dunno todo create --project-ids project:abc "Add OAuth integration" | jq -r '.id')
+
+# 3. Explore specific module context
+dunno context --module-id module:auth | jq '.results[]'
+
+# 4. Create and link task
+TASK=$(dunno task create \
+  --module-ids module:auth \
+  --project-ids project:abc \
+  "Implement OAuth2 flow" \
+  "Add OAuth2 authentication with Google and GitHub providers" | jq -r '.id')
+
+# 5. Document the plan
+dunno add \
+  --field type --value plan \
+  --field content --value "OAuth2 implementation strategy" \
+  --field approach --value "Use OAuth2 crate with state parameter for CSRF protection" \
+  --field providers --value "Google, GitHub" \
+  --field callback_url --value "/auth/callback" \
+  --link-to "$TASK"
+
+# 6. Verify context is properly linked
+dunno context --task-id "$TASK" | jq '.results | length'
 ```
 
 ---

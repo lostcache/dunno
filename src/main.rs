@@ -62,7 +62,6 @@ async fn dispatch_command(
         dunno::args::Commands::Submodule { command } => handle_submodule_command(command, db, pretty).await,
         dunno::args::Commands::File { command } => handle_file_command(command, db, pretty).await,
         dunno::args::Commands::Task { command } => handle_task_command(command, db, pretty).await,
-        dunno::args::Commands::Subtask { command } => handle_subtask_command(command, db, pretty).await,
         dunno::args::Commands::Todo { command } => handle_todo_command(command, db, pretty).await,
         dunno::args::Commands::UserStory { command } => {
             handle_user_story_command(command, db, pretty).await
@@ -71,9 +70,8 @@ async fn dispatch_command(
         dunno::args::Commands::Context {
             task_id,
             file_id,
-            subtask_id,
             epic_id,
-        } => handle_context(task_id, file_id, subtask_id, epic_id, db, pretty).await,
+        } => handle_context(task_id, file_id, epic_id, db, pretty).await,
         dunno::args::Commands::Purge => handle_purge(db, pretty).await,
         dunno::args::Commands::Config { .. } => {
             unreachable!("config command handled before db init")
@@ -137,7 +135,6 @@ async fn handle_link(
     const ALLOWED_EDGES: &[&str] = &[
         "contains",
         "has_task",
-        "has_subtask",
         "has_todo",
         "has_context",
         "has_user_story",
@@ -415,45 +412,6 @@ fn parse_optional_status(
     }
 }
 
-/// Subtask management with bidirectional task linking.
-async fn handle_subtask_command(
-    command: dunno::args::SubtaskCommands,
-    db: &dunno::db::DB,
-    pretty: bool,
-) -> anyhow::Result<()> {
-    match command {
-        dunno::args::SubtaskCommands::Create {
-            task_ids,
-            name,
-            description,
-        } => {
-            let created = db
-                .create_subtask(&name, &description, task_ids.first().map(String::as_str))
-                .await?;
-
-            let stid = match &created.id {
-                Some(id) => id.as_str(),
-                None => {
-                    print_json(serde_json::json!(created), pretty);
-                    return Ok(());
-                }
-            };
-
-            for tid in task_ids.iter().skip(1) {
-                db.link(tid, "has_subtask", stid).await?;
-                db.link(stid, "belongs_to_task", tid).await?;
-            }
-
-            print_json(serde_json::json!(created), pretty);
-        }
-        dunno::args::SubtaskCommands::List { task_id } => {
-            let subtasks = db.list_subtasks_by_task(&task_id).await?;
-            print_json(serde_json::json!(subtasks), pretty);
-        }
-    }
-    Ok(())
-}
-
 /// Todo management with project association.
 async fn handle_todo_command(
     command: dunno::args::TodoCommands,
@@ -561,19 +519,17 @@ async fn handle_epic_command(
 async fn handle_context(
     task_id: Option<String>,
     file_id: Option<String>,
-    subtask_id: Option<String>,
     epic_id: Option<String>,
     db: &dunno::db::DB,
     pretty: bool,
 ) -> anyhow::Result<()> {
-    let results = match (task_id, file_id, subtask_id, epic_id) {
-        (Some(t_id), _, _, _) => dunno::context::get_task_context(&t_id, db).await?,
-        (_, Some(f_id), _, _) => dunno::context::get_file_context(&f_id, db).await?,
-        (_, _, Some(st_id), _) => dunno::context::get_subtask_context(&st_id, db).await?,
-        (_, _, _, Some(e_id)) => dunno::context::get_epic_context(&e_id, db).await?,
-        (None, None, None, None) => {
+    let results = match (task_id, file_id, epic_id) {
+        (Some(t_id), _, _) => dunno::context::get_task_context(&t_id, db).await?,
+        (_, Some(f_id), _) => dunno::context::get_file_context(&f_id, db).await?,
+        (_, _, Some(e_id)) => dunno::context::get_epic_context(&e_id, db).await?,
+        (None, None, None) => {
             return Err(anyhow::anyhow!(
-                "One of --task-id, --file-id, --subtask-id, or --epic-id must be provided"
+                "One of --task-id, --file-id, or --epic-id must be provided"
             ));
         }
     };

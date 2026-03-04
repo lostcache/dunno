@@ -17,7 +17,6 @@ pub(crate) struct StructuralHierarchy {
     pub(crate) module_id: Option<String>,
     pub(crate) submodule_id: Option<String>,
     pub(crate) task_id: Option<String>,
-    pub(crate) subtask_id: Option<String>,
 }
 
 impl DB {
@@ -275,4 +274,4 @@ mod tests;
 
 pub use entities::epics::get_epic_context_json;
 pub use entities::files::get_file_context_json;
-pub use entities::tasks::{get_subtask_context_json, get_task_context_json};
+pub use entities::tasks::get_task_context_json;

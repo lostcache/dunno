@@ -10,7 +10,6 @@ pub(crate) const TABLES: &[&str] = &[
     "submodule",
     "file",
     "task",
-    "subtask",
     "todo_item",
     "context",
     "user_story",
@@ -31,12 +30,8 @@ pub(crate) async fn define_schema(client: &Surreal<Any>) -> anyhow::Result<()> {
                 IN task|context|user_story|epic OUT project;
             DEFINE TABLE IF NOT EXISTS belongs_to_module TYPE RELATION \
                 IN task|context OUT module;
-            DEFINE TABLE IF NOT EXISTS has_subtask TYPE RELATION \
-                IN task OUT subtask;
-            DEFINE TABLE IF NOT EXISTS belongs_to_task TYPE RELATION \
-                IN subtask|context OUT task;
             DEFINE TABLE IF NOT EXISTS has_context TYPE RELATION \
-                IN project|task|module|submodule|subtask|epic OUT context;
+                IN project|task|module|submodule|epic OUT context;
             DEFINE TABLE IF NOT EXISTS has_todo TYPE RELATION \
                 IN project OUT todo_item;
             DEFINE TABLE IF NOT EXISTS has_user_story TYPE RELATION \

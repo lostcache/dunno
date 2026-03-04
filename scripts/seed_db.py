@@ -3,13 +3,13 @@
 Seed script to populate the database with dummy data for visualization in Surrealist.
 
 Graph model (current):
-- Structure: project -> module -> submodule -> file; project -> task -> subtask (via has_task,
-  belongs_to_project, belongs_to_module, has_subtask, belongs_to_task).
+- Structure: project -> module -> submodule -> file; project -> task (via has_task,
+  belongs_to_project, belongs_to_module).
 - Knowledge: mistakes, style rules, and security details are linked with `dunno add --link-to <id>`.
   The backend creates forward edges (has_mistake, has_style, has_security_detail) and reverse
   edges (belongs_to_project, belongs_to_module, belongs_to_task) automatically, so each
   knowledge node points back to the relevant project/module/task in the hierarchy.
-- You can link to any structural node: project, module, submodule, task, or subtask.
+- You can link to any structural node: project, module, submodule, or task.
 """
 
 import subprocess
@@ -418,95 +418,7 @@ def seed():
     print(f"  Created task: {t6['name']}")
     print(f"  Created task: {t7['name']}")
 
-    # 7. Create subtasks
-    print("Creating subtasks...")
-    st1 = run_cmd(
-        [
-            dunno,
-            "subtask",
-            "create",
-            "--task-ids",
-            t1_id,
-            "Add refresh token table",
-            "Create database table for refresh tokens",
-        ]
-    )
-    st2 = run_cmd(
-        [
-            dunno,
-            "subtask",
-            "create",
-            "--task-ids",
-            t1_id,
-            "Implement token rotation",
-            "Rotate refresh tokens on each use",
-        ]
-    )
-    st3 = run_cmd(
-        [
-            dunno,
-            "subtask",
-            "create",
-            "--task-ids",
-            t2_id,
-            "Register Google OAuth app",
-            "Set up Google Cloud project",
-        ]
-    )
-    st4 = run_cmd(
-        [
-            dunno,
-            "subtask",
-            "create",
-            "--task-ids",
-            t3_id,
-            "Add Elasticsearch",
-            "Set up Elasticsearch for search",
-        ]
-    )
-    st5 = run_cmd(
-        [
-            dunno,
-            "subtask",
-            "create",
-            "--task-ids",
-            t4_id,
-            "Stripe API integration",
-            "Connect to Stripe API",
-        ]
-    )
-    st6 = run_cmd(
-        [
-            dunno,
-            "subtask",
-            "create",
-            "--task-ids",
-            t5_id,
-            "Frontend drag-drop",
-            "Implement React DnD",
-        ]
-    )
-    st7 = run_cmd(
-        [
-            dunno,
-            "subtask",
-            "create",
-            "--task-ids",
-            t6_id,
-            "Date picker component",
-            "Add date picker UI",
-        ]
-    )
-
-    print(f"  Created subtask: {st1['name']}")
-    print(f"  Created subtask: {st2['name']}")
-    print(f"  Created subtask: {st3['name']}")
-    print(f"  Created subtask: {st4['name']}")
-    print(f"  Created subtask: {st5['name']}")
-    print(f"  Created subtask: {st6['name']}")
-    print(f"  Created subtask: {st7['name']}")
-
-    # 8. Create todo items
+    # 7. Create todo items
     print("Creating todo items...")
     todo1 = run_cmd(
         [
@@ -537,7 +449,7 @@ def seed():
     print(f"  Created 6 todo items")
 
     # 10. Create knowledge entries (mistakes, style rules, security)
-    # Link to various levels: project, module, submodule, task, subtask.
+    # Link to various levels: project, module, submodule, task.
     # Reverse edges (belongs_to_project, belongs_to_module, belongs_to_task) are created by the CLI.
     print("Creating knowledge entries...")
 
@@ -607,23 +519,6 @@ def seed():
             "Task-level: do not log tokens in production",
             "--link-to",
             t1_id,
-        ],
-        check=False,
-    )
-    run_cmd(
-        [
-            dunno,
-            "add",
-            "--field",
-            "type",
-            "--value",
-            "mistake",
-            "--field",
-            "content",
-            "--value",
-            "Subtask-level: refresh token table must be migrated",
-            "--link-to",
-            st1_id,
         ],
         check=False,
     )
@@ -755,11 +650,8 @@ def seed():
     print(f"Submodules: 3")
     print(f"Files: 6")
     print(f"Tasks: 7")
-    print(f"Subtasks: 7")
     print(f"Todo items: 6")
-    print(
-        f"Knowledge entries: 12 (linked at project, module, submodule, task, subtask)"
-    )
+    print(f"Knowledge entries: 12 (linked at project, module, submodule, task)")
 
 
 def main():

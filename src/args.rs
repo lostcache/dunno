@@ -71,12 +71,6 @@ pub enum Commands {
         command: TaskCommands,
     },
 
-    #[command(about = "Manage subtasks.")]
-    Subtask {
-        #[command(subcommand)]
-        command: SubtaskCommands,
-    },
-
     #[command(about = "Manage user stories.")]
     UserStory {
         #[command(subcommand)]
@@ -103,24 +97,20 @@ pub enum Commands {
 
     #[command(
         about = "Retrieve coding context for a task, file, or subtask.",
-        long_about = "Find context directly linked to a task, file, or subtask.",
-        after_help = "Example:\n  dunno context --task-id task:123\n  dunno context --file-id file:456\n  dunno context --subtask-id subtask:789"
+        long_about = "Find context directly linked to a task or file.",
+        after_help = "Example:\n  dunno context --task-id task:123\n  dunno context --file-id file:456"
     )]
     Context {
         /// The Task ID to retrieve context for.
-        #[arg(long, value_name = "TASK_ID", conflicts_with_all = ["file_id", "subtask_id", "epic_id"])]
+        #[arg(long, value_name = "TASK_ID", conflicts_with_all = ["file_id", "epic_id"])]
         task_id: Option<String>,
 
         /// The File ID to retrieve context for.
-        #[arg(long, value_name = "FILE_ID", conflicts_with_all = ["task_id", "subtask_id", "epic_id"])]
+        #[arg(long, value_name = "FILE_ID", conflicts_with_all = ["task_id", "epic_id"])]
         file_id: Option<String>,
 
-        /// The Subtask ID to retrieve context for.
-        #[arg(long, value_name = "SUBTASK_ID", conflicts_with_all = ["task_id", "file_id", "epic_id"])]
-        subtask_id: Option<String>,
-
         /// The Epic ID to retrieve context for.
-        #[arg(long, value_name = "EPIC_ID", conflicts_with_all = ["task_id", "file_id", "subtask_id"])]
+        #[arg(long, value_name = "EPIC_ID", conflicts_with_all = ["task_id", "file_id"])]
         epic_id: Option<String>,
     },
 
@@ -133,7 +123,7 @@ pub enum Commands {
         /// Source record ID (e.g. project:abc, task:xyz).
         #[arg(long, value_name = "FROM_ID")]
         from_id: String,
-        /// Edge name (e.g. contains, has_task, has_subtask, has_todo, has_context, belongs_to_project, belongs_to_module, belongs_to_task).
+        /// Edge name (e.g. contains, has_task, has_todo, has_context, belongs_to_project, belongs_to_module, belongs_to_task).
         #[arg(long, value_name = "EDGE")]
         edge: String,
         /// Target record ID(s). Repeat for multiple.
@@ -237,21 +227,6 @@ pub enum TaskCommands {
 }
 
 #[derive(clap::Subcommand, Debug)]
-pub enum SubtaskCommands {
-    Create {
-        /// Task ID(s) to link this subtask to. Repeat for multiple. Omit for freestanding.
-        #[arg(long, value_name = "TASK_ID")]
-        task_ids: Vec<String>,
-        name: String,
-        description: String,
-    },
-    List {
-        #[arg(long)]
-        task_id: String,
-    },
-}
-
-#[derive(clap::Subcommand, Debug)]
 pub enum UserStoryCommands {
     Create {
         /// Project ID to link this user story to.
@@ -329,9 +304,6 @@ mod tests {
 
         let file_ok = Args::try_parse_from(["dunno", "context", "--file-id", "file:2"]);
         assert!(file_ok.is_ok());
-
-        let subtask_ok = Args::try_parse_from(["dunno", "context", "--subtask-id", "subtask:3"]);
-        assert!(subtask_ok.is_ok());
     }
 
     #[test]

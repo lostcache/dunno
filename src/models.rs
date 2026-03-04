@@ -79,15 +79,6 @@ pub struct Task {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct Subtask {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-    pub name: String,
-    pub description: String,
-    pub status: TaskStatus,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct TodoItem {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -133,7 +124,6 @@ pub struct TaskHierarchy {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct TaskContext {
     pub task: Task,
-    pub subtasks: Vec<Subtask>,
     pub files: Vec<String>,
     pub contexts: Vec<Context>,
     pub hierarchy: TaskHierarchy,
@@ -217,19 +207,6 @@ mod tests {
         };
         let json = to_string(&task).expect("Failed to serialize Task");
         assert!(json.contains("Implement Auth"));
-        assert!(json.contains("\"status\":\"not_started\""));
-    }
-
-    #[test]
-    fn test_subtask_model() {
-        let subtask = Subtask {
-            id: None,
-            name: "Write unit tests".to_string(),
-            description: "Tests for login flow".to_string(),
-            status: TaskStatus::NotStarted,
-        };
-        let json = to_string(&subtask).expect("Failed to serialize Subtask");
-        assert!(json.contains("Write unit tests"));
         assert!(json.contains("\"status\":\"not_started\""));
     }
 

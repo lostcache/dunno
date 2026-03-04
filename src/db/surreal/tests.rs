@@ -57,12 +57,6 @@ async fn test_link_context_all_levels() {
         .expect("create task");
     let task_id = task.id.expect("id");
 
-    let subtask = db
-        .create_subtask("ST", "d", Some(&task_id))
-        .await
-        .expect("create subtask");
-    let subtask_id = subtask.id.expect("id");
-
     let submodule = db
         .create_submodule("SM", "d", Some(&module_id))
         .await
@@ -109,23 +103,6 @@ async fn test_link_context_all_levels() {
         .await
         .expect("link submodule context");
 
-    let subtask_ctx = db
-        .create_context(&crate::models::Context {
-            id: None,
-            context_type: "mistake".to_string(),
-            content: Some("Subtask Level Mistake".to_string()),
-            description: None,
-            example: None,
-            severity: None,
-            category: None,
-            tags: None,
-        })
-        .await
-        .expect("create context");
-    db.link_context(&subtask_id, subtask_ctx.id.as_ref().unwrap())
-        .await
-        .expect("link subtask context");
-
     let task_ctx = crate::context::get_task_context(&task_id, &db)
         .await
         .expect("get_task_context");
@@ -142,18 +119,6 @@ async fn test_link_context_all_levels() {
         file_ctx.is_empty(),
         "file context should be file-only (no inherited submodule/project context): {:?}",
         file_ctx
-    );
-
-    // For subtask, verify direct-only context via the DB helper.
-    let subtask_ctx = db
-        .get_linked_context(&subtask_id)
-        .await
-        .expect("get_linked_context for subtask");
-    assert!(
-        subtask_ctx.iter().any(|c| c.context_type == "mistake"
-            && c.content.as_deref() == Some("Subtask Level Mistake")),
-        "subtask linked context should include subtask-level mistake: {:?}",
-        subtask_ctx
     );
 }
 
@@ -249,41 +214,6 @@ async fn test_link_context_reverse_belongs_to() {
 }
 
 #[tokio::test]
-async fn test_subtask_crud() {
-    let db = DB::new("mem://").await.expect("Failed to init DB");
-
-    let project = db
-        .create_project(&crate::models::Project {
-            id: None,
-            name: "P".to_string(),
-            description: "d".to_string(),
-        })
-        .await
-        .unwrap();
-    let pid = project.id.unwrap();
-
-    let module = db.create_module("M", "d", Some(&pid)).await.unwrap();
-    let mid = module.id.unwrap();
-
-    let task = db
-        .create_task("T", "d", Some(&mid), Some(&pid))
-        .await
-        .unwrap();
-    let tid = task.id.unwrap();
-
-    let subtask = db
-        .create_subtask("ST", "sub desc", Some(&tid))
-        .await
-        .expect("create subtask");
-    assert!(subtask.id.is_some());
-    assert_eq!(subtask.name, "ST");
-
-    let list = db.list_subtasks_by_task(&tid).await.expect("list subtasks");
-    assert_eq!(list.len(), 1);
-    assert_eq!(list[0].name, "ST");
-}
-
-#[tokio::test]
 async fn test_from_config_local_embedded_crud() {
     let ts = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -376,11 +306,6 @@ async fn test_get_task_context() {
         .expect("Failed to create task");
     let task_id = task.id.expect("task id");
 
-    let _subtask = db
-        .create_subtask("Setup DB", "Create tables", Some(&task_id))
-        .await
-        .expect("Failed to create subtask");
-
     let ctx = db
         .create_context(&crate::models::Context {
             id: None,
@@ -404,7 +329,6 @@ async fn test_get_task_context() {
         .expect("get_task_context failed");
 
     assert_eq!(context.task.name, "Login");
-    assert_eq!(context.subtasks.len(), 1);
     assert_eq!(context.contexts.len(), 1);
     assert_eq!(context.hierarchy.project_name, "Testcrate::models::Project");
     assert_eq!(context.hierarchy.module_name, "Auth");
@@ -542,7 +466,6 @@ async fn test_get_task_context_no_linked_knowledge() {
         .expect("get_task_context failed");
 
     assert_eq!(context.task.name, "Login");
-    assert!(context.subtasks.is_empty());
     assert!(context.contexts.is_empty());
 }
 
@@ -1137,53 +1060,6 @@ async fn test_freestanding_task() {
             || err.to_string().contains("No project linked to task"),
         "freestanding task must fail get_task_hierarchy: {}",
         err
-    );
-}
-
-#[tokio::test]
-async fn test_freestanding_subtask() {
-    let db = DB::new("mem://").await.expect("Failed to init DB");
-    let project = db
-        .create_project(&crate::models::Project {
-            id: None,
-            name: "P".to_string(),
-            description: "d".to_string(),
-        })
-        .await
-        .expect("create project");
-    let project_id = project.id.expect("project id");
-    let module = db
-        .create_module("M", "d", Some(&project_id))
-        .await
-        .expect("create module");
-    let module_id = module.id.expect("module id");
-    let task = db
-        .create_task("T", "d", Some(&module_id), Some(&project_id))
-        .await
-        .expect("create task");
-    let task_id = task.id.expect("task id");
-
-    let subtask = db
-        .create_subtask("Freestanding", "no task", None)
-        .await
-        .expect("create freestanding subtask");
-    let subtask_id = subtask.id.expect("subtask id");
-
-    assert!(
-        db.get_subtask(&subtask_id)
-            .await
-            .expect("get_subtask")
-            .is_some()
-    );
-    let by_task = db
-        .list_subtasks_by_task(&task_id)
-        .await
-        .expect("list_subtasks_by_task");
-    assert!(
-        !by_task
-            .iter()
-            .any(|s| s.id.as_deref() == Some(subtask_id.as_str())),
-        "freestanding subtask must not appear under task"
     );
 }
 
@@ -2566,61 +2442,4 @@ async fn test_delete_task_with_context() {
     // Verify task is deleted
     let after_delete = db.get_task(&task_id).await.expect("Failed to check task");
     assert!(after_delete.is_none());
-}
-
-#[tokio::test]
-async fn test_delete_task_with_subtasks() {
-    let db = DB::new("mem://").await.expect("Failed to init DB");
-    let project = db
-        .create_project(&crate::models::Project {
-            id: None,
-            name: "Test Project".to_string(),
-            description: "Test".to_string(),
-        })
-        .await
-        .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
-
-    let module = db
-        .create_module("Auth", "Auth module", Some(&project_id))
-        .await
-        .expect("Failed to create module");
-    let module_id = module.id.expect("module id");
-
-    let task = db
-        .create_task(
-            "Parent Task",
-            "Has subtasks",
-            Some(&module_id),
-            Some(&project_id),
-        )
-        .await
-        .expect("Failed to create task");
-    let task_id = task.id.expect("task id");
-
-    // Add subtasks
-    let subtask = db
-        .create_subtask("Child Subtask", "Subtask description", Some(&task_id))
-        .await
-        .expect("Failed to create subtask");
-    let subtask_id = subtask.id.expect("subtask id");
-
-    // Verify subtask exists
-    let subtasks_before = db
-        .list_subtasks_by_task(&task_id)
-        .await
-        .expect("Failed to list subtasks");
-    assert_eq!(subtasks_before.len(), 1);
-
-    // Delete the parent task
-    let deleted = db.delete_task(&task_id).await.expect("Failed to delete task");
-    assert!(deleted);
-
-    // Verify task is deleted
-    let after_delete = db.get_task(&task_id).await.expect("Failed to check task");
-    assert!(after_delete.is_none());
-
-    // Subtask should still exist but no longer linked to the deleted task
-    let subtask_after = db.get_subtask(&subtask_id).await.expect("Failed to check subtask");
-    assert!(subtask_after.is_some(), "Subtask should still exist after parent deletion");
 }
