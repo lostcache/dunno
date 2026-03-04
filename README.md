@@ -243,49 +243,6 @@ dunno context --epic-id <id>
 dunno link --from-id <id> --edge <type> --to-ids <id> [<id> ...]
 ```
 
-#### Output Formatting
-
-All commands that return JSON support the `--pretty` flag for formatted output:
-
-```bash
-# Default: compact JSON
-dunno project list
-# Output: [{"id":"project:abc","name":"My App",...}]
-
-# Pretty-printed JSON with indentation
-dunno project list --pretty
-# Output:
-# [
-#   {
-#     "id": "project:abc",
-#     "name": "My App",
-#     ...
-#   }
-# ]
-```
-
-**Commands supporting --pretty:**
-- `config show` - Human-readable text format (not JSON)
-- `project list/create`
-- `module list/create`
-- `submodule list/create`
-- `file list/create`
-- `task list/create/update/delete`
-- `subtask list/create`
-- `todo list/create`
-- `user-story list/create`
-- `epic list/create`
-- `context` (task, file, subtask, epic)
-- `link`
-- `add`
-- `purge`
-
-The `--pretty` flag is global and can be placed before any command:
-```bash
-dunno --pretty task list
-dunno task list --pretty  # Both work
-```
-
 ### Common Workflows
 
 **1. Starting a New Feature:**
@@ -514,69 +471,6 @@ dunno add --field my_custom_field --value "anything" --link-to task:abc
 3. **Error Handling** - Use `anyhow` for errors; provide meaningful messages
 4. **CLI Consistency** - Follow existing command patterns
 5. **Documentation** - Update README and inline docs
-
-### Release Process
-
-When ready to distribute:
-
-1. Update version in `Cargo.toml`
-2. Update `CHANGELOG.md`
-3. Run full test suite: `cargo test`
-4. Build release: `cargo build --release`
-5. Test binary: `./target/release/dunno --version`
-6. Create git tag: `git tag vX.Y.Z`
-7. Push tag: `git push origin vX.Y.Z`
-8. Create GitHub Release with binary
-
-### Distribution Setup (For Project Maintainers)
-
-The following sections describe how to set up distribution channels:
-
-#### Cargo (crates.io)
-
-Publish to crates.io for `cargo install` support:
-
-```bash
-cargo publish --dry-run
-cargo publish
-```
-
-#### Binary Releases
-
-Build for multiple targets to create release binaries:
-
-```bash
-# macOS (Intel)
-cargo build --release --target x86_64-apple-darwin
-
-# macOS (Apple Silicon)
-cargo build --release --target aarch64-apple-darwin
-
-# Linux
-cargo build --release --target x86_64-unknown-linux-gnu
-
-# Windows
-cargo build --release --target x86_64-pc-windows-msvc
-```
-
-#### Homebrew (macOS/Linux)
-
-Create a Homebrew formula:
-
-```ruby
-class Dunno < Formula
-  desc "Capture and retrieve coding knowledge"
-  homepage "https://github.com/yourusername/dunno"
-  url "https://github.com/yourusername/dunno/archive/v1.0.0.tar.gz"
-  sha256 "..."
-  
-  depends_on "rust" => :build
-  
-  def install
-    system "cargo", "install", *std_cargo_args
-  end
-end
-```
 
 ### Troubleshooting
 
