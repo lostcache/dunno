@@ -34,12 +34,14 @@ impl DB {
         &self,
         name: &str,
         path: &str,
+        description: Option<&str>,
         parent_id: Option<&str>,
     ) -> anyhow::Result<crate::models::File> {
         let file = crate::models::File {
             id: None,
             name: name.to_string(),
             path: path.to_string(),
+            description: description.map(|s| s.to_string()),
         };
         let result = self.create_file_record(&file).await?;
         if let (Some(pid), Some(fid)) = (parent_id, result.id.as_ref()) {

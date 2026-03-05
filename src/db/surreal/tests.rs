@@ -64,7 +64,7 @@ async fn test_link_context_all_levels() {
     let submodule_id = submodule.id.expect("id");
 
     let file = db
-        .create_file("f.rs", "src/f.rs", Some(&submodule_id))
+        .create_file("f.rs", "src/f.rs", None, Some(&submodule_id))
         .await
         .expect("create file");
     let file_id = file.id.expect("id");
@@ -755,7 +755,7 @@ async fn test_file_operations() {
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
     let file = db
-        .create_file("main.rs", "src/main.rs", Some(&module_id))
+        .create_file("main.rs", "src/main.rs", None, Some(&module_id))
         .await
         .expect("Failed to create file");
     let file_id = file.id.expect("file id");
@@ -1025,7 +1025,7 @@ async fn test_freestanding_file() {
     let module_id = module.id.expect("module id");
 
     let file = db
-        .create_file("orphan.rs", "src/orphan.rs", None)
+        .create_file("orphan.rs", "src/orphan.rs", None, None)
         .await
         .expect("create freestanding file");
     let file_id = file.id.expect("file id");
@@ -1653,13 +1653,13 @@ async fn test_list_files_by_submodule() {
     let submodule_id = submodule.id.expect("submodule id");
 
     let file1 = db
-        .create_file("oauth.rs", "src/auth/oauth.rs", Some(&submodule_id))
+        .create_file("oauth.rs", "src/auth/oauth.rs", None, Some(&submodule_id))
         .await
         .expect("Failed to create file 1");
     let file1_id = file1.id.expect("file id");
 
     let file2 = db
-        .create_file("jwt.rs", "src/auth/jwt.rs", Some(&submodule_id))
+        .create_file("jwt.rs", "src/auth/jwt.rs", None, Some(&submodule_id))
         .await
         .expect("Failed to create file 2");
     let _file2_id = file2.id.expect("file id");

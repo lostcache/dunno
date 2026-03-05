@@ -180,6 +180,9 @@ pub enum FileCommands {
         parent_ids: Vec<String>,
         name: String,
         path: String,
+        /// Optional description of the file's purpose.
+        #[arg(value_name = "DESCRIPTION")]
+        description: Option<String>,
     },
     List {
         #[arg(long, conflicts_with = "submodule_id")]
@@ -584,6 +587,7 @@ mod tests {
 
     #[test]
     fn pretty_flag_works_with_file_commands() {
+        // Without description (backward compatibility)
         let args = Args::try_parse_from([
             "dunno",
             "--pretty",
@@ -596,6 +600,23 @@ mod tests {
         ]);
         assert!(args.is_ok(), "should parse --pretty with file create");
         assert!(args.unwrap().pretty, "pretty should be true");
+
+        // With description
+        let args_with_desc = Args::try_parse_from([
+            "dunno",
+            "--pretty",
+            "file",
+            "create",
+            "--parent-ids",
+            "module:abc",
+            "main.rs",
+            "src/main.rs",
+            "CLI entry point",
+        ]);
+        assert!(
+            args_with_desc.is_ok(),
+            "should parse file create with description"
+        );
 
         let args2 = Args::try_parse_from([
             "dunno",

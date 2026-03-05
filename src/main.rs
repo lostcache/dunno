@@ -283,9 +283,10 @@ async fn handle_file_command(
             parent_ids,
             name,
             path,
+            description,
         } => {
             let created = db
-                .create_file(&name, &path, parent_ids.first().map(String::as_str))
+                .create_file(&name, &path, description.as_deref(), parent_ids.first().map(String::as_str))
                 .await?;
 
             let file_id = match &created.id {
