@@ -524,18 +524,25 @@ async fn handle_context(
     db: &dunno::db::DB,
     pretty: bool,
 ) -> anyhow::Result<()> {
-    let results = match (task_id, file_id, epic_id) {
-        (Some(t_id), _, _) => dunno::context::get_task_context(&t_id, db).await?,
-        (_, Some(f_id), _) => dunno::context::get_file_context(&f_id, db).await?,
-        (_, _, Some(e_id)) => dunno::context::get_epic_context(&e_id, db).await?,
+    match (task_id, file_id, epic_id) {
+        (Some(t_id), _, _) => {
+            let results = dunno::context::get_task_context(&t_id, db).await?;
+            print_json(serde_json::json!({ "results": serde_json::to_value(results)? }), pretty);
+        }
+        (_, Some(f_id), _) => {
+            let results = dunno::context::get_file_context(&f_id, db).await?;
+            print_json(serde_json::json!({ "results": serde_json::to_value(results)? }), pretty);
+        }
+        (_, _, Some(e_id)) => {
+            let results = dunno::context::get_epic_context(&e_id, db).await?;
+            print_json(serde_json::json!({ "results": serde_json::to_value(results)? }), pretty);
+        }
         (None, None, None) => {
             return Err(anyhow::anyhow!(
                 "One of --task-id, --file-id, or --epic-id must be provided"
             ));
         }
     };
-
-    print_json(serde_json::json!({ "results": results }), pretty);
     Ok(())
 }
 

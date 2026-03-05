@@ -430,16 +430,12 @@ impl DB {
     }
 }
 
-/// Returns JSON-encoded context records directly linked to a task.
+/// Returns full task context including task details, files, hierarchy, and linked knowledge.
 pub async fn get_task_context_json(
     task_id: &str,
     db: &crate::db::DB,
-) -> anyhow::Result<Vec<serde_json::Value>> {
-    let ctxs = db.get_linked_context(task_id).await?;
-    Ok(ctxs
-        .into_iter()
-        .map(|c| serde_json::to_value(c).unwrap())
-        .collect())
+) -> anyhow::Result<crate::models::TaskContext> {
+    db.get_task_context(task_id).await
 }
 
 #[cfg(test)]

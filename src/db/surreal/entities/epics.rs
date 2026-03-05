@@ -153,16 +153,17 @@ impl DB {
     }
 }
 
-/// Returns JSON-encoded context records directly linked to an epic.
+/// Returns full epic context including epic details and linked knowledge.
 pub async fn get_epic_context_json(
     epic_id: &str,
     db: &crate::db::DB,
-) -> anyhow::Result<Vec<serde_json::Value>> {
-    let ctxs = db.get_linked_context(epic_id).await?;
-    Ok(ctxs
-        .into_iter()
-        .map(|c| serde_json::to_value(c).unwrap())
-        .collect())
+) -> anyhow::Result<crate::models::EpicContext> {
+    let epic = db
+        .get_epic(epic_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Epic not found: {}", epic_id))?;
+    let contexts = db.get_linked_context(epic_id).await?;
+    Ok(crate::models::EpicContext { epic, contexts })
 }
 
 #[cfg(test)]

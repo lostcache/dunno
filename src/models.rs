@@ -131,6 +131,18 @@ pub struct TaskContext {
     pub hierarchy: TaskHierarchy,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct EpicContext {
+    pub epic: Epic,
+    pub contexts: Vec<Context>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct FileContext {
+    pub file: File,
+    pub contexts: Vec<Context>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

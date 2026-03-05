@@ -537,9 +537,10 @@ dunno add \
 1. **Always query before planning**: Retrieve existing context from project, module, and relevant files
 2. **Create todos first**: Track work items before creating detailed tasks
 3. **Link strategically**: Attach tasks to the most specific module/submodule and relevant epics
-4. **Store plans as knowledge**: Use `--field type --value plan` to document implementation approach
-5. **Query task context before coding**: Always run `dunno context --task-id <id>` before implementation
-6. **Capture learnings**: After task completion, add insights linked to the task and relevant modules
+4. **Always link to files/modules**: After adding a task, link it to relevant files and modules it touches
+5. **Store plans as knowledge**: Use `--field type --value plan` to document implementation approach
+6. **Query task context before coding**: Always run `dunno context --task-id <id>` before implementation
+7. **Capture learnings**: After task completion, add insights linked to the task and relevant modules
 
 **Example: Full Planning Session**:
 
@@ -559,6 +560,9 @@ TASK=$(dunno task create \
   --project-ids project:abc \
   "Implement OAuth2 flow" \
   "Add OAuth2 authentication with Google and GitHub providers" | jq -r '.id')
+
+# 4b. Link task to relevant files
+# dunno link --from "$TASK" --edge has_file --to file:auth.rs
 
 # 5. Document the plan
 dunno add \

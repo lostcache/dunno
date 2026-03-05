@@ -107,7 +107,7 @@ async fn test_link_context_all_levels() {
         .await
         .expect("get_task_context");
     assert!(
-        task_ctx.is_empty(),
+        task_ctx.contexts.is_empty(),
         "task context should be task-only (no inherited project context): {:?}",
         task_ctx
     );
@@ -116,7 +116,7 @@ async fn test_link_context_all_levels() {
         .await
         .expect("get_file_context");
     assert!(
-        file_ctx.is_empty(),
+        file_ctx.contexts.is_empty(),
         "file context should be file-only (no inherited submodule/project context): {:?}",
         file_ctx
     );

@@ -119,22 +119,15 @@ mod tests {
     }
 }
 
-/// Runs the file context SurrealQL and returns a flattened JSON list of knowledge nodes.
+/// Returns full file context including file details and linked knowledge.
 pub async fn get_file_context_json(
     file_id: &str,
     db: &crate::db::DB,
-) -> anyhow::Result<Vec<serde_json::Value>> {
-    let sql = r#"
-        LET $f = type::record($fid);
-
-        LET $f_ctx = (SELECT ->has_context->context.* FROM ONLY $f);
-        RETURN [$f_ctx];
-    "#;
-
-    let raw = db
-        .query_raw_json(sql, "fid", file_id.to_string(), 2)
-        .await?;
-    Ok(crate::db::surreal::flatten_context::flatten_context_result(
-        raw,
-    ))
+) -> anyhow::Result<crate::models::FileContext> {
+    let file = db
+        .get_file(file_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("File not found: {}", file_id))?;
+    let contexts = db.get_linked_context(file_id).await?;
+    Ok(crate::models::FileContext { file, contexts })
 }
