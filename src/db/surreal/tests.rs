@@ -106,9 +106,10 @@ async fn test_link_context_all_levels() {
     let task_ctx = crate::context::get_task_context(&task_id, &db)
         .await
         .expect("get_task_context");
+    // Task context should only include context directly linked to the task, not from hierarchy
     assert!(
         task_ctx.contexts.is_empty(),
-        "task context should be task-only (no inherited project context): {:?}",
+        "task context should only include directly linked context (task has none): {:?}",
         task_ctx
     );
 
@@ -2442,4 +2443,134 @@ async fn test_delete_task_with_context() {
     // Verify task is deleted
     let after_delete = db.get_task(&task_id).await.expect("Failed to check task");
     assert!(after_delete.is_none());
+}
+
+#[tokio::test]
+async fn test_get_task_context_with_files_and_linked_context() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    
+    // Create project
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "TestProject".to_string(),
+            description: "Test".to_string(),
+        })
+        .await
+        .expect("Failed to create project");
+    let project_id = project.id.expect("project id");
+    
+    // Create module with context (this should NOT appear in task context)
+    let module = db
+        .create_module("Auth", "Auth module", Some(&project_id))
+        .await
+        .expect("Failed to create module");
+    let module_id = module.id.expect("module id");
+    
+    let module_ctx = db
+        .create_context(&crate::models::Context {
+            id: None,
+            context_type: "style".to_string(),
+            content: Some("Module level style".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
+        })
+        .await
+        .expect("Failed to create module context");
+    db.link_context(&module_id, &module_ctx.id.unwrap())
+        .await
+        .expect("link module context");
+    
+    // Create file under module with context (this should NOT appear in task context)
+    let file = db
+        .create_file("auth.rs", "src/auth.rs", Some("Auth implementation"), Some(&module_id))
+        .await
+        .expect("Failed to create file");
+    let file_id = file.id.expect("file id");
+    
+    let file_ctx = db
+        .create_context(&crate::models::Context {
+            id: None,
+            context_type: "mistake".to_string(),
+            content: Some("File level mistake".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
+        })
+        .await
+        .expect("Failed to create file context");
+    db.link_context(&file_id, &file_ctx.id.unwrap())
+        .await
+        .expect("link file context");
+    
+    // Create task
+    let task = db
+        .create_task(
+            "Implement Auth",
+            "Add authentication",
+            Some(&module_id),
+            Some(&project_id),
+        )
+        .await
+        .expect("Failed to create task");
+    let task_id = task.id.expect("task id");
+    
+    // Link context directly to task (this SHOULD appear in task context)
+    let task_ctx = db
+        .create_context(&crate::models::Context {
+            id: None,
+            context_type: "security".to_string(),
+            content: Some("Task level security".to_string()),
+            description: None,
+            example: None,
+            severity: None,
+            category: None,
+            tags: None,
+        })
+        .await
+        .expect("Failed to create task context");
+    db.link_context(&task_id, &task_ctx.id.unwrap())
+        .await
+        .expect("link task context");
+    
+    // Verify file was created and linked
+    let files_in_module = db
+        .list_files_by_module(&module_id)
+        .await
+        .expect("list files");
+    assert_eq!(files_in_module.len(), 1, "Should have 1 file in module");
+    
+    // Get task context
+    let context = db
+        .get_task_context(&task_id)
+        .await
+        .expect("get_task_context failed");
+    
+    // Should have ONLY the context directly linked to the task (1 context)
+    assert_eq!(context.contexts.len(), 1, "Expected only 1 context directly linked to task");
+    assert_eq!(context.contexts[0].content, Some("Task level security".to_string()));
+    
+    // Should NOT include module or file context
+    assert!(
+        !context.contexts.iter().any(|c| c.content.as_deref() == Some("Module level style")),
+        "Should NOT include module context"
+    );
+    assert!(
+        !context.contexts.iter().any(|c| c.content.as_deref() == Some("File level mistake")),
+        "Should NOT include file context"
+    );
+    
+    // But files should be listed (files in the module)
+    assert_eq!(context.files.len(), 1);
+    assert_eq!(context.files[0], file_id);
+    
+    // Verify hierarchy is correct
+    assert_eq!(context.hierarchy.project_id, project_id);
+    assert_eq!(context.hierarchy.module_id, module_id);
+    assert!(context.hierarchy.submodule.is_none());
 }

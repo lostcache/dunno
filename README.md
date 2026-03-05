@@ -95,11 +95,18 @@ dunno add --field type --value security --field content --value "Validate all JW
 
 #### 5. Retrieve Context
 
+Retrieve context for a task to get the task details, related files, hierarchy, and directly linked knowledge:
+
 ```bash
-# Get context for a task
+# Get context for a task (returns task, files, hierarchy, and directly linked context)
 dunno context --task-id task:ghi
-# Returns all linked knowledge as JSON
 ```
+
+Returns:
+- **Task** - The task object with id, name, description, status
+- **Files** - File IDs related to the task (files in the parent module/submodule)
+- **Hierarchy** - Project, module, and optional submodule info
+- **Contexts** - Only knowledge directly linked to the task via `dunno add --link-to task:<id>`
 
 ### Configuration
 
@@ -351,12 +358,13 @@ src/
 |------|------|-----|---------|
 | `contains` | project, module, submodule | module, submodule, file | Structural containment |
 | `has_task` | project, epic, user_story | task | Task assignment |
-| `has_context` | *any structural* | context | Knowledge linking |
+| `has_context` | project, task, module, submodule, epic, file | context | Knowledge linking |
 | `has_user_story` | project, epic | user_story | Story grouping |
 | `has_epic` | project | epic | Epic grouping |
 | `has_todo` | project | todo_item | Todo tracking |
-| `belongs_to_project` | task, context, user_story, epic | project | Reverse link |
-| `belongs_to_module` | task, context | module | Reverse link |
+| `belongs_to_project` | task, context, user_story, epic, file | project | Reverse link |
+| `belongs_to_module` | task, context, file | module | Reverse link |
+| `belongs_to_submodule` | context, file | submodule | Reverse link |
 | `belongs_to_story` | task | user_story | Reverse link |
 | `belongs_to_user_story` | module, submodule | user_story | Reverse link |
 | `belongs_to_epic` | user_story, task | epic | Reverse link |

@@ -77,6 +77,9 @@ impl DB {
         if let Some(id) = hierarchy.task_id {
             self.link(to_context_id, "belongs_to_task", &id).await?;
         }
+        if let Some(id) = hierarchy.submodule_id {
+            self.link(to_context_id, "belongs_to_submodule", &id).await?;
+        }
         Ok(())
     }
 

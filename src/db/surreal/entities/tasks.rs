@@ -151,7 +151,7 @@ impl DB {
         Ok(deleted.is_some())
     }
 
-    /// Gets full context for a task including files and linked context (unified).
+    /// Gets full context for a task including the task, hierarchy, related files, and directly linked context.
     pub async fn get_task_context(
         &self,
         task_id: &str,
@@ -164,11 +164,12 @@ impl DB {
         let hierarchy = self.get_task_hierarchy(task_id).await?;
         let files = self.get_files_from_hierarchy(&hierarchy).await?;
 
+        // Only get context directly linked to the task
         let contexts = self.get_linked_context(task_id).await?;
 
         Ok(crate::models::TaskContext {
             task,
-            files,
+            files: files.into_iter().filter_map(|f| f.id).collect(),
             contexts,
             hierarchy,
         })
@@ -325,8 +326,55 @@ impl DB {
                     task_id: None,
                 })
             }
+            "file" => {
+                // Files can be under module or submodule
+                let module_id = self
+                    .first_record_id_from_query(
+                        "SELECT <-contains<-module AS m FROM ONLY type::record($fid)",
+                        "fid",
+                        from_id.to_string(),
+                        "m",
+                    )
+                    .await?;
+                let submodule_id = self
+                    .first_record_id_from_query(
+                        "SELECT <-contains<-submodule AS s FROM ONLY type::record($fid)",
+                        "fid",
+                        from_id.to_string(),
+                        "s",
+                    )
+                    .await?;
+                
+                // Resolve project from module/submodule
+                let project_id = if let Some(ref sid) = submodule_id {
+                    self.first_record_id_from_query(
+                        "SELECT <-contains<-module<-contains<-project AS p FROM ONLY type::record($sid)",
+                        "sid",
+                        sid.clone(),
+                        "p",
+                    )
+                    .await?
+                } else if let Some(ref mid) = module_id {
+                    self.first_record_id_from_query(
+                        "SELECT <-contains<-project AS p FROM ONLY type::record($mid)",
+                        "mid",
+                        mid.clone(),
+                        "p",
+                    )
+                    .await?
+                } else {
+                    None
+                };
+                
+                Ok(StructuralHierarchy {
+                    project_id,
+                    module_id,
+                    submodule_id,
+                    task_id: None,
+                })
+            }
             _ => Err(anyhow::anyhow!(
-                "resolve_structural_hierarchy: from_id must be project, module, submodule, task, or epic; got {:?}",
+                "resolve_structural_hierarchy: from_id must be project, module, submodule, task, epic, or file; got {:?}",
                 table
             )),
         }
@@ -399,20 +447,14 @@ impl DB {
     pub(crate) async fn get_files_from_hierarchy(
         &self,
         hierarchy: &crate::models::TaskHierarchy,
-    ) -> anyhow::Result<Vec<String>> {
+    ) -> anyhow::Result<Vec<crate::models::File>> {
         if let Some(ref submodule) = hierarchy.submodule {
-            let submodule_record = self.get_submodule(&submodule.id).await?;
-            if let Some(sub) = submodule_record {
-                return Ok(sub.files.unwrap_or_default());
-            }
+            let files = self.list_files_by_submodule(&submodule.id).await?;
+            return Ok(files);
         }
 
-        let module_record = self.get_module(&hierarchy.module_id).await?;
-        if let Some(module) = module_record {
-            return Ok(module.files.unwrap_or_default());
-        }
-
-        Ok(vec![])
+        let files = self.list_files_by_module(&hierarchy.module_id).await?;
+        Ok(files)
     }
 
     /// Fetches all context records linked to a structural node (project, task, module, submodule).

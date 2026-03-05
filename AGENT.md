@@ -271,20 +271,26 @@ dunno add \
 
 #### 3. Retrieving Context
 
-Query context directly linked to a specific node:
+Query context for a task to get the task details, related files, hierarchy, and directly linked knowledge:
 
 ```bash
-# Get context for a task (returns JSON array)
+# Get context for a task (returns JSON with task, files, hierarchy, and task-linked context)
 dunno context --task-id task:mno
 
-# Get context for a file
+# Get context for a file (returns file-only context)
 dunno context --file-id file:jkl
 
-# Get context for an epic
+# Get context for an epic (returns epic-only context)
 dunno context --epic-id epic:stu
 ```
 
-**AI Agent Rule**: Always run `dunno context --task-id <id>` before implementing.
+**Task Context Returns:**
+- **Task** - Full task object with id, name, description, status
+- **Files** - File IDs in the parent module/submodule (files the task may touch)
+- **Hierarchy** - Project, module, submodule structural info
+- **Contexts** - Only knowledge directly linked to this task via `--link-to task:<id>`
+
+**AI Agent Rule**: Always run `dunno context --task-id <id>` before implementing to see task-specific knowledge.
 
 ---
 
@@ -327,17 +333,20 @@ dunno link --from-id project:abc --edge contains --to-ids module:def
 ```
 
 **Valid Edges**:
-- `contains` - Parent contains child (project->module, module->submodule, etc.)
+- `contains` - Parent contains child (project->module, module->submodule, module->file, submodule->file)
 - `has_task` - Parent has task (project->task, user_story->task, epic->task)
-- `has_context` - Node has knowledge (any structural node -> context)
-- `belongs_to_project` - Child belongs to project
-- `belongs_to_module` - Child belongs to module
-- `belongs_to_story` - Child belongs to user story
-- `belongs_to_user_story` - Child belongs to user story
-- `belongs_to_epic` - Child belongs to epic
-- `has_user_story` - Parent has user story
-- `has_epic` - Parent has epic
-- `has_todo` - Parent has todo
+- `has_context` - Node has knowledge (project, module, submodule, task, epic, file -> context)
+- `belongs_to_project` - Child belongs to project (task, context, user_story, epic, file -> project)
+- `belongs_to_module` - Child belongs to module (task, context, file -> module)
+- `belongs_to_submodule` - Child belongs to submodule (context, file -> submodule)
+- `belongs_to_story` - Child belongs to user story (task -> user_story)
+- `belongs_to_user_story` - Child belongs to user story (module, submodule -> user_story)
+- `belongs_to_epic` - Child belongs to epic (user_story, task -> epic)
+- `has_user_story` - Parent has user story (project, epic -> user_story)
+- `has_epic` - Parent has epic (project -> epic)
+- `has_todo` - Parent has todo (project -> todo_item)
+- `has_module` - Parent has module (user_story -> module)
+- `has_submodule` - Parent has submodule (user_story -> submodule)
 
 ---
 
