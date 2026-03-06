@@ -50,6 +50,7 @@ pub(crate) async fn define_schema(client: &Surreal<Any>) -> anyhow::Result<()> {
                 IN project OUT epic;
             DEFINE TABLE IF NOT EXISTS belongs_to_epic TYPE RELATION \
                 IN user_story|task OUT epic;
+            DEFINE INDEX IF NOT EXISTS project_name_idx ON project COLUMNS name UNIQUE;
             ",
         )
         .await?;

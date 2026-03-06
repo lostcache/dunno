@@ -28,16 +28,54 @@ impl DB {
     }
 
     /// Creates a new project record (no relationships).
+    /// Checks for duplicate names before creating.
     pub async fn create_project(
         &self,
         project: &crate::models::Project,
     ) -> anyhow::Result<crate::models::Project> {
+        // Check for duplicate project name
+        if let Some(existing) = self.get_project_by_name(&project.name, false).await? {
+            return Err(anyhow::anyhow!(
+                "Project with name '{}' already exists (id: {})",
+                project.name,
+                existing.id.as_deref().unwrap_or("unknown")
+            ));
+        }
         self.create_project_record(project).await
     }
 
     /// Fetches a project by record id.
     pub async fn get_project(&self, id: &str) -> anyhow::Result<Option<crate::models::Project>> {
         self.get_record("project", id).await
+    }
+
+    /// Fetches a project by name.
+    /// When `ignore_case` is true, performs case-insensitive matching.
+    pub async fn get_project_by_name(
+        &self,
+        name: &str,
+        ignore_case: bool,
+    ) -> anyhow::Result<Option<crate::models::Project>> {
+        let sql = if ignore_case {
+            "SELECT * FROM project WHERE string::lowercase(name) == string::lowercase($name) LIMIT 1"
+        } else {
+            "SELECT * FROM project WHERE name == $name LIMIT 1"
+        };
+        
+        let mut response = self
+            .client
+            .query(sql)
+            .bind(("name", name.to_string()))
+            .await?;
+        
+        let fetched: Option<surrealdb::types::Value> = response.take(0)?;
+        
+        if let Some(val) = fetched {
+            let json = surreal_to_json(val);
+            Ok(Some(serde_json::from_value(json)?))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Returns all projects.
@@ -63,5 +101,120 @@ mod tests {
 
         let err = ensure_project_record_id("abc").expect_err("bare id should fail");
         assert!(err.to_string().contains("Expected project record id"));
+    }
+}
+
+#[cfg(test)]
+mod project_name_tests {
+    use super::DB;
+
+    #[tokio::test]
+    async fn test_get_project_by_name_case_sensitive() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        
+        // Create a project with mixed case name
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "MyProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        
+        // Exact match should find it
+        let found = db
+            .get_project_by_name("MyProject", false)
+            .await
+            .expect("Failed to query");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().name, "MyProject");
+        
+        // Different case should not match (case-sensitive)
+        let not_found = db
+            .get_project_by_name("myproject", false)
+            .await
+            .expect("Failed to query");
+        assert!(not_found.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_get_project_by_name_case_insensitive() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        
+        // Create a project with mixed case name
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "MyProject".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        
+        // Case-insensitive match should find it with different cases
+        let found_lower = db
+            .get_project_by_name("myproject", true)
+            .await
+            .expect("Failed to query");
+        assert!(found_lower.is_some());
+        assert_eq!(found_lower.unwrap().name, "MyProject");
+        
+        let found_upper = db
+            .get_project_by_name("MYPROJECT", true)
+            .await
+            .expect("Failed to query");
+        assert!(found_upper.is_some());
+        
+        let found_mixed = db
+            .get_project_by_name("MyProject", true)
+            .await
+            .expect("Failed to query");
+        assert!(found_mixed.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_create_project_duplicate_name_fails() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        
+        // Create first project
+        db.create_project(&crate::models::Project {
+            id: None,
+            name: "UniqueProject".to_string(),
+            description: "First".to_string(),
+        })
+        .await
+        .expect("First project should succeed");
+        
+        // Try to create second project with same name
+        let result = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "UniqueProject".to_string(),
+                description: "Second".to_string(),
+            })
+            .await;
+        
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("already exists"));
+        assert!(err_msg.contains("UniqueProject"));
+    }
+
+    #[tokio::test]
+    async fn test_get_project_by_name_not_found() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        
+        let not_found = db
+            .get_project_by_name("NonExistentProject", false)
+            .await
+            .expect("Query should not error");
+        assert!(not_found.is_none());
+        
+        let not_found_case_insensitive = db
+            .get_project_by_name("NonExistentProject", true)
+            .await
+            .expect("Query should not error");
+        assert!(not_found_case_insensitive.is_none());
     }
 }

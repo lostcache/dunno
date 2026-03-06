@@ -37,7 +37,7 @@ async fn run(args: dunno::args::Args) -> anyhow::Result<()> {
     }
 
     let db = dunno::db::DB::from_config(&config).await?;
-    dispatch_command(args.command, &db, args.pretty).await
+    dispatch_command(args.command, &db, args.pretty, args.ignore_case).await
 }
 
 /// Routes commands to their specialized handlers.
@@ -45,6 +45,7 @@ async fn dispatch_command(
     command: dunno::args::Commands,
     db: &dunno::db::DB,
     pretty: bool,
+    ignore_case: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::Commands::Add {
@@ -58,15 +59,15 @@ async fn dispatch_command(
             to_ids,
         } => handle_link(from_id, edge, to_ids, db, pretty).await,
         dunno::args::Commands::Project { command } => handle_project_command(command, db, pretty).await,
-        dunno::args::Commands::Module { command } => handle_module_command(command, db, pretty).await,
+        dunno::args::Commands::Module { command } => handle_module_command(command, db, pretty, ignore_case).await,
         dunno::args::Commands::Submodule { command } => handle_submodule_command(command, db, pretty).await,
         dunno::args::Commands::File { command } => handle_file_command(command, db, pretty).await,
-        dunno::args::Commands::Task { command } => handle_task_command(command, db, pretty).await,
-        dunno::args::Commands::Todo { command } => handle_todo_command(command, db, pretty).await,
+        dunno::args::Commands::Task { command } => handle_task_command(command, db, pretty, ignore_case).await,
+        dunno::args::Commands::Todo { command } => handle_todo_command(command, db, pretty, ignore_case).await,
         dunno::args::Commands::UserStory { command } => {
-            handle_user_story_command(command, db, pretty).await
+            handle_user_story_command(command, db, pretty, ignore_case).await
         }
-        dunno::args::Commands::Epic { command } => handle_epic_command(command, db, pretty).await,
+        dunno::args::Commands::Epic { command } => handle_epic_command(command, db, pretty, ignore_case).await,
         dunno::args::Commands::Context {
             task_id,
             file_id,
@@ -97,7 +98,30 @@ fn handle_config_command(
     Ok(())
 }
 
-/// Ingests new knowledge items into the system.
+/// Resolves a project identifier (ID or name) to a project ID.
+/// If `project_id` is provided, returns it directly.
+/// If `project_name` is provided, looks up the project by name.
+async fn resolve_project_id(
+    db: &dunno::db::DB,
+    project_id: Option<String>,
+    project_name: Option<String>,
+    ignore_case: bool,
+) -> anyhow::Result<Option<String>> {
+    match (project_id, project_name) {
+        (Some(id), _) => Ok(Some(id)),
+        (None, Some(name)) => {
+            let project = db
+                .get_project_by_name(&name, ignore_case)
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to lookup project by name: {}", e))?;
+            match project {
+                Some(p) => Ok(p.id),
+                None => Err(anyhow::anyhow!("Project not found: {}", name)),
+            }
+        }
+        (None, None) => Ok(None),
+    }
+}
 async fn handle_add(
     field_names: Vec<String>,
     field_values: Vec<String>,
@@ -198,15 +222,20 @@ async fn handle_module_command(
     command: dunno::args::ModuleCommands,
     db: &dunno::db::DB,
     pretty: bool,
+    ignore_case: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::ModuleCommands::Create {
             project_ids,
+            project,
             name,
             description,
         } => {
+            // Resolve project name to ID if provided
+            let resolved_project_id = resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
+            
             let created = db
-                .create_module(&name, &description, project_ids.first().map(String::as_str))
+                .create_module(&name, &description, resolved_project_id.as_deref())
                 .await?;
 
             let module_id = match &created.id {
@@ -217,6 +246,7 @@ async fn handle_module_command(
                 }
             };
 
+            // Link additional project IDs (from project_ids, skipping the first which was already handled)
             for pid in project_ids.iter().skip(1) {
                 db.link(pid, "contains", module_id).await?;
             }
@@ -323,17 +353,33 @@ async fn handle_task_command(
     command: dunno::args::TaskCommands,
     db: &dunno::db::DB,
     pretty: bool,
+    ignore_case: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::TaskCommands::Create {
             module_ids,
             project_ids,
+            project,
             user_story_ids,
             epic_ids,
             name,
             description,
         } => {
-            let (mid, pid) = validate_task_parents(&module_ids, &project_ids)?;
+            // Resolve project name to ID if provided
+            let resolved_project_id = resolve_project_id(
+                db,
+                project_ids.first().cloned(),
+                project,
+                ignore_case
+            ).await?;
+            
+            // Convert resolved ID back to Vec<String> for compatibility
+            let effective_project_ids: Vec<String> = match resolved_project_id {
+                Some(id) => vec![id],
+                None => project_ids,
+            };
+            
+            let (mid, pid) = validate_task_parents(&module_ids, &effective_project_ids)?;
             let created = db.create_task(&name, &description, mid, pid).await?;
 
             if let Some(task_id) = &created.id {
@@ -418,14 +464,24 @@ async fn handle_todo_command(
     command: dunno::args::TodoCommands,
     db: &dunno::db::DB,
     pretty: bool,
+    ignore_case: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::TodoCommands::Create {
             project_ids,
+            project,
             content,
         } => {
+            // Resolve project name to ID if provided
+            let resolved_project_id = resolve_project_id(
+                db,
+                project_ids.first().cloned(),
+                project,
+                ignore_case
+            ).await?;
+            
             let created = db
-                .create_todo(&content, project_ids.first().map(String::as_str))
+                .create_todo(&content, resolved_project_id.as_deref())
                 .await?;
 
             let todo_id = match &created.id {
@@ -436,14 +492,17 @@ async fn handle_todo_command(
                 }
             };
 
+            // Link additional project IDs (from project_ids, skipping the first which was already handled)
             for pid in project_ids.iter().skip(1) {
                 db.link(pid, "has_todo", todo_id).await?;
             }
 
             print_json(serde_json::json!(created), pretty);
         }
-        dunno::args::TodoCommands::List { project_id } => {
-            let todos = db.list_todos_by_project(&project_id).await?;
+        dunno::args::TodoCommands::List { project_id, project } => {
+            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
+            let pid = resolved_id.ok_or_else(|| anyhow::anyhow!("Either --project-id or --project must be provided"))?;
+            let todos = db.list_todos_by_project(&pid).await?;
             print_json(serde_json::json!(todos), pretty);
         }
     }
@@ -455,16 +514,21 @@ async fn handle_user_story_command(
     command: dunno::args::UserStoryCommands,
     db: &dunno::db::DB,
     pretty: bool,
+    ignore_case: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::UserStoryCommands::Create {
             project_id,
+            project,
             epic_ids,
             title,
             description,
         } => {
+            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
+            let pid = resolved_id.ok_or_else(|| anyhow::anyhow!("Either --project-id or --project must be provided"))?;
+            
             let created = db
-                .create_user_story(&title, &description, &project_id)
+                .create_user_story(&title, &description, &pid)
                 .await?;
 
             if let Some(us_id) = &created.id {
@@ -477,9 +541,11 @@ async fn handle_user_story_command(
         }
         dunno::args::UserStoryCommands::List {
             project_id,
+            project,
             epic_id,
         } => {
-            let user_stories = match (epic_id, project_id) {
+            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
+            let user_stories = match (epic_id, resolved_id) {
                 (Some(eid), _) => db.list_user_stories_by_epic(&eid).await?,
                 (_, Some(pid)) => db.list_user_stories_by_project(&pid).await?,
                 (None, None) => db.list_user_stories().await?,
@@ -495,18 +561,24 @@ async fn handle_epic_command(
     command: dunno::args::EpicCommands,
     db: &dunno::db::DB,
     pretty: bool,
+    ignore_case: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::EpicCommands::Create {
             project_id,
+            project,
             title,
             description,
         } => {
-            let created = db.create_epic(&title, &description, &project_id).await?;
+            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
+            let pid = resolved_id.ok_or_else(|| anyhow::anyhow!("Either --project-id or --project must be provided"))?;
+            
+            let created = db.create_epic(&title, &description, &pid).await?;
             print_json(serde_json::json!(created), pretty);
         }
-        dunno::args::EpicCommands::List { project_id } => {
-            let epics = match project_id {
+        dunno::args::EpicCommands::List { project_id, project } => {
+            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
+            let epics = match resolved_id {
                 Some(pid) => db.list_epics_by_project(&pid).await?,
                 None => db.list_epics().await?,
             };

@@ -71,14 +71,19 @@ mkdir -p .dunno
 dunno project create "My App" "A web application"
 # Returns: {"id":"project:abc","name":"My App","description":"A web application"}
 
-# Create a module
+# Create a module using project ID
 dunno module create --project-ids project:abc "Auth" "Authentication system"
 # Returns: {"id":"module:def", ...}
 
-# Create a task
-dunno task create --module-ids module:def --project-ids project:abc "Implement login" "Add JWT authentication"
+# Create a module using project name (alternative)
+dunno module create --project "My App" "Auth" "Authentication system"
+
+# Create a task using project name with case-insensitive matching
+dunno task create --module-ids module:def --project "my app" -i "Implement login" "Add JWT authentication"
 # Returns: {"id":"task:ghi", ...}
 ```
+
+**Note:** Project names are unique in the system. You can use either `--project-ids` (for IDs) or `--project` (for names), but not both.
 
 #### 4. Add Knowledge
 
@@ -122,6 +127,7 @@ Dunno uses a layered configuration system on a **per-field basis** (highest to l
 
 - `--backend <BACKEND>` - Override storage backend (`local` or `cloud`)
 - `--pretty` - Format output with indentation for better readability (applies to **all** JSON output)
+- `-i, --ignore-case` - Ignore case when matching project names (use with `--project`)
 
 ```bash
 # View config in JSON format (default)
@@ -134,6 +140,9 @@ dunno config show --pretty
 dunno project list --pretty
 dunno task list --pretty
 dunno context --task-id task:abc --pretty
+
+# Use project name with case-insensitive matching
+dunno module create --project "my project" -i "Auth" "Auth module"
 ```
 
 #### Config File Locations
@@ -207,6 +216,16 @@ Link knowledge to any structural node:
 
 ### CLI Reference
 
+#### Global Flags
+```bash
+dunno [GLOBAL FLAGS] <COMMAND>
+
+Global Flags:
+  --backend <BACKEND>  # Override storage backend (local or cloud)
+  --pretty             # Format output with indentation
+  -i, --ignore-case    # Ignore case when matching project names
+```
+
 #### Project Management
 ```bash
 dunno project create "<name>" "<description>"  # Create project
@@ -215,16 +234,59 @@ dunno project list                              # List all projects
 
 #### Module Management
 ```bash
+# Using project ID
 dunno module create --project-ids <id> "<name>" "<description>"
+
+# Using project name (alternative)
+dunno module create --project "<project_name>" "<name>" "<description>"
+
 dunno module list
 ```
 
 #### Task Management
 ```bash
+# Using IDs
 dunno task create --module-ids <id> --project-ids <id> "<name>" "<description>"
+
+# Using project name (alternative)
+dunno task create --module-ids <id> --project "<project_name>" "<name>" "<description>"
+
 dunno task list
 dunno task update <id> --status started
 dunno task delete <id>   # Delete a task by ID
+```
+
+#### User Story Management
+```bash
+# Using project ID
+dunno user-story create --project-id <id> "<title>" "<description>"
+dunno user-story list --project-id <id>
+
+# Using project name (alternative)
+dunno user-story create --project "<project_name>" "<title>" "<description>"
+dunno user-story list --project "<project_name>"
+```
+
+#### Epic Management
+```bash
+# Using project ID
+dunno epic create --project-id <id> "<title>" "<description>"
+dunno epic list --project-id <id>
+
+# Using project name (alternative)
+dunno epic create --project "<project_name>" "<title>" "<description>"
+dunno epic list --project "<project_name>"
+```
+
+#### Todo Management
+```bash
+# Using project ID
+dunno todo create --project-ids <id> "<content>"
+dunno todo list --project-id <id>
+
+# Using project name (alternative)
+dunno todo create --project "<project_name>" "<content>"
+dunno todo list --project "<project_name>"
 ```
 
 #### Knowledge Management
@@ -253,14 +315,14 @@ dunno link --from-id <id> --edge <type> --to-ids <id> [<id> ...]
 
 **1. Starting a New Feature:**
 ```bash
-# Create epic for the feature
-dunno epic create --project-id project:abc "User Authentication" "Complete auth system"
+# Create epic for the feature (using project name)
+dunno epic create --project "My App" "User Authentication" "Complete auth system"
 
-# Create user story
-dunno user-story create --project-id project:abc --epic-ids epic:mno "As a user, I want to login" "Authentication feature"
+# Create user story (using project name with case-insensitive match)
+dunno user-story create --project "my app" -i --epic-ids epic:mno "As a user, I want to login" "Authentication feature"
 
 # Create implementation task
-dunno task create --module-ids module:def --project-ids project:abc --epic-ids epic:mno "Implement JWT" "Add token support"
+dunno task create --module-ids module:def --project "My App" --epic-ids epic:mno "Implement JWT" "Add token support"
 ```
 
 **2. Recording Mistakes:**

@@ -201,8 +201,11 @@ Always start by establishing the hierarchy before adding knowledge.
 # Create a project (returns JSON with id like "project:abc")
 dunno project create "MyProject" "Description of the project"
 
-# Create a module within a project (link with --project-ids)
+# Create a module within a project using project ID
 dunno module create --project-ids project:abc "Auth" "Authentication system"
+
+# Create a module using project name (alternative)
+dunno module create --project "MyProject" "Auth" "Authentication system"
 # Returns: {"id":"module:def",...}
 
 # Create a submodule (link with --module-ids)
@@ -216,12 +219,18 @@ dunno file create --parent-ids module:def "auth.rs" "src/auth.rs" "Authenticatio
 # Register a file without description
 dunno file create --parent-ids module:def "utils.rs" "src/utils.rs"
 
-# Create a task (requires both --module-ids and --project-ids, or neither for freestanding)
+# Create a task using IDs (requires both --module-ids and --project-ids, or neither for freestanding)
 dunno task create --module-ids module:def --project-ids project:abc "Implement JWT" "Add JWT authentication"
 # Returns: {"id":"task:mno",...}
+
+# Create a task using project name (alternative)
+dunno task create --module-ids module:def --project "MyProject" "Implement JWT" "Add JWT authentication"
+
+# Create a task with case-insensitive project name matching
+dunno task create --module-ids module:def --project "myproject" -i "Implement JWT" "Add JWT authentication"
 ```
 
-**AI Agent Pattern**: Capture IDs from JSON output for subsequent commands.
+**AI Agent Pattern**: Capture IDs from JSON output for subsequent commands. When using project names, remember that names are unique and case-sensitive by default (use `-i` for case-insensitive matching).
 
 ---
 
@@ -297,24 +306,46 @@ dunno context --epic-id epic:stu
 #### 4. Work Tracking
 
 ```bash
-# Create a user story
+# Create a user story using project ID
 dunno user-story create --project-id project:abc \
   "As a user, I want to login" \
   "User authentication feature"
 
-# Create an epic
+# Create a user story using project name (alternative)
+dunno user-story create --project "MyProject" \
+  "As a user, I want to login" \
+  "User authentication feature"
+
+# Create an epic using project ID
 dunno epic create --project-id project:abc \
   "Authentication Epic" \
   "Complete authentication system implementation"
 
-# Create todo items
+# Create an epic using project name (alternative)
+dunno epic create --project "MyProject" \
+  "Authentication Epic" \
+  "Complete authentication system implementation"
+
+# Create todo items using project ID
 dunno todo create --project-ids project:abc \
   "Review security requirements"
 
-# List items
+# Create todo items using project name (alternative)
+dunno todo create --project "MyProject" \
+  "Review security requirements"
+
+# List items using project ID
 dunno user-story list --project-id project:abc
 dunno epic list --project-id project:abc
 dunno todo list --project-id project:abc
+
+# List items using project name (alternative)
+dunno user-story list --project "MyProject"
+dunno epic list --project "MyProject"
+dunno todo list --project "MyProject"
+
+# List with case-insensitive matching
+dunno todo list --project "myproject" -i
 
 # Delete a task when no longer needed
 dunno task delete task:mno

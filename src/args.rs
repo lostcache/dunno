@@ -16,6 +16,10 @@ pub struct Args {
     #[arg(long, global = true)]
     pub pretty: bool,
 
+    /// Ignore case when matching project names (use with --project).
+    #[arg(short = 'i', long, global = true)]
+    pub ignore_case: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -149,8 +153,11 @@ pub enum ProjectCommands {
 pub enum ModuleCommands {
     Create {
         /// Project ID(s) to link this module to. Repeat for multiple. Omit for freestanding.
-        #[arg(long, value_name = "PROJECT_ID")]
+        #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
         project_ids: Vec<String>,
+        /// Project name to link this module to (alternative to --project-ids).
+        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_ids")]
+        project: Option<String>,
         name: String,
         description: String,
     },
@@ -199,8 +206,11 @@ pub enum TaskCommands {
         #[arg(long, value_name = "MODULE_ID")]
         module_ids: Vec<String>,
         /// Project ID (single). Use with one module_id to link task.
-        #[arg(long, value_name = "PROJECT_ID")]
+        #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
         project_ids: Vec<String>,
+        /// Project name (single). Use with one module_id to link task (alternative to --project-ids).
+        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_ids")]
+        project: Option<String>,
         /// User Story ID(s) to link this task to. Optional.
         #[arg(long, value_name = "USER_STORY_ID")]
         user_story_ids: Vec<String>,
@@ -233,8 +243,11 @@ pub enum TaskCommands {
 pub enum UserStoryCommands {
     Create {
         /// Project ID to link this user story to.
-        #[arg(long, value_name = "PROJECT_ID")]
-        project_id: String,
+        #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
+        project_id: Option<String>,
+        /// Project name to link this user story to (alternative to --project-id).
+        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        project: Option<String>,
         /// Epic ID(s) to link this user story to. Optional.
         #[arg(long, value_name = "EPIC_ID")]
         epic_ids: Vec<String>,
@@ -242,8 +255,11 @@ pub enum UserStoryCommands {
         description: String,
     },
     List {
-        #[arg(long)]
+        #[arg(long, conflicts_with = "project")]
         project_id: Option<String>,
+        /// Project name to filter by (alternative to --project-id).
+        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        project: Option<String>,
         #[arg(long, value_name = "EPIC_ID")]
         epic_id: Option<String>,
     },
@@ -253,14 +269,20 @@ pub enum UserStoryCommands {
 pub enum EpicCommands {
     Create {
         /// Project ID to link this epic to.
-        #[arg(long, value_name = "PROJECT_ID")]
-        project_id: String,
+        #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
+        project_id: Option<String>,
+        /// Project name to link this epic to (alternative to --project-id).
+        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        project: Option<String>,
         title: String,
         description: String,
     },
     List {
-        #[arg(long)]
+        #[arg(long, conflicts_with = "project")]
         project_id: Option<String>,
+        /// Project name to filter by (alternative to --project-id).
+        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        project: Option<String>,
     },
 }
 
@@ -268,13 +290,19 @@ pub enum EpicCommands {
 pub enum TodoCommands {
     Create {
         /// Project ID(s) to link this todo to. Repeat for multiple. Omit for freestanding.
-        #[arg(long, value_name = "PROJECT_ID")]
+        #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
         project_ids: Vec<String>,
+        /// Project name to link this todo to (alternative to --project-ids).
+        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_ids")]
+        project: Option<String>,
         content: String,
     },
     List {
-        #[arg(long)]
-        project_id: String,
+        #[arg(long, conflicts_with = "project")]
+        project_id: Option<String>,
+        /// Project name to filter by (alternative to --project-id).
+        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        project: Option<String>,
     },
 }
 
@@ -645,5 +673,223 @@ mod tests {
         ]);
         assert!(args.is_ok(), "should parse --pretty with link command");
         assert!(args.unwrap().pretty, "pretty should be true");
+    }
+
+    #[test]
+    fn ignore_case_flag_defaults_to_false() {
+        let args = Args::try_parse_from(["dunno", "config", "show"]);
+        assert!(args.is_ok(), "should parse config show command");
+        assert!(
+            !args.unwrap().ignore_case,
+            "ignore_case should default to false"
+        );
+    }
+
+    #[test]
+    fn ignore_case_flag_can_be_set_true() {
+        let args = Args::try_parse_from(["dunno", "-i", "config", "show"]);
+        assert!(args.is_ok(), "should parse with -i flag");
+        assert!(
+            args.unwrap().ignore_case,
+            "ignore_case should be true with -i"
+        );
+
+        let args2 = Args::try_parse_from(["dunno", "--ignore-case", "config", "show"]);
+        assert!(args2.is_ok(), "should parse with --ignore-case flag");
+        assert!(
+            args2.unwrap().ignore_case,
+            "ignore_case should be true with --ignore-case"
+        );
+    }
+
+    #[test]
+    fn ignore_case_flag_works_with_any_command() {
+        let args = Args::try_parse_from(["dunno", "-i", "project", "list"]);
+        assert!(args.is_ok(), "should parse -i with project list");
+        assert!(args.unwrap().ignore_case, "ignore_case should be true");
+
+        let args2 = Args::try_parse_from(["dunno", "--ignore-case", "task", "list"]);
+        assert!(args2.is_ok(), "should parse --ignore-case with task list");
+        assert!(args2.unwrap().ignore_case, "ignore_case should be true");
+    }
+
+    #[test]
+    fn module_create_accepts_project_name() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "module",
+            "create",
+            "--project",
+            "My Project",
+            "Auth",
+            "Auth module",
+        ]);
+        assert!(args.is_ok(), "should parse --project with module create");
+        if let Commands::Module { command } = args.unwrap().command {
+            if let ModuleCommands::Create { project, name, .. } = command {
+                assert_eq!(project, Some("My Project".to_string()));
+                assert_eq!(name, "Auth");
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Module command");
+        }
+    }
+
+    #[test]
+    fn module_create_rejects_both_project_and_project_ids() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "module",
+            "create",
+            "--project",
+            "My Project",
+            "--project-ids",
+            "project:abc",
+            "Auth",
+            "Auth module",
+        ]);
+        assert!(
+            args.is_err(),
+            "should reject both --project and --project-ids"
+        );
+    }
+
+    #[test]
+    fn user_story_create_accepts_project_name() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "user-story",
+            "create",
+            "--project",
+            "My Project",
+            "As a user, I want login",
+            "Login feature",
+        ]);
+        assert!(
+            args.is_ok(),
+            "should parse --project with user-story create"
+        );
+        if let Commands::UserStory { command } = args.unwrap().command {
+            if let UserStoryCommands::Create { project, title, .. } = command {
+                assert_eq!(project, Some("My Project".to_string()));
+                assert_eq!(title, "As a user, I want login");
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected UserStory command");
+        }
+    }
+
+    #[test]
+    fn user_story_create_rejects_both_project_and_project_id() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "user-story",
+            "create",
+            "--project",
+            "My Project",
+            "--project-id",
+            "project:abc",
+            "Title",
+            "Description",
+        ]);
+        assert!(
+            args.is_err(),
+            "should reject both --project and --project-id"
+        );
+    }
+
+    #[test]
+    fn epic_create_accepts_project_name() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "epic",
+            "create",
+            "--project",
+            "My Project",
+            "Auth Epic",
+            "Authentication features",
+        ]);
+        assert!(args.is_ok(), "should parse --project with epic create");
+        if let Commands::Epic { command } = args.unwrap().command {
+            if let EpicCommands::Create { project, title, .. } = command {
+                assert_eq!(project, Some("My Project".to_string()));
+                assert_eq!(title, "Auth Epic");
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Epic command");
+        }
+    }
+
+    #[test]
+    fn todo_create_accepts_project_name() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "todo",
+            "create",
+            "--project",
+            "My Project",
+            "Buy milk",
+        ]);
+        assert!(args.is_ok(), "should parse --project with todo create");
+        if let Commands::Todo { command } = args.unwrap().command {
+            if let TodoCommands::Create {
+                project, content, ..
+            } = command
+            {
+                assert_eq!(project, Some("My Project".to_string()));
+                assert_eq!(content, "Buy milk");
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Todo command");
+        }
+    }
+
+    #[test]
+    fn todo_list_accepts_project_name() {
+        let args = Args::try_parse_from(["dunno", "todo", "list", "--project", "My Project"]);
+        assert!(args.is_ok(), "should parse --project with todo list");
+        if let Commands::Todo { command } = args.unwrap().command {
+            if let TodoCommands::List { project, .. } = command {
+                assert_eq!(project, Some("My Project".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected Todo command");
+        }
+    }
+
+    #[test]
+    fn task_create_accepts_project_name() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "task",
+            "create",
+            "--project",
+            "My Project",
+            "--module-ids",
+            "module:abc",
+            "Implement login",
+            "Add JWT auth",
+        ]);
+        assert!(args.is_ok(), "should parse --project with task create");
+        if let Commands::Task { command } = args.unwrap().command {
+            if let TaskCommands::Create { project, name, .. } = command {
+                assert_eq!(project, Some("My Project".to_string()));
+                assert_eq!(name, "Implement login");
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Task command");
+        }
     }
 }
