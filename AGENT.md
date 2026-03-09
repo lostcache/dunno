@@ -228,6 +228,25 @@ dunno task create --module-ids module:def --project "MyProject" "Implement JWT" 
 
 # Create a task with case-insensitive project name matching
 dunno task create --module-ids module:def --project "myproject" -i "Implement JWT" "Add JWT authentication"
+
+# List modules in a project
+dunno module list --project-id project:abc
+dunno module list --project "MyProject"
+
+# List submodules (by module or by project)
+dunno submodule list --module-id module:def
+dunno submodule list --project-id project:abc
+dunno submodule list --project "MyProject"
+
+# List files (cascading filter priority: submodule > module > project)
+dunno file list --submodule-id submodule:ghi
+dunno file list --module-id module:def
+dunno file list --project-id project:abc
+dunno file list --project "MyProject"
+
+# List tasks in a project
+dunno task list --project-id project:abc
+dunno task list --project "MyProject"
 ```
 
 **AI Agent Pattern**: Capture IDs from JSON output for subsequent commands. When using project names, remember that names are unique and case-sensitive by default (use `-i` for case-insensitive matching).
@@ -338,14 +357,23 @@ dunno todo create --project "MyProject" \
 dunno user-story list --project-id project:abc
 dunno epic list --project-id project:abc
 dunno todo list --project-id project:abc
+dunno task list --project-id project:abc
+dunno module list --project-id project:abc
+dunno submodule list --project-id project:abc
+dunno file list --project-id project:abc
 
 # List items using project name (alternative)
 dunno user-story list --project "MyProject"
 dunno epic list --project "MyProject"
 dunno todo list --project "MyProject"
+dunno task list --project "MyProject"
+dunno module list --project "MyProject"
+dunno submodule list --project "MyProject"
+dunno file list --project "MyProject"
 
 # List with case-insensitive matching
 dunno todo list --project "myproject" -i
+dunno task list --project "myproject" -i
 
 # Delete a task when no longer needed
 dunno task delete task:mno

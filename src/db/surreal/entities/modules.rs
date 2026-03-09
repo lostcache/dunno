@@ -33,6 +33,8 @@ impl DB {
         if let (Some(pid), Some(mid)) = (project_id, result.id.as_ref()) {
             ensure_record_id("project", pid)?;
             self.link(pid, "contains", mid).await?;
+            // Add bidirectional edge: module -> belongs_to_project -> project
+            self.link(mid, "belongs_to_project", pid).await?;
         }
         Ok(result)
     }
@@ -93,6 +95,26 @@ impl DB {
         if let (Some(mid), Some(sub_id)) = (module_id, result.id.as_ref()) {
             ensure_record_id("module", mid)?;
             self.link(mid, "contains", sub_id).await?;
+            // Add bidirectional edge: submodule -> belongs_to_module -> module
+            self.link(sub_id, "belongs_to_module", mid).await?;
+            // Get module's project and link submodule to project
+            let mut response = self
+                .client
+                .query("SELECT ->belongs_to_project->project.id AS pid FROM ONLY type::record($mid)")
+                .bind(("mid", mid.to_string()))
+                .await?;
+            let project_record: Option<surrealdb::types::Value> = response.take(0)?;
+            if let Some(record) = project_record {
+                let json = surreal_to_json(record);
+                if let Some(project_id) = json
+                    .get("pid")
+                    .and_then(|p| p.as_array())
+                    .and_then(|arr| arr.first())
+                    .and_then(|v| v.as_str())
+                {
+                    self.link(sub_id, "belongs_to_project", project_id).await?;
+                }
+            }
         }
         Ok(result)
     }
@@ -120,6 +142,21 @@ impl DB {
             "SELECT ->contains->submodule.* AS items FROM ONLY type::record($mid)",
             "mid",
             module_id.to_string(),
+            "items",
+        )
+        .await
+    }
+
+    /// Lists submodules under a project via belongs_to_project edge.
+    pub async fn list_submodules_by_project(
+        &self,
+        project_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::Submodule>> {
+        ensure_record_id("project", project_id)?;
+        self.query_graph_list(
+            "SELECT <-belongs_to_project<-submodule.* AS items FROM ONLY type::record($pid)",
+            "pid",
+            project_id.to_string(),
             "items",
         )
         .await

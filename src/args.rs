@@ -161,7 +161,13 @@ pub enum ModuleCommands {
         name: String,
         description: String,
     },
-    List,
+    List {
+        #[arg(long, conflicts_with = "project")]
+        project_id: Option<String>,
+        /// Project name to filter by (alternative to --project-id).
+        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        project: Option<String>,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -174,6 +180,11 @@ pub enum SubmoduleCommands {
         description: String,
     },
     List {
+        #[arg(long, conflicts_with = "project")]
+        project_id: Option<String>,
+        /// Project name to filter by (alternative to --project-id).
+        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        project: Option<String>,
         #[arg(long)]
         module_id: Option<String>,
     },
@@ -192,6 +203,11 @@ pub enum FileCommands {
         description: Option<String>,
     },
     List {
+        #[arg(long, conflicts_with = "project")]
+        project_id: Option<String>,
+        /// Project name to filter by (alternative to --project-id).
+        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        project: Option<String>,
         #[arg(long, conflicts_with = "submodule_id")]
         module_id: Option<String>,
         #[arg(long, conflicts_with = "module_id")]
@@ -236,7 +252,13 @@ pub enum TaskCommands {
     Delete {
         task_id: String,
     },
-    List,
+    List {
+        #[arg(long, conflicts_with = "project")]
+        project_id: Option<String>,
+        /// Project name to filter by (alternative to --project-id).
+        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        project: Option<String>,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -887,6 +909,164 @@ mod tests {
                 assert_eq!(name, "Implement login");
             } else {
                 panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Task command");
+        }
+    }
+
+    #[test]
+    fn module_list_accepts_project_id() {
+        let args = Args::try_parse_from(["dunno", "module", "list", "--project-id", "project:abc"]);
+        assert!(args.is_ok(), "should parse --project-id with module list");
+        if let Commands::Module { command } = args.unwrap().command {
+            if let ModuleCommands::List { project_id, .. } = command {
+                assert_eq!(project_id, Some("project:abc".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected Module command");
+        }
+    }
+
+    #[test]
+    fn module_list_accepts_project_name() {
+        let args = Args::try_parse_from(["dunno", "module", "list", "--project", "My Project"]);
+        assert!(args.is_ok(), "should parse --project with module list");
+        if let Commands::Module { command } = args.unwrap().command {
+            if let ModuleCommands::List { project, .. } = command {
+                assert_eq!(project, Some("My Project".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected Module command");
+        }
+    }
+
+    #[test]
+    fn module_list_rejects_both_project_and_project_id() {
+        let args = Args::try_parse_from([
+            "dunno",
+            "module",
+            "list",
+            "--project-id",
+            "project:abc",
+            "--project",
+            "My Project",
+        ]);
+        assert!(
+            args.is_err(),
+            "should reject both --project-id and --project"
+        );
+    }
+
+    #[test]
+    fn submodule_list_accepts_project_id() {
+        let args =
+            Args::try_parse_from(["dunno", "submodule", "list", "--project-id", "project:abc"]);
+        assert!(
+            args.is_ok(),
+            "should parse --project-id with submodule list"
+        );
+        if let Commands::Submodule { command } = args.unwrap().command {
+            if let SubmoduleCommands::List { project_id, .. } = command {
+                assert_eq!(project_id, Some("project:abc".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected Submodule command");
+        }
+    }
+
+    #[test]
+    fn submodule_list_accepts_module_id() {
+        let args =
+            Args::try_parse_from(["dunno", "submodule", "list", "--module-id", "module:abc"]);
+        assert!(args.is_ok(), "should parse --module-id with submodule list");
+        if let Commands::Submodule { command } = args.unwrap().command {
+            if let SubmoduleCommands::List { module_id, .. } = command {
+                assert_eq!(module_id, Some("module:abc".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected Submodule command");
+        }
+    }
+
+    #[test]
+    fn file_list_accepts_project_id() {
+        let args = Args::try_parse_from(["dunno", "file", "list", "--project-id", "project:abc"]);
+        assert!(args.is_ok(), "should parse --project-id with file list");
+        if let Commands::File { command } = args.unwrap().command {
+            if let FileCommands::List { project_id, .. } = command {
+                assert_eq!(project_id, Some("project:abc".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected File command");
+        }
+    }
+
+    #[test]
+    fn file_list_accepts_module_id() {
+        let args = Args::try_parse_from(["dunno", "file", "list", "--module-id", "module:abc"]);
+        assert!(args.is_ok(), "should parse --module-id with file list");
+        if let Commands::File { command } = args.unwrap().command {
+            if let FileCommands::List { module_id, .. } = command {
+                assert_eq!(module_id, Some("module:abc".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected File command");
+        }
+    }
+
+    #[test]
+    fn file_list_accepts_submodule_id() {
+        let args =
+            Args::try_parse_from(["dunno", "file", "list", "--submodule-id", "submodule:abc"]);
+        assert!(args.is_ok(), "should parse --submodule-id with file list");
+        if let Commands::File { command } = args.unwrap().command {
+            if let FileCommands::List { submodule_id, .. } = command {
+                assert_eq!(submodule_id, Some("submodule:abc".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected File command");
+        }
+    }
+
+    #[test]
+    fn task_list_accepts_project_id() {
+        let args = Args::try_parse_from(["dunno", "task", "list", "--project-id", "project:abc"]);
+        assert!(args.is_ok(), "should parse --project-id with task list");
+        if let Commands::Task { command } = args.unwrap().command {
+            if let TaskCommands::List { project_id, .. } = command {
+                assert_eq!(project_id, Some("project:abc".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected Task command");
+        }
+    }
+
+    #[test]
+    fn task_list_accepts_project_name() {
+        let args = Args::try_parse_from(["dunno", "task", "list", "--project", "My Project"]);
+        assert!(args.is_ok(), "should parse --project with task list");
+        if let Commands::Task { command } = args.unwrap().command {
+            if let TaskCommands::List { project, .. } = command {
+                assert_eq!(project, Some("My Project".to_string()));
+            } else {
+                panic!("expected List command");
             }
         } else {
             panic!("expected Task command");

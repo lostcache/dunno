@@ -60,8 +60,8 @@ async fn dispatch_command(
         } => handle_link(from_id, edge, to_ids, db, pretty).await,
         dunno::args::Commands::Project { command } => handle_project_command(command, db, pretty).await,
         dunno::args::Commands::Module { command } => handle_module_command(command, db, pretty, ignore_case).await,
-        dunno::args::Commands::Submodule { command } => handle_submodule_command(command, db, pretty).await,
-        dunno::args::Commands::File { command } => handle_file_command(command, db, pretty).await,
+        dunno::args::Commands::Submodule { command } => handle_submodule_command(command, db, pretty, ignore_case).await,
+        dunno::args::Commands::File { command } => handle_file_command(command, db, pretty, ignore_case).await,
         dunno::args::Commands::Task { command } => handle_task_command(command, db, pretty, ignore_case).await,
         dunno::args::Commands::Todo { command } => handle_todo_command(command, db, pretty, ignore_case).await,
         dunno::args::Commands::UserStory { command } => {
@@ -253,19 +253,24 @@ async fn handle_module_command(
 
             print_json(serde_json::json!(created), pretty);
         }
-        dunno::args::ModuleCommands::List => {
-            let modules = db.list_modules().await?;
+        dunno::args::ModuleCommands::List { project_id, project } => {
+            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
+            let modules = match resolved_id {
+                Some(pid) => db.list_modules_by_project(&pid).await?,
+                None => db.list_modules().await?,
+            };
             print_json(serde_json::json!(modules), pretty);
         }
     }
     Ok(())
 }
 
-/// Submodule management with optional module filtering.
+/// Submodule management with optional module and project filtering.
 async fn handle_submodule_command(
     command: dunno::args::SubmoduleCommands,
     db: &dunno::db::DB,
     pretty: bool,
+    ignore_case: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::SubmoduleCommands::Create {
@@ -291,10 +296,16 @@ async fn handle_submodule_command(
 
             print_json(serde_json::json!(created), pretty);
         }
-        dunno::args::SubmoduleCommands::List { module_id } => {
+        dunno::args::SubmoduleCommands::List { project_id, project, module_id } => {
             let submodules = match module_id {
                 Some(mid) => db.list_submodules_by_module(&mid).await?,
-                None => db.list_submodules().await?,
+                None => {
+                    let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
+                    match resolved_id {
+                        Some(pid) => db.list_submodules_by_project(&pid).await?,
+                        None => db.list_submodules().await?,
+                    }
+                }
             };
             print_json(serde_json::json!(submodules), pretty);
         }
@@ -302,11 +313,12 @@ async fn handle_submodule_command(
     Ok(())
 }
 
-/// File management with parent hierarchy linking.
+/// File management with parent hierarchy linking and project filtering.
 async fn handle_file_command(
     command: dunno::args::FileCommands,
     db: &dunno::db::DB,
     pretty: bool,
+    ignore_case: bool,
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::FileCommands::Create {
@@ -334,13 +346,21 @@ async fn handle_file_command(
             print_json(serde_json::json!(created), pretty);
         }
         dunno::args::FileCommands::List {
+            project_id,
+            project,
             module_id,
             submodule_id,
         } => {
-            let files = match (module_id, submodule_id) {
-                (Some(mid), _) => db.list_files_by_module(&mid).await?,
-                (_, Some(sid)) => db.list_files_by_submodule(&sid).await?,
-                (None, None) => db.list_files().await?,
+            let files = match (submodule_id, module_id, project_id, project) {
+                (Some(sid), _, _, _) => db.list_files_by_submodule(&sid).await?,
+                (_, Some(mid), _, _) => db.list_files_by_module(&mid).await?,
+                (_, _, pid_opt, proj_opt) => {
+                    let resolved_id = resolve_project_id(db, pid_opt, proj_opt, ignore_case).await?;
+                    match resolved_id {
+                        Some(pid) => db.list_files_by_project(&pid).await?,
+                        None => db.list_files().await?,
+                    }
+                }
             };
             print_json(serde_json::json!(files), pretty);
         }
@@ -409,8 +429,12 @@ async fn handle_task_command(
                 None => return Err(anyhow::anyhow!("Task not found: {}", task_id)),
             }
         }
-        dunno::args::TaskCommands::List => {
-            let tasks = db.list_tasks().await?;
+        dunno::args::TaskCommands::List { project_id, project } => {
+            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
+            let tasks = match resolved_id {
+                Some(pid) => db.list_tasks_by_project(&pid).await?,
+                None => db.list_tasks().await?,
+            };
             print_json(serde_json::json!(tasks), pretty);
         }
         dunno::args::TaskCommands::Delete { task_id } => {

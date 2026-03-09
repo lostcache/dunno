@@ -240,7 +240,22 @@ dunno module create --project-ids <id> "<name>" "<description>"
 # Using project name (alternative)
 dunno module create --project "<project_name>" "<name>" "<description>"
 
+# List modules (all or filtered by project)
 dunno module list
+dunno module list --project-id <id>
+dunno module list --project "<project_name>"
+```
+
+#### Submodule Management
+```bash
+# Create submodule linked to module
+dunno submodule create --module-ids <id> "<name>" "<description>"
+
+# List submodules (all, by module, or by project)
+dunno submodule list
+dunno submodule list --module-id <id>
+dunno submodule list --project-id <id>
+dunno submodule list --project "<project_name>"
 ```
 
 #### Task Management
@@ -251,9 +266,27 @@ dunno task create --module-ids <id> --project-ids <id> "<name>" "<description>"
 # Using project name (alternative)
 dunno task create --module-ids <id> --project "<project_name>" "<name>" "<description>"
 
+# List tasks (all or filtered by project)
 dunno task list
+dunno task list --project-id <id>
+dunno task list --project "<project_name>"
+
 dunno task update <id> --status started
 dunno task delete <id>   # Delete a task by ID
+```
+
+#### File Management
+```bash
+# Create file linked to module or submodule
+dunno file create --parent-ids <module_id> "<name>" "<path>"
+dunno file create --parent-ids <submodule_id> "<name>" "<path>"
+
+# List files (cascading filter priority: submodule > module > project)
+dunno file list
+dunno file list --submodule-id <id>   # Most specific
+dunno file list --module-id <id>      # Filter by module
+dunno file list --project-id <id>    # Filter by project (all files in project)
+dunno file list --project "<project_name>"
 ```
 
 #### User Story Management

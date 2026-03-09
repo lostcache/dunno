@@ -2574,3 +2574,396 @@ async fn test_get_task_context_with_files_and_linked_context() {
     assert_eq!(context.hierarchy.module_id, module_id);
     assert!(context.hierarchy.submodule.is_none());
 }
+
+#[tokio::test]
+async fn test_list_submodules_by_project() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // Create project
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    // Create module linked to project
+    let module = db
+        .create_module("M", "d", Some(&project_id))
+        .await
+        .expect("create module");
+    let module_id = module.id.expect("id");
+
+    // Create submodule linked to module
+    let submodule = db
+        .create_submodule("S", "d", Some(&module_id))
+        .await
+        .expect("create submodule");
+    let submodule_id = submodule.id.expect("id");
+
+    // List all submodules (should include the created one)
+    let all = db.list_submodules().await.expect("list_submodules");
+    assert_eq!(all.len(), 1);
+
+    // List submodules by project (should find the submodule)
+    let by_project = db
+        .list_submodules_by_project(&project_id)
+        .await
+        .expect("list_submodules_by_project");
+    assert_eq!(by_project.len(), 1);
+    assert_eq!(by_project[0].id, Some(submodule_id.clone()));
+
+    // List submodules by module (should find the submodule)
+    let by_module = db
+        .list_submodules_by_module(&module_id)
+        .await
+        .expect("list_submodules_by_module");
+    assert_eq!(by_module.len(), 1);
+    assert_eq!(by_module[0].id, Some(submodule_id.clone()));
+}
+
+#[tokio::test]
+async fn test_list_files_by_project() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // Create project
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    // Create module linked to project
+    let module = db
+        .create_module("M", "d", Some(&project_id))
+        .await
+        .expect("create module");
+    let module_id = module.id.expect("id");
+
+    // Create submodule linked to module
+    let submodule = db
+        .create_submodule("S", "d", Some(&module_id))
+        .await
+        .expect("create submodule");
+    let submodule_id = submodule.id.expect("id");
+
+    // Create file linked to module
+    let file1 = db
+        .create_file("f1.rs", "src/f1.rs", Some("d"), Some(&module_id))
+        .await
+        .expect("create file 1");
+    let file1_id = file1.id.expect("id");
+
+    // Create file linked to submodule
+    let file2 = db
+        .create_file("f2.rs", "src/f2.rs", Some("d"), Some(&submodule_id))
+        .await
+        .expect("create file 2");
+    let file2_id = file2.id.expect("id");
+
+    // List all files (should include both)
+    let all = db.list_files().await.expect("list_files");
+    assert_eq!(all.len(), 2);
+
+    // List files by project (should find both files)
+    let by_project = db
+        .list_files_by_project(&project_id)
+        .await
+        .expect("list_files_by_project");
+    assert_eq!(by_project.len(), 2);
+
+    // List files by module (should find file1)
+    let by_module = db
+        .list_files_by_module(&module_id)
+        .await
+        .expect("list_files_by_module");
+    assert_eq!(by_module.len(), 1);
+    assert_eq!(by_module[0].id, Some(file1_id.clone()));
+
+    // List files by submodule (should find file2)
+    let by_submodule = db
+        .list_files_by_submodule(&submodule_id)
+        .await
+        .expect("list_files_by_submodule");
+    assert_eq!(by_submodule.len(), 1);
+    assert_eq!(by_submodule[0].id, Some(file2_id.clone()));
+}
+
+#[tokio::test]
+async fn test_module_belongs_to_project_edge() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // Create project
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    // Create module linked to project
+    let module = db
+        .create_module("M", "d", Some(&project_id))
+        .await
+        .expect("create module");
+    let module_id = module.id.expect("id");
+
+    // Verify module can be found via belongs_to_project edge by querying the graph
+    let mut response = db
+        .client
+        .query("SELECT ->belongs_to_project->project.id AS pid FROM ONLY type::record($mid)")
+        .bind(("mid", module_id.clone()))
+        .await
+        .expect("query");
+    let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
+    let json = crate::db::surreal::util::surreal_to_json(
+        record.expect("record"),
+    );
+    let found_project_id = json
+        .get("pid")
+        .and_then(|p| p.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|v| v.as_str())
+        .expect("project id");
+    assert_eq!(found_project_id, project_id);
+}
+
+#[tokio::test]
+async fn test_submodule_belongs_to_edges() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // Create project
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    // Create module linked to project
+    let module = db
+        .create_module("M", "d", Some(&project_id))
+        .await
+        .expect("create module");
+    let module_id = module.id.expect("id");
+
+    // Create submodule linked to module
+    let submodule = db
+        .create_submodule("S", "d", Some(&module_id))
+        .await
+        .expect("create submodule");
+    let submodule_id = submodule.id.expect("id");
+
+    // Verify submodule has belongs_to_module edge
+    let mut response = db
+        .client
+        .query("SELECT ->belongs_to_module->module.id AS mid FROM ONLY type::record($sid)")
+        .bind(("sid", submodule_id.clone()))
+        .await
+        .expect("query");
+    let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
+    let json = crate::db::surreal::util::surreal_to_json(
+        record.expect("record"),
+    );
+    let found_module_id = json
+        .get("mid")
+        .and_then(|m| m.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|v| v.as_str())
+        .expect("module id");
+    assert_eq!(found_module_id, module_id);
+
+    // Verify submodule has belongs_to_project edge
+    let mut response = db
+        .client
+        .query("SELECT ->belongs_to_project->project.id AS pid FROM ONLY type::record($sid)")
+        .bind(("sid", submodule_id.clone()))
+        .await
+        .expect("query");
+    let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
+    let json = crate::db::surreal::util::surreal_to_json(
+        record.expect("record"),
+    );
+    let found_project_id = json
+        .get("pid")
+        .and_then(|p| p.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|v| v.as_str())
+        .expect("project id");
+    assert_eq!(found_project_id, project_id);
+}
+
+#[tokio::test]
+async fn test_file_belongs_to_edges() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // Create project
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    // Create module linked to project
+    let module = db
+        .create_module("M", "d", Some(&project_id))
+        .await
+        .expect("create module");
+    let module_id = module.id.expect("id");
+
+    // Create file linked to module
+    let file = db
+        .create_file("test.rs", "src/test.rs", Some("d"), Some(&module_id))
+        .await
+        .expect("create file");
+    let file_id = file.id.expect("id");
+
+    // Verify file has belongs_to_module edge
+    let mut response = db
+        .client
+        .query("SELECT ->belongs_to_module->module.id AS mid FROM ONLY type::record($fid)")
+        .bind(("fid", file_id.clone()))
+        .await
+        .expect("query");
+    let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
+    let json = crate::db::surreal::util::surreal_to_json(
+        record.expect("record"),
+    );
+    let found_module_id = json
+        .get("mid")
+        .and_then(|m| m.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|v| v.as_str())
+        .expect("module id");
+    assert_eq!(found_module_id, module_id);
+
+    // Verify file has belongs_to_project edge
+    let mut response = db
+        .client
+        .query("SELECT ->belongs_to_project->project.id AS pid FROM ONLY type::record($fid)")
+        .bind(("fid", file_id.clone()))
+        .await
+        .expect("query");
+    let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
+    let json = crate::db::surreal::util::surreal_to_json(
+        record.expect("record"),
+    );
+    let found_project_id = json
+        .get("pid")
+        .and_then(|p| p.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|v| v.as_str())
+        .expect("project id");
+    assert_eq!(found_project_id, project_id);
+}
+
+#[tokio::test]
+async fn test_file_belongs_to_edges_with_submodule() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // Create project
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("id");
+
+    // Create module linked to project
+    let module = db
+        .create_module("M", "d", Some(&project_id))
+        .await
+        .expect("create module");
+    let module_id = module.id.expect("id");
+
+    // Create submodule linked to module
+    let submodule = db
+        .create_submodule("S", "d", Some(&module_id))
+        .await
+        .expect("create submodule");
+    let submodule_id = submodule.id.expect("id");
+
+    // Create file linked to submodule
+    let file = db
+        .create_file("test.rs", "src/test.rs", Some("d"), Some(&submodule_id))
+        .await
+        .expect("create file");
+    let file_id = file.id.expect("id");
+
+    // Verify file has belongs_to_submodule edge
+    let mut response = db
+        .client
+        .query("SELECT ->belongs_to_submodule->submodule.id AS sid FROM ONLY type::record($fid)")
+        .bind(("fid", file_id.clone()))
+        .await
+        .expect("query");
+    let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
+    let json = crate::db::surreal::util::surreal_to_json(
+        record.expect("record"),
+    );
+    let found_submodule_id = json
+        .get("sid")
+        .and_then(|s| s.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|v| v.as_str())
+        .expect("submodule id");
+    assert_eq!(found_submodule_id, submodule_id);
+
+    // Verify file has belongs_to_module edge (cascaded from submodule)
+    let mut response = db
+        .client
+        .query("SELECT ->belongs_to_module->module.id AS mid FROM ONLY type::record($fid)")
+        .bind(("fid", file_id.clone()))
+        .await
+        .expect("query");
+    let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
+    let json = crate::db::surreal::util::surreal_to_json(
+        record.expect("record"),
+    );
+    let found_module_id = json
+        .get("mid")
+        .and_then(|m| m.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|v| v.as_str())
+        .expect("module id");
+    assert_eq!(found_module_id, module_id);
+
+    // Verify file has belongs_to_project edge (cascaded from submodule)
+    let mut response = db
+        .client
+        .query("SELECT ->belongs_to_project->project.id AS pid FROM ONLY type::record($fid)")
+        .bind(("fid", file_id.clone()))
+        .await
+        .expect("query");
+    let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
+    let json = crate::db::surreal::util::surreal_to_json(
+        record.expect("record"),
+    );
+    let found_project_id = json
+        .get("pid")
+        .and_then(|p| p.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|v| v.as_str())
+        .expect("project id");
+    assert_eq!(found_project_id, project_id);
+}
