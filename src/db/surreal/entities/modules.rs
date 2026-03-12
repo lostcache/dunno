@@ -21,13 +21,14 @@ impl DB {
         &self,
         name: &str,
         description: &str,
+        notes: Option<&str>,
         project_id: Option<&str>,
     ) -> anyhow::Result<crate::models::Module> {
         let module = crate::models::Module {
             id: None,
             name: name.to_string(),
             description: description.to_string(),
-            files: None,
+            notes: notes.map(|s| s.to_string()),
         };
         let result = self.create_module_record(&module).await?;
         if let (Some(pid), Some(mid)) = (project_id, result.id.as_ref()) {
@@ -83,13 +84,14 @@ impl DB {
         &self,
         name: &str,
         description: &str,
+        notes: Option<&str>,
         module_id: Option<&str>,
     ) -> anyhow::Result<crate::models::Submodule> {
         let submodule = crate::models::Submodule {
             id: None,
             name: name.to_string(),
             description: description.to_string(),
-            files: None,
+            notes: notes.map(|s| s.to_string()),
         };
         let result = self.create_submodule_record(&submodule).await?;
         if let (Some(mid), Some(sub_id)) = (module_id, result.id.as_ref()) {

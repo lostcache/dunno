@@ -159,7 +159,7 @@ mod tests {
         let project_id = project.id.expect("project id");
 
         let module = db
-            .create_module(&"Auth".to_string(), &"Auth module".to_string(), Some(&project_id))
+            .create_module(&"Auth".to_string(), &"Auth module".to_string(), None, Some(&project_id))
             .await
             .expect("create module");
         let module_id = module.id.expect("module id");

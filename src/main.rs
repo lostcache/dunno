@@ -230,14 +230,14 @@ async fn handle_module_command(
             project,
             name,
             description,
+            notes,
         } => {
             // Resolve project name to ID if provided
             let resolved_project_id = resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
-            
-            let created = db
-                .create_module(&name, &description, resolved_project_id.as_deref())
-                .await?;
 
+            let created = db
+                .create_module(&name, &description, notes.as_deref(), resolved_project_id.as_deref())
+                .await?;
             let module_id = match &created.id {
                 Some(id) => id.as_str(),
                 None => {
@@ -277,9 +277,10 @@ async fn handle_submodule_command(
             module_ids,
             name,
             description,
+            notes,
         } => {
             let created = db
-                .create_submodule(&name, &description, module_ids.first().map(String::as_str))
+                .create_submodule(&name, &description, notes.as_deref(), module_ids.first().map(String::as_str))
                 .await?;
 
             let sub_id = match &created.id {
@@ -326,9 +327,10 @@ async fn handle_file_command(
             name,
             path,
             description,
+            notes,
         } => {
             let created = db
-                .create_file(&name, &path, description.as_deref(), parent_ids.first().map(String::as_str))
+                .create_file(&name, &path, description.as_deref(), notes.as_deref(), parent_ids.first().map(String::as_str))
                 .await?;
 
             let file_id = match &created.id {

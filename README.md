@@ -235,10 +235,10 @@ dunno project list                              # List all projects
 #### Module Management
 ```bash
 # Using project ID
-dunno module create --project-ids <id> "<name>" "<description>"
+dunno module create --project-ids <id> "<name>" "<description>" [--notes <notes>]
 
 # Using project name (alternative)
-dunno module create --project "<project_name>" "<name>" "<description>"
+dunno module create --project "<project_name>" "<name>" "<description>" [--notes <notes>]
 
 # List modules (all or filtered by project)
 dunno module list
@@ -249,7 +249,7 @@ dunno module list --project "<project_name>"
 #### Submodule Management
 ```bash
 # Create submodule linked to module
-dunno submodule create --module-ids <id> "<name>" "<description>"
+dunno submodule create --module-ids <id> "<name>" "<description>" [--notes <notes>]
 
 # List submodules (all, by module, or by project)
 dunno submodule list
@@ -278,8 +278,8 @@ dunno task delete <id>   # Delete a task by ID
 #### File Management
 ```bash
 # Create file linked to module or submodule
-dunno file create --parent-ids <module_id> "<name>" "<path>"
-dunno file create --parent-ids <submodule_id> "<name>" "<path>"
+dunno file create --parent-ids <module_id> "<name>" "<path>" ["<description>"] [--notes <notes>]
+dunno file create --parent-ids <submodule_id> "<name>" "<path>" ["<description>"] [--notes <notes>]
 
 # List files (cascading filter priority: submodule > module > project)
 dunno file list

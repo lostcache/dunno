@@ -48,7 +48,7 @@ pub struct Module {
     pub name: String,
     pub description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub files: Option<Vec<String>>,
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -58,7 +58,7 @@ pub struct Submodule {
     pub name: String,
     pub description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub files: Option<Vec<String>>,
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -69,6 +69,8 @@ pub struct File {
     pub path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -182,7 +184,7 @@ mod tests {
             id: None,
             name: "Core".to_string(),
             description: "Core module".to_string(),
-            files: None,
+            notes: None,
         };
         let json = to_string(&module).expect("Failed to serialize Module");
         assert!(json.contains("Core module"));
@@ -194,7 +196,7 @@ mod tests {
             id: None,
             name: "Lexer".to_string(),
             description: "Lexer submodule".to_string(),
-            files: None,
+            notes: None,
         };
         let json = to_string(&submodule).expect("Failed to serialize Submodule");
         assert!(json.contains("Lexer submodule"));
@@ -207,6 +209,7 @@ mod tests {
             name: "lexer.rs".to_string(),
             path: "src/lexer.rs".to_string(),
             description: Some("Lexer implementation for tokenizing input".to_string()),
+            notes: None,
         };
         let json = to_string(&file).expect("Failed to serialize File");
         assert!(json.contains("lexer.rs"));

@@ -160,6 +160,9 @@ pub enum ModuleCommands {
         project: Option<String>,
         name: String,
         description: String,
+        /// Optional notes for the module.
+        #[arg(long, value_name = "NOTES")]
+        notes: Option<String>,
     },
     List {
         #[arg(long, conflicts_with = "project")]
@@ -178,6 +181,9 @@ pub enum SubmoduleCommands {
         module_ids: Vec<String>,
         name: String,
         description: String,
+        /// Optional notes for the submodule.
+        #[arg(long, value_name = "NOTES")]
+        notes: Option<String>,
     },
     List {
         #[arg(long, conflicts_with = "project")]
@@ -201,6 +207,9 @@ pub enum FileCommands {
         /// Optional description of the file's purpose.
         #[arg(value_name = "DESCRIPTION")]
         description: Option<String>,
+        /// Optional notes for the file.
+        #[arg(long, value_name = "NOTES")]
+        notes: Option<String>,
     },
     List {
         #[arg(long, conflicts_with = "project")]
