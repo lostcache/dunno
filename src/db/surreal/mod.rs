@@ -19,7 +19,6 @@ pub(crate) struct StructuralHierarchy {
 }
 
 impl DB {
-    /// TODO: try and unify new methods.
     /// Creates a new SurrealDB client and selects the default namespace/database.
     pub async fn new(url: &str) -> anyhow::Result<Self> {
         let client = surrealdb::engine::any::connect(url).await?;

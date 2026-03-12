@@ -151,8 +151,8 @@ impl DB {
         Ok(deleted.is_some())
     }
 
-    /// Gets full context for a task including the task, hierarchy, related files, and directly linked context.
-    pub async fn get_task_context(
+    /// Gets context only for the specific task node.
+    pub async fn get_task_context_node(
         &self,
         task_id: &str,
     ) -> anyhow::Result<crate::models::TaskContext> {
@@ -163,8 +163,6 @@ impl DB {
 
         let hierarchy = self.get_task_hierarchy(task_id).await?;
         let files = self.get_files_from_hierarchy(&hierarchy).await?;
-
-        // Only get context directly linked to the task
         let contexts = self.get_linked_context(task_id).await?;
 
         Ok(crate::models::TaskContext {
@@ -173,6 +171,47 @@ impl DB {
             contexts,
             hierarchy,
         })
+    }
+
+    /// Gets full inherited context for a task (Project -> Module -> Submodule -> Task).
+    pub async fn get_task_context_full(
+        &self,
+        task_id: &str,
+    ) -> anyhow::Result<crate::models::TaskContext> {
+        let mut ctx = self.get_task_context_node(task_id).await?;
+
+        if let Some(sub) = &ctx.hierarchy.submodule {
+            ctx.contexts.extend(self.get_linked_context(&sub.id).await?);
+        }
+        ctx.contexts
+            .extend(self.get_linked_context(&ctx.hierarchy.module_id).await?);
+        ctx.contexts
+            .extend(self.get_linked_context(&ctx.hierarchy.project_id).await?);
+
+        // Deduplicate contexts by ID
+        let mut seen = std::collections::HashSet::new();
+        ctx.contexts.retain(|c| {
+            if let Some(id) = &c.id {
+                seen.insert(id.clone())
+            } else {
+                true
+            }
+        });
+
+        Ok(ctx)
+    }
+
+    /// Gets context for a task, optionally including parent hierarchy.
+    pub async fn get_task_context(
+        &self,
+        task_id: &str,
+        full: bool,
+    ) -> anyhow::Result<crate::models::TaskContext> {
+        if full {
+            self.get_task_context_full(task_id).await
+        } else {
+            self.get_task_context_node(task_id).await
+        }
     }
 
     /// Resolves the hierarchy path from a task to its project/module/submodule.
@@ -259,14 +298,14 @@ impl DB {
             "module" => {
                 let project_id = self
                     .first_record_id_from_query(
-                        "SELECT <-contains<-project AS p FROM ONLY type::record($mid)",
+                        "SELECT ->belongs_to_project->project.* AS p FROM ONLY type::record($mid)",
                         "mid",
                         from_id.to_string(),
                         "p",
                     )
                     .await?;
                 Ok(StructuralHierarchy {
-                    project_id: project_id.clone(),
+                    project_id,
                     module_id: Some(from_id.to_string()),
                     submodule_id: None,
                     task_id: None,
@@ -275,24 +314,20 @@ impl DB {
             "submodule" => {
                 let module_id = self
                     .first_record_id_from_query(
-                        "SELECT <-contains<-module AS m FROM ONLY type::record($sid)",
+                        "SELECT ->belongs_to_module->module.* AS m FROM ONLY type::record($sid)",
                         "sid",
                         from_id.to_string(),
                         "m",
                     )
                     .await?;
-                let project_id = match &module_id {
-                    Some(mid) => {
-                        self.first_record_id_from_query(
-                            "SELECT <-contains<-project AS p FROM ONLY type::record($mid)",
-                            "mid",
-                            mid.clone(),
-                            "p",
-                        )
-                        .await?
-                    }
-                    None => None,
-                };
+                let project_id = self
+                    .first_record_id_from_query(
+                        "SELECT ->belongs_to_project->project.* AS p FROM ONLY type::record($sid)",
+                        "sid",
+                        from_id.to_string(),
+                        "p",
+                    )
+                    .await?;
                 Ok(StructuralHierarchy {
                     project_id,
                     module_id,
@@ -313,7 +348,7 @@ impl DB {
             "epic" => {
                 let project_id = self
                     .first_record_id_from_query(
-                        "SELECT ->belongs_to_project->project AS p FROM ONLY type::record($eid)",
+                        "SELECT ->belongs_to_project->project.* AS p FROM ONLY type::record($eid)",
                         "eid",
                         from_id.to_string(),
                         "p",
@@ -327,10 +362,17 @@ impl DB {
                 })
             }
             "file" => {
-                // Files can be under module or submodule
+                let project_id = self
+                    .first_record_id_from_query(
+                        "SELECT ->belongs_to_project->project.* AS p FROM ONLY type::record($fid)",
+                        "fid",
+                        from_id.to_string(),
+                        "p",
+                    )
+                    .await?;
                 let module_id = self
                     .first_record_id_from_query(
-                        "SELECT <-contains<-module AS m FROM ONLY type::record($fid)",
+                        "SELECT ->belongs_to_module->module.* AS m FROM ONLY type::record($fid)",
                         "fid",
                         from_id.to_string(),
                         "m",
@@ -338,33 +380,12 @@ impl DB {
                     .await?;
                 let submodule_id = self
                     .first_record_id_from_query(
-                        "SELECT <-contains<-submodule AS s FROM ONLY type::record($fid)",
+                        "SELECT ->belongs_to_submodule->submodule.* AS s FROM ONLY type::record($fid)",
                         "fid",
                         from_id.to_string(),
                         "s",
                     )
                     .await?;
-                
-                // Resolve project from module/submodule
-                let project_id = if let Some(ref sid) = submodule_id {
-                    self.first_record_id_from_query(
-                        "SELECT <-contains<-module<-contains<-project AS p FROM ONLY type::record($sid)",
-                        "sid",
-                        sid.clone(),
-                        "p",
-                    )
-                    .await?
-                } else if let Some(ref mid) = module_id {
-                    self.first_record_id_from_query(
-                        "SELECT <-contains<-project AS p FROM ONLY type::record($mid)",
-                        "mid",
-                        mid.clone(),
-                        "p",
-                    )
-                    .await?
-                } else {
-                    None
-                };
                 
                 Ok(StructuralHierarchy {
                     project_id,
@@ -417,14 +438,12 @@ impl DB {
         let mut response = self
             .client
             .query(
-                "SELECT ->belongs_to_module->contains->submodule.* AS submodule FROM ONLY type::record($tid)",
+                "SELECT ->belongs_to_submodule->submodule.* AS submodule FROM ONLY type::record($tid)",
             )
             .bind(("tid", task_id.to_string()))
             .await?;
         let result: Option<surrealdb::types::Value> = response.take(0)?;
-
         let json = surreal_to_json(result.ok_or_else(|| anyhow::anyhow!("Query failed"))?);
-
         if let Some(serde_json::Value::Array(arr)) = json.get("submodule") {
             if let Some(sub) = arr.first() {
                 let id = sub
@@ -475,9 +494,10 @@ impl DB {
 /// Returns full task context including task details, files, hierarchy, and linked knowledge.
 pub async fn get_task_context_json(
     task_id: &str,
+    full: bool,
     db: &crate::db::DB,
 ) -> anyhow::Result<crate::models::TaskContext> {
-    db.get_task_context(task_id).await
+    db.get_task_context(task_id, full).await
 }
 
 #[cfg(test)]
@@ -518,8 +538,15 @@ mod tests {
     }
 
     #[test]
-    fn validate_task_params_accepts_max_length_name() {
-        let max_name = "a".repeat(255);
-        validate_task_params(&max_name, "Description").expect("255 char name should be accepted");
+    fn validate_task_params_rejects_max_length_name_plus_one() {
+        let long_name = "a".repeat(256);
+        let err = validate_task_params(&long_name, "Description").expect_err("256 char name should fail");
+        assert!(err.to_string().contains("too long"));
+    }
+
+    #[test]
+    fn validate_task_params_rejects_whitespace_only_description() {
+        let err = validate_task_params("Name", "   ").expect_err("whitespace description should fail");
+        assert!(err.to_string().contains("description"));
     }
 }

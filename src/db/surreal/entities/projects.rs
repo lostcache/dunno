@@ -71,6 +71,35 @@ impl DB {
     pub async fn list_projects(&self) -> anyhow::Result<Vec<crate::models::Project>> {
         self.list_records("project").await
     }
+
+    /// Gets context for a project (Project node only).
+    pub async fn get_project_context_node(
+        &self,
+        project_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::Context>> {
+        self.get_linked_context(project_id).await
+    }
+
+    /// Gets full context for a project (same as node since it's the root).
+    pub async fn get_project_context_full(
+        &self,
+        project_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::Context>> {
+        self.get_project_context_node(project_id).await
+    }
+
+    /// Gets context for a project.
+    pub async fn get_project_context(
+        &self,
+        project_id: &str,
+        full: bool,
+    ) -> anyhow::Result<Vec<crate::models::Context>> {
+        if full {
+            self.get_project_context_full(project_id).await
+        } else {
+            self.get_project_context_node(project_id).await
+        }
+    }
 }
 
 #[cfg(test)]

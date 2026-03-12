@@ -161,6 +161,65 @@ impl DB {
         )
         .await
     }
+
+    /// Gets context only for the specific file node.
+    pub async fn get_file_context_node(
+        &self,
+        file_id: &str,
+    ) -> anyhow::Result<crate::models::FileContext> {
+        let file = self
+            .get_file(file_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("File not found: {}", file_id))?;
+        let contexts = self.get_linked_context(file_id).await?;
+        Ok(crate::models::FileContext { file, contexts })
+    }
+
+    /// Gets full inherited context for a file (Project -> Module -> Submodule -> File).
+    pub async fn get_file_context_full(
+        &self,
+        file_id: &str,
+    ) -> anyhow::Result<crate::models::FileContext> {
+        let mut ctx = self.get_file_context_node(file_id).await?;
+
+        // Resolve hierarchy for this file
+        let hierarchy = self.resolve_structural_hierarchy(file_id).await?;
+
+        if let Some(sid) = hierarchy.submodule_id {
+            ctx.contexts.extend(self.get_linked_context(&sid).await?);
+        }
+        if let Some(mid) = hierarchy.module_id {
+            ctx.contexts.extend(self.get_linked_context(&mid).await?);
+        }
+        if let Some(pid) = hierarchy.project_id {
+            ctx.contexts.extend(self.get_linked_context(&pid).await?);
+        }
+
+        // Deduplicate contexts by ID
+        let mut seen = std::collections::HashSet::new();
+        ctx.contexts.retain(|c| {
+            if let Some(id) = &c.id {
+                seen.insert(id.clone())
+            } else {
+                true
+            }
+        });
+
+        Ok(ctx)
+    }
+
+    /// Gets context for a file, optionally including parent hierarchy.
+    pub async fn get_file_context(
+        &self,
+        file_id: &str,
+        full: bool,
+    ) -> anyhow::Result<crate::models::FileContext> {
+        if full {
+            self.get_file_context_full(file_id).await
+        } else {
+            self.get_file_context_node(file_id).await
+        }
+    }
 }
 
 #[cfg(test)]
@@ -193,12 +252,8 @@ mod tests {
 /// Returns full file context including file details and linked knowledge.
 pub async fn get_file_context_json(
     file_id: &str,
+    full: bool,
     db: &crate::db::DB,
 ) -> anyhow::Result<crate::models::FileContext> {
-    let file = db
-        .get_file(file_id)
-        .await?
-        .ok_or_else(|| anyhow::anyhow!("File not found: {}", file_id))?;
-    let contexts = db.get_linked_context(file_id).await?;
-    Ok(crate::models::FileContext { file, contexts })
+    db.get_file_context(file_id, full).await
 }

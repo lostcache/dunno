@@ -151,19 +151,68 @@ impl DB {
         )
         .await
     }
+
+    /// Gets context only for the specific epic node.
+    pub async fn get_epic_context_node(
+        &self,
+        epic_id: &str,
+    ) -> anyhow::Result<crate::models::EpicContext> {
+        let epic = self
+            .get_epic(epic_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Epic not found: {}", epic_id))?;
+        let contexts = self.get_linked_context(epic_id).await?;
+        Ok(crate::models::EpicContext { epic, contexts })
+    }
+
+    /// Gets full inherited context for an epic (Project -> Epic).
+    pub async fn get_epic_context_full(
+        &self,
+        epic_id: &str,
+    ) -> anyhow::Result<crate::models::EpicContext> {
+        let mut ctx = self.get_epic_context_node(epic_id).await?;
+
+        // Resolve hierarchy for this epic
+        let hierarchy = self.resolve_structural_hierarchy(epic_id).await?;
+
+        if let Some(pid) = hierarchy.project_id {
+            ctx.contexts.extend(self.get_linked_context(&pid).await?);
+        }
+
+        // Deduplicate contexts by ID
+        let mut seen = std::collections::HashSet::new();
+        ctx.contexts.retain(|c| {
+            if let Some(id) = &c.id {
+                seen.insert(id.clone())
+            } else {
+                true
+            }
+        });
+
+        Ok(ctx)
+    }
+
+    /// Gets context for an epic, optionally including parent hierarchy.
+    pub async fn get_epic_context(
+        &self,
+        epic_id: &str,
+        full: bool,
+    ) -> anyhow::Result<crate::models::EpicContext> {
+        if full {
+            self.get_epic_context_full(epic_id).await
+        } else {
+            self.get_epic_context_node(epic_id).await
+        }
+    }
 }
 
 /// Returns full epic context including epic details and linked knowledge.
 pub async fn get_epic_context_json(
     epic_id: &str,
+    full: bool,
     db: &crate::db::DB,
 ) -> anyhow::Result<crate::models::EpicContext> {
-    let epic = db
-        .get_epic(epic_id)
-        .await?
-        .ok_or_else(|| anyhow::anyhow!("Epic not found: {}", epic_id))?;
-    let contexts = db.get_linked_context(epic_id).await?;
-    Ok(crate::models::EpicContext { epic, contexts })
+    db.get_epic_context(epic_id, full).await
 }
 
 #[cfg(test)]

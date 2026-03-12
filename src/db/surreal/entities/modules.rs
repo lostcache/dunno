@@ -163,6 +163,104 @@ impl DB {
         )
         .await
     }
+
+    /// Gets context for a module (Module node only).
+    pub async fn get_module_context_node(
+        &self,
+        module_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::Context>> {
+        self.get_linked_context(module_id).await
+    }
+
+    /// Gets full context for a module (Module + Project).
+    pub async fn get_module_context_full(
+        &self,
+        module_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::Context>> {
+        let mut contexts = self.get_module_context_node(module_id).await?;
+        let h = self.resolve_structural_hierarchy(module_id).await?;
+        if let Some(pid) = h.project_id {
+            if pid != module_id {
+                contexts.extend(self.get_linked_context(&pid).await?);
+            }
+        }
+        
+        // Deduplicate
+        let mut seen = std::collections::HashSet::new();
+        contexts.retain(|c| {
+            if let Some(cid) = &c.id {
+                seen.insert(cid.clone())
+            } else {
+                true
+            }
+        });
+        Ok(contexts)
+    }
+
+    /// Gets context for a module.
+    pub async fn get_module_context(
+        &self,
+        module_id: &str,
+        full: bool,
+    ) -> anyhow::Result<Vec<crate::models::Context>> {
+        if full {
+            self.get_module_context_full(module_id).await
+        } else {
+            self.get_module_context_node(module_id).await
+        }
+    }
+
+    /// Gets context for a submodule (Submodule node only).
+    pub async fn get_submodule_context_node(
+        &self,
+        submodule_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::Context>> {
+        self.get_linked_context(submodule_id).await
+    }
+
+    /// Gets full context for a submodule (Submodule + Module + Project).
+    pub async fn get_submodule_context_full(
+        &self,
+        submodule_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::Context>> {
+        let mut contexts = self.get_submodule_context_node(submodule_id).await?;
+        let h = self.resolve_structural_hierarchy(submodule_id).await?;
+        
+        if let Some(mid) = h.module_id {
+            if mid != submodule_id {
+                contexts.extend(self.get_linked_context(&mid).await?);
+            }
+        }
+        if let Some(pid) = h.project_id {
+            if pid != submodule_id {
+                contexts.extend(self.get_linked_context(&pid).await?);
+            }
+        }
+
+        // Deduplicate
+        let mut seen = std::collections::HashSet::new();
+        contexts.retain(|c| {
+            if let Some(cid) = &c.id {
+                seen.insert(cid.clone())
+            } else {
+                true
+            }
+        });
+        Ok(contexts)
+    }
+
+    /// Gets context for a submodule.
+    pub async fn get_submodule_context(
+        &self,
+        submodule_id: &str,
+        full: bool,
+    ) -> anyhow::Result<Vec<crate::models::Context>> {
+        if full {
+            self.get_submodule_context_full(submodule_id).await
+        } else {
+            self.get_submodule_context_node(submodule_id).await
+        }
+    }
 }
 
 #[cfg(test)]
