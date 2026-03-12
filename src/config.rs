@@ -101,18 +101,23 @@ impl Config {
         let mut config = Self::default();
         // Priority order (lowest to highest):
         // 5. Defaults (already set)
-        // 4. ENV vars
-        config.apply_env_overrides()?;
-        // 3. Global config
+        
+        // 4. Global config
         config.apply_config_file(&Self::global_config_path())?;
-        // 2. Local project config
+        
+        // 3. Local project config
         config.apply_config_file(&Self::local_config_path())?;
+        
+        // 2. ENV vars
+        config.apply_env_overrides()?;
+        
         // 1. CLI args (highest)
         config.apply_cli_overrides(cli_backend)?;
         Ok(config)
     }
 
     // Helper for testing - allows specifying custom paths and controlling env overrides
+    #[cfg(test)]
     fn load_from_optional_paths(
         cli_backend: Option<&str>,
         global_path: Option<&std::path::Path>,
