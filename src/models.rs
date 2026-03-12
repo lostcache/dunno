@@ -89,7 +89,7 @@ pub struct TodoItem {
     pub content: String,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Default)]
 pub struct Context {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -136,6 +136,24 @@ pub struct TaskContext {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct EpicContext {
     pub epic: Epic,
+    pub contexts: Vec<Context>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct ProjectContext {
+    pub project: Project,
+    pub contexts: Vec<Context>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct ModuleContext {
+    pub module: Module,
+    pub contexts: Vec<Context>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct SubmoduleContext {
+    pub submodule: Submodule,
     pub contexts: Vec<Context>,
 }
 
