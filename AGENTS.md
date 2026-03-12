@@ -299,26 +299,29 @@ dn add \
 
 #### 3. Retrieving Context
 
-Query context for a task to get the task details, related files, hierarchy, and directly linked knowledge:
+Query context for a task to get the task details, related files, hierarchy, and directly linked knowledge. Use the `--full` flag to aggregate knowledge from the entire hierarchy (Project -> Module -> Submodule -> Node):
 
 ```bash
-# Get context for a task (returns JSON with task, files, hierarchy, and task-linked context)
+# Get context only for the specific task node
 dn ctx --task-id task:mno
 
-# Get context for a file (returns file-only context)
-dn ctx --file-id file:jkl
+# Get full inherited context for the task (RECOMMENDED for AI agents)
+dn ctx --task-id task:mno --full
 
-# Get context for an epic (returns epic-only context)
-dn ctx --epic-id epic:stu
+# Get context for a file (optionally with parents)
+dn ctx --file-id file:jkl --full
+
+# Get context for an epic (optionally with project rules)
+dn ctx --epic-id epic:stu --full
 ```
 
 **Task Context Returns:**
 - **Task** - Full task object with id, name, description, status
 - **Files** - File IDs in the parent module/submodule (files the task may touch)
 - **Hierarchy** - Project, module, submodule structural info
-- **Contexts** - Only knowledge directly linked to this task via `--link-to task:<id>`
+- **Contexts** - Directly linked or inherited knowledge (if `--full` is used)
 
-**AI Agent Rule**: Always run `dn ctx --task-id <id>` before implementing to see task-specific knowledge.
+**AI Agent Rule**: Always run `dn ctx --task-id <id> --full` before implementing to see task-specific and project-wide knowledge.
 
 ---
 
@@ -471,15 +474,15 @@ dn add \
 
 #### 5. Context Retrieval Workflow
 
-When working on a task, always retrieve relevant context:
+When working on a task, always retrieve relevant context with the `--full` flag:
 
 ```bash
-# Before implementing, get context for the task
-dn ctx --task-id task:abc --pretty'
+# Before implementing, get full inherited context for the task
+dn ctx --task-id task:abc --full --pretty'
 
-# Also check module-level context
-dn ctx --file-id file:def --pretty'
-
+# Also check full module-level context
+dn ctx --file-id file:def --full --pretty'
+```
 # Combine and analyze all relevant knowledge
 ```
 
@@ -588,8 +591,8 @@ Complete workflow for planning and executing tasks with proper context retrieval
 # Step 5: Update task with a detailed plan as knowledge
 
 # Step 6: Query knowledge base again for relevant patterns before implementation
-# Get context specific to the task
-dn ctx --task-id "$TASK_ID" | jq '.results[]'
+# Get full inherited context specific to the task (RECOMMENDED)
+dn ctx --task-id "$TASK_ID" --full | jq '.results[]'
 
 # Step 7: After completion, capture insights and lessons learned
 dn add \
@@ -602,12 +605,12 @@ dn add \
 
 **AI Agent Best Practices for Task Planning**:
 
-1. **Always query before planning**: Retrieve existing context from project, module, and relevant files
+1. **Always query before planning**: Retrieve existing context from project, module, and relevant files using `--full`
 2. **Create todos first**: Track work items before creating detailed tasks
 3. **Link strategically**: Attach tasks to the most specific module/submodule and relevant epics
 4. **Always link to files/modules**: After adding a task, link it to relevant files and modules it touches
 5. **Store plans as knowledge**: Use `--field type --value plan` to document implementation approach
-6. **Query task context before coding**: Always run `dn ctx --task-id <id>` before implementation
+6. **Query task context before coding**: Always run `dn ctx --task-id <id> --full` before implementation
 7. **Capture learnings**: After task completion, add insights linked to the task and relevant modules
 
 **Example: Full Planning Session**:
@@ -620,7 +623,7 @@ dn ctx --project-id project:abc | jq '.results[] | {type, content}'
 TODO=$(dn todo add --project-ids project:abc "Add OAuth integration" | jq -r '.id')
 
 # 3. Explore specific module context
-dn ctx --module-id module:auth | jq '.results[]'
+dn ctx --module-id module:auth --full | jq '.results[]'
 
 # 4. Create and link task
 TASK=$(dn task add \
@@ -831,8 +834,8 @@ done < knowledge_list.txt
 ## Summary for AI Agents
 
 **Before Starting Work:**
-1. Query dn context for your task: `dn ctx --task-id <id>`
-2. Review captured learnings and pitfalls
+1. Query dn context for your task with inheritance: `dn ctx --task-id <id> --full`
+2. Review captured learnings and pitfalls at all levels (Project, Module, Task)
 3. Follow naming conventions (single words)
 
 **During Work:**

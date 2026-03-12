@@ -100,18 +100,21 @@ dn add --field type --value security --field content --value "Validate all JWT t
 
 #### 5. Retrieve Context
 
-Retrieve context for a task to get the task details, related files, hierarchy, and directly linked knowledge:
+Retrieve context for a task to get the task details, related files, hierarchy, and directly linked knowledge. Use the `--full` flag to include inherited context from parent nodes (Project, Module, Submodule):
 
 ```bash
 # Get context for a task (returns task, files, hierarchy, and directly linked context)
 dn ctx --task-id task:ghi
+
+# Get full inherited context (includes project and module rules)
+dn ctx --task-id task:ghi --full
 ```
 
 Returns:
 - **Task** - The task object with id, name, description, status
 - **Files** - File IDs related to the task (files in the parent module/submodule)
 - **Hierarchy** - Project, module, and optional submodule info
-- **Contexts** - Only knowledge directly linked to the task via `dn add --link-to task:<id>`
+- **Contexts** - Knowledge linked to the task. If `--full` is used, includes knowledge inherited from the parent hierarchy.
 
 ### Configuration
 
