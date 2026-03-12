@@ -1,6 +1,6 @@
 #[derive(clap::Parser, Debug)]
 #[command(
-    name = "dunno",
+    name = "dn",
     author,
     version,
     about = "Capture and retrieve coding knowledge from mistakes, style guides, and security details.",
@@ -29,7 +29,7 @@ pub enum Commands {
     #[command(
         about = "Add a new knowledge entry.",
         long_about = "Persist one knowledge entry with arbitrary fields and optionally link it to structural nodes.",
-        after_help = "Examples:\n  dunno add --field type --value mistake --field content --value \"Avoid unwrap\" --field severity --value high\n  dunno add --field type --value security --field content --value \"SQL injection risk\" --link-to module:abc\n  dunno add --field custom_type --value performance --field content --value \"Use parallel iterators\" --field category --value optimization"
+        after_help = "Examples:\n  dn add --field type --value mistake --field content --value \"Avoid unwrap\" --field severity --value high\n  dn add --field type --value security --field content --value \"SQL injection risk\" --link-to module:abc\n  dn add --field custom_type --value performance --field content --value \"Use parallel iterators\" --field category --value optimization"
     )]
     Add {
         /// Field name. Must be paired with --value. Repeat for multiple fields.
@@ -100,9 +100,10 @@ pub enum Commands {
     },
 
     #[command(
+        name = "ctx",
         about = "Retrieve coding context for a task, file, or subtask.",
         long_about = "Find context directly linked to a task or file.",
-        after_help = "Example:\n  dunno context --task-id task:123\n  dunno context --file-id file:456"
+        after_help = "Example:\n  dn ctx --task-id task:123\n  dn ctx --file-id file:456"
     )]
     Context {
         /// The Task ID to retrieve context for.
@@ -121,7 +122,7 @@ pub enum Commands {
     #[command(
         about = "Create an edge between existing nodes.",
         long_about = "Link a source node to one or more target nodes via a named edge.",
-        after_help = "Example:\n  dunno link --from project:abc --edge contains --to module:def\n  dunno link --from project:abc --edge has_todo --to todo_item:1 --to todo_item:2"
+        after_help = "Example:\n  dn link --from project:abc --edge contains --to module:def\n  dn link --from project:abc --edge has_todo --to todo_item:1 --to todo_item:2"
     )]
     Link {
         /// Source record ID (e.g. project:abc, task:xyz).
@@ -145,12 +146,15 @@ pub enum Commands {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum ProjectCommands {
+    #[command(name = "add")]
     Create { name: String, description: String },
+    #[command(name = "ls")]
     List,
 }
 
 #[derive(clap::Subcommand, Debug)]
 pub enum ModuleCommands {
+    #[command(name = "add")]
     Create {
         /// Project ID(s) to link this module to. Repeat for multiple. Omit for freestanding.
         #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
@@ -164,6 +168,7 @@ pub enum ModuleCommands {
         #[arg(long, value_name = "NOTES")]
         notes: Option<String>,
     },
+    #[command(name = "ls")]
     List {
         #[arg(long, conflicts_with = "project")]
         project_id: Option<String>,
@@ -175,6 +180,7 @@ pub enum ModuleCommands {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum SubmoduleCommands {
+    #[command(name = "add")]
     Create {
         /// Module ID(s) to link this submodule to. Repeat for multiple. Omit for freestanding.
         #[arg(long, value_name = "MODULE_ID")]
@@ -185,6 +191,7 @@ pub enum SubmoduleCommands {
         #[arg(long, value_name = "NOTES")]
         notes: Option<String>,
     },
+    #[command(name = "ls")]
     List {
         #[arg(long, conflicts_with = "project")]
         project_id: Option<String>,
@@ -198,6 +205,7 @@ pub enum SubmoduleCommands {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum FileCommands {
+    #[command(name = "add")]
     Create {
         /// Parent ID(s) (module or submodule). Repeat for multiple. Omit for freestanding.
         #[arg(long, value_name = "PARENT_ID")]
@@ -211,6 +219,7 @@ pub enum FileCommands {
         #[arg(long, value_name = "NOTES")]
         notes: Option<String>,
     },
+    #[command(name = "ls")]
     List {
         #[arg(long, conflicts_with = "project")]
         project_id: Option<String>,
@@ -226,6 +235,7 @@ pub enum FileCommands {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum TaskCommands {
+    #[command(name = "add")]
     Create {
         /// Module ID (single). Use with one project_id to link task.
         #[arg(long, value_name = "MODULE_ID")]
@@ -258,9 +268,11 @@ pub enum TaskCommands {
         )]
         status: Option<String>,
     },
+    #[command(name = "rm")]
     Delete {
         task_id: String,
     },
+    #[command(name = "ls")]
     List {
         #[arg(long, conflicts_with = "project")]
         project_id: Option<String>,
@@ -272,6 +284,7 @@ pub enum TaskCommands {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum UserStoryCommands {
+    #[command(name = "add")]
     Create {
         /// Project ID to link this user story to.
         #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
@@ -285,6 +298,7 @@ pub enum UserStoryCommands {
         title: String,
         description: String,
     },
+    #[command(name = "ls")]
     List {
         #[arg(long, conflicts_with = "project")]
         project_id: Option<String>,
@@ -298,6 +312,7 @@ pub enum UserStoryCommands {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum EpicCommands {
+    #[command(name = "add")]
     Create {
         /// Project ID to link this epic to.
         #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
@@ -308,6 +323,7 @@ pub enum EpicCommands {
         title: String,
         description: String,
     },
+    #[command(name = "ls")]
     List {
         #[arg(long, conflicts_with = "project")]
         project_id: Option<String>,
@@ -319,6 +335,7 @@ pub enum EpicCommands {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum TodoCommands {
+    #[command(name = "add")]
     Create {
         /// Project ID(s) to link this todo to. Repeat for multiple. Omit for freestanding.
         #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
@@ -328,6 +345,7 @@ pub enum TodoCommands {
         project: Option<String>,
         content: String,
     },
+    #[command(name = "ls")]
     List {
         #[arg(long, conflicts_with = "project")]
         project_id: Option<String>,
@@ -351,8 +369,8 @@ mod tests {
     fn context_command_enforces_mutual_exclusion_of_ids() {
         // TASK_ID and FILE_ID together should be rejected by clap.
         let result = Args::try_parse_from([
-            "dunno",
-            "context",
+            "dn",
+            "ctx",
             "--task-id",
             "task:1",
             "--file-id",
@@ -361,17 +379,17 @@ mod tests {
         assert!(result.is_err(), "expected clap to reject conflicting ids");
 
         // Single id variants should parse successfully.
-        let task_ok = Args::try_parse_from(["dunno", "context", "--task-id", "task:1"]);
+        let task_ok = Args::try_parse_from(["dn", "ctx", "--task-id", "task:1"]);
         assert!(task_ok.is_ok());
 
-        let file_ok = Args::try_parse_from(["dunno", "context", "--file-id", "file:2"]);
+        let file_ok = Args::try_parse_from(["dn", "ctx", "--file-id", "file:2"]);
         assert!(file_ok.is_ok());
     }
 
     #[test]
     fn add_command_accepts_field_value_pairs() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "add",
             "--field",
             "type",
@@ -409,21 +427,21 @@ mod tests {
     #[test]
     fn add_command_requires_field_and_value() {
         // Missing --value
-        let result = Args::try_parse_from(["dunno", "add", "--field", "type"]);
+        let result = Args::try_parse_from(["dn", "add", "--field", "type"]);
         assert!(
             result.is_err(),
             "expected clap to require --value when --field is present"
         );
 
         // Missing --field
-        let result2 = Args::try_parse_from(["dunno", "add", "--value", "mistake"]);
+        let result2 = Args::try_parse_from(["dn", "add", "--value", "mistake"]);
         assert!(
             result2.is_err(),
             "expected clap to require --field when --value is present"
         );
 
         // Both missing
-        let result3 = Args::try_parse_from(["dunno", "add"]);
+        let result3 = Args::try_parse_from(["dn", "add"]);
         assert!(
             result3.is_err(),
             "expected clap to require --field and --value"
@@ -433,7 +451,7 @@ mod tests {
     #[test]
     fn add_command_accepts_field_value_with_link_to() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "add",
             "--field",
             "type",
@@ -469,7 +487,7 @@ mod tests {
     #[test]
     fn add_command_single_field_value() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "add",
             "--field",
             "content",
@@ -494,7 +512,7 @@ mod tests {
 
     #[test]
     fn task_delete_command_accepts_task_id() {
-        let args = Args::try_parse_from(["dunno", "task", "delete", "task:abc123"]);
+        let args = Args::try_parse_from(["dn", "task", "rm", "task:abc123"]);
         assert!(args.is_ok(), "should parse task delete command");
         if let Commands::Task { command } = args.unwrap().command {
             if let TaskCommands::Delete { task_id } = command {
@@ -509,20 +527,20 @@ mod tests {
 
     #[test]
     fn task_delete_command_requires_task_id() {
-        let args = Args::try_parse_from(["dunno", "task", "delete"]);
+        let args = Args::try_parse_from(["dn", "task", "rm"]);
         assert!(args.is_err(), "should require task_id for delete command");
     }
 
     #[test]
     fn pretty_flag_defaults_to_false() {
-        let args = Args::try_parse_from(["dunno", "config", "show"]);
+        let args = Args::try_parse_from(["dn", "config", "show"]);
         assert!(args.is_ok(), "should parse config show command");
         assert!(!args.unwrap().pretty, "pretty should default to false");
     }
 
     #[test]
     fn pretty_flag_can_be_set_true() {
-        let args = Args::try_parse_from(["dunno", "--pretty", "config", "show"]);
+        let args = Args::try_parse_from(["dn", "--pretty", "config", "show"]);
         assert!(args.is_ok(), "should parse with --pretty flag");
         assert!(
             args.unwrap().pretty,
@@ -532,12 +550,12 @@ mod tests {
 
     #[test]
     fn pretty_flag_works_with_any_command() {
-        let args = Args::try_parse_from(["dunno", "--pretty", "task", "list"]);
+        let args = Args::try_parse_from(["dn", "--pretty", "task", "ls"]);
         assert!(args.is_ok(), "should parse --pretty with task list");
         assert!(args.unwrap().pretty, "pretty should be true");
 
         let args2 = Args::try_parse_from([
-            "dunno", "--pretty", "add", "--field", "type", "--value", "test",
+            "dn", "--pretty", "add", "--field", "type", "--value", "test",
         ]);
         assert!(args2.is_ok(), "should parse --pretty with add command");
         assert!(args2.unwrap().pretty, "pretty should be true");
@@ -546,7 +564,7 @@ mod tests {
     #[test]
     fn pretty_flag_works_with_backend_flag() {
         let args =
-            Args::try_parse_from(["dunno", "--backend", "cloud", "--pretty", "config", "show"]);
+            Args::try_parse_from(["dn", "--backend", "cloud", "--pretty", "config", "show"]);
         assert!(args.is_ok(), "should parse both --backend and --pretty");
         let parsed = args.unwrap();
         assert_eq!(parsed.backend, Some("cloud".to_string()));
@@ -556,7 +574,7 @@ mod tests {
     #[test]
     fn pretty_flag_works_with_context_command() {
         let args =
-            Args::try_parse_from(["dunno", "--pretty", "context", "--task-id", "task:abc123"]);
+            Args::try_parse_from(["dn", "--pretty", "ctx", "--task-id", "task:abc123"]);
         assert!(args.is_ok(), "should parse --pretty with context command");
         assert!(args.unwrap().pretty, "pretty should be true");
     }
@@ -564,10 +582,10 @@ mod tests {
     #[test]
     fn pretty_flag_works_with_epic_commands() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "--pretty",
             "epic",
-            "list",
+            "ls",
             "--project-id",
             "project:abc",
         ]);
@@ -575,10 +593,10 @@ mod tests {
         assert!(args.unwrap().pretty, "pretty should be true");
 
         let args2 = Args::try_parse_from([
-            "dunno",
+            "dn",
             "--pretty",
             "epic",
-            "create",
+            "add",
             "--project-id",
             "project:abc",
             "Title",
@@ -591,10 +609,10 @@ mod tests {
     #[test]
     fn pretty_flag_works_with_user_story_commands() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "--pretty",
             "user-story",
-            "list",
+            "ls",
             "--project-id",
             "project:abc",
         ]);
@@ -602,10 +620,10 @@ mod tests {
         assert!(args.unwrap().pretty, "pretty should be true");
 
         let args2 = Args::try_parse_from([
-            "dunno",
+            "dn",
             "--pretty",
             "user-story",
-            "create",
+            "add",
             "--project-id",
             "project:abc",
             "As a user",
@@ -621,10 +639,10 @@ mod tests {
     #[test]
     fn pretty_flag_works_with_todo_commands() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "--pretty",
             "todo",
-            "list",
+            "ls",
             "--project-id",
             "project:abc",
         ]);
@@ -632,10 +650,10 @@ mod tests {
         assert!(args.unwrap().pretty, "pretty should be true");
 
         let args2 = Args::try_parse_from([
-            "dunno",
+            "dn",
             "--pretty",
             "todo",
-            "create",
+            "add",
             "--project-ids",
             "project:abc",
             "Review code",
@@ -648,10 +666,10 @@ mod tests {
     fn pretty_flag_works_with_file_commands() {
         // Without description (backward compatibility)
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "--pretty",
             "file",
-            "create",
+            "add",
             "--parent-ids",
             "module:abc",
             "main.rs",
@@ -662,10 +680,10 @@ mod tests {
 
         // With description
         let args_with_desc = Args::try_parse_from([
-            "dunno",
+            "dn",
             "--pretty",
             "file",
-            "create",
+            "add",
             "--parent-ids",
             "module:abc",
             "main.rs",
@@ -678,10 +696,10 @@ mod tests {
         );
 
         let args2 = Args::try_parse_from([
-            "dunno",
+            "dn",
             "--pretty",
             "file",
-            "list",
+            "ls",
             "--module-id",
             "module:abc",
         ]);
@@ -692,7 +710,7 @@ mod tests {
     #[test]
     fn pretty_flag_works_with_link_command() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "--pretty",
             "link",
             "--from-id",
@@ -708,7 +726,7 @@ mod tests {
 
     #[test]
     fn ignore_case_flag_defaults_to_false() {
-        let args = Args::try_parse_from(["dunno", "config", "show"]);
+        let args = Args::try_parse_from(["dn", "config", "show"]);
         assert!(args.is_ok(), "should parse config show command");
         assert!(
             !args.unwrap().ignore_case,
@@ -718,14 +736,14 @@ mod tests {
 
     #[test]
     fn ignore_case_flag_can_be_set_true() {
-        let args = Args::try_parse_from(["dunno", "-i", "config", "show"]);
+        let args = Args::try_parse_from(["dn", "-i", "config", "show"]);
         assert!(args.is_ok(), "should parse with -i flag");
         assert!(
             args.unwrap().ignore_case,
             "ignore_case should be true with -i"
         );
 
-        let args2 = Args::try_parse_from(["dunno", "--ignore-case", "config", "show"]);
+        let args2 = Args::try_parse_from(["dn", "--ignore-case", "config", "show"]);
         assert!(args2.is_ok(), "should parse with --ignore-case flag");
         assert!(
             args2.unwrap().ignore_case,
@@ -735,11 +753,11 @@ mod tests {
 
     #[test]
     fn ignore_case_flag_works_with_any_command() {
-        let args = Args::try_parse_from(["dunno", "-i", "project", "list"]);
+        let args = Args::try_parse_from(["dn", "-i", "project", "ls"]);
         assert!(args.is_ok(), "should parse -i with project list");
         assert!(args.unwrap().ignore_case, "ignore_case should be true");
 
-        let args2 = Args::try_parse_from(["dunno", "--ignore-case", "task", "list"]);
+        let args2 = Args::try_parse_from(["dn", "--ignore-case", "task", "ls"]);
         assert!(args2.is_ok(), "should parse --ignore-case with task list");
         assert!(args2.unwrap().ignore_case, "ignore_case should be true");
     }
@@ -747,9 +765,9 @@ mod tests {
     #[test]
     fn module_create_accepts_project_name() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "module",
-            "create",
+            "add",
             "--project",
             "My Project",
             "Auth",
@@ -771,9 +789,9 @@ mod tests {
     #[test]
     fn module_create_rejects_both_project_and_project_ids() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "module",
-            "create",
+            "add",
             "--project",
             "My Project",
             "--project-ids",
@@ -790,9 +808,9 @@ mod tests {
     #[test]
     fn user_story_create_accepts_project_name() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "user-story",
-            "create",
+            "add",
             "--project",
             "My Project",
             "As a user, I want login",
@@ -817,9 +835,9 @@ mod tests {
     #[test]
     fn user_story_create_rejects_both_project_and_project_id() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "user-story",
-            "create",
+            "add",
             "--project",
             "My Project",
             "--project-id",
@@ -836,9 +854,9 @@ mod tests {
     #[test]
     fn epic_create_accepts_project_name() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "epic",
-            "create",
+            "add",
             "--project",
             "My Project",
             "Auth Epic",
@@ -860,9 +878,9 @@ mod tests {
     #[test]
     fn todo_create_accepts_project_name() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "todo",
-            "create",
+            "add",
             "--project",
             "My Project",
             "Buy milk",
@@ -885,7 +903,7 @@ mod tests {
 
     #[test]
     fn todo_list_accepts_project_name() {
-        let args = Args::try_parse_from(["dunno", "todo", "list", "--project", "My Project"]);
+        let args = Args::try_parse_from(["dn", "todo", "ls", "--project", "My Project"]);
         assert!(args.is_ok(), "should parse --project with todo list");
         if let Commands::Todo { command } = args.unwrap().command {
             if let TodoCommands::List { project, .. } = command {
@@ -901,9 +919,9 @@ mod tests {
     #[test]
     fn task_create_accepts_project_name() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "task",
-            "create",
+            "add",
             "--project",
             "My Project",
             "--module-ids",
@@ -926,7 +944,7 @@ mod tests {
 
     #[test]
     fn module_list_accepts_project_id() {
-        let args = Args::try_parse_from(["dunno", "module", "list", "--project-id", "project:abc"]);
+        let args = Args::try_parse_from(["dn", "module", "ls", "--project-id", "project:abc"]);
         assert!(args.is_ok(), "should parse --project-id with module list");
         if let Commands::Module { command } = args.unwrap().command {
             if let ModuleCommands::List { project_id, .. } = command {
@@ -941,7 +959,7 @@ mod tests {
 
     #[test]
     fn module_list_accepts_project_name() {
-        let args = Args::try_parse_from(["dunno", "module", "list", "--project", "My Project"]);
+        let args = Args::try_parse_from(["dn", "module", "ls", "--project", "My Project"]);
         assert!(args.is_ok(), "should parse --project with module list");
         if let Commands::Module { command } = args.unwrap().command {
             if let ModuleCommands::List { project, .. } = command {
@@ -957,9 +975,9 @@ mod tests {
     #[test]
     fn module_list_rejects_both_project_and_project_id() {
         let args = Args::try_parse_from([
-            "dunno",
+            "dn",
             "module",
-            "list",
+            "ls",
             "--project-id",
             "project:abc",
             "--project",
@@ -974,7 +992,7 @@ mod tests {
     #[test]
     fn submodule_list_accepts_project_id() {
         let args =
-            Args::try_parse_from(["dunno", "submodule", "list", "--project-id", "project:abc"]);
+            Args::try_parse_from(["dn", "submodule", "ls", "--project-id", "project:abc"]);
         assert!(
             args.is_ok(),
             "should parse --project-id with submodule list"
@@ -993,7 +1011,7 @@ mod tests {
     #[test]
     fn submodule_list_accepts_module_id() {
         let args =
-            Args::try_parse_from(["dunno", "submodule", "list", "--module-id", "module:abc"]);
+            Args::try_parse_from(["dn", "submodule", "ls", "--module-id", "module:abc"]);
         assert!(args.is_ok(), "should parse --module-id with submodule list");
         if let Commands::Submodule { command } = args.unwrap().command {
             if let SubmoduleCommands::List { module_id, .. } = command {
@@ -1008,7 +1026,7 @@ mod tests {
 
     #[test]
     fn file_list_accepts_project_id() {
-        let args = Args::try_parse_from(["dunno", "file", "list", "--project-id", "project:abc"]);
+        let args = Args::try_parse_from(["dn", "file", "ls", "--project-id", "project:abc"]);
         assert!(args.is_ok(), "should parse --project-id with file list");
         if let Commands::File { command } = args.unwrap().command {
             if let FileCommands::List { project_id, .. } = command {
@@ -1023,7 +1041,7 @@ mod tests {
 
     #[test]
     fn file_list_accepts_module_id() {
-        let args = Args::try_parse_from(["dunno", "file", "list", "--module-id", "module:abc"]);
+        let args = Args::try_parse_from(["dn", "file", "ls", "--module-id", "module:abc"]);
         assert!(args.is_ok(), "should parse --module-id with file list");
         if let Commands::File { command } = args.unwrap().command {
             if let FileCommands::List { module_id, .. } = command {
@@ -1039,7 +1057,7 @@ mod tests {
     #[test]
     fn file_list_accepts_submodule_id() {
         let args =
-            Args::try_parse_from(["dunno", "file", "list", "--submodule-id", "submodule:abc"]);
+            Args::try_parse_from(["dn", "file", "ls", "--submodule-id", "submodule:abc"]);
         assert!(args.is_ok(), "should parse --submodule-id with file list");
         if let Commands::File { command } = args.unwrap().command {
             if let FileCommands::List { submodule_id, .. } = command {
@@ -1054,7 +1072,7 @@ mod tests {
 
     #[test]
     fn task_list_accepts_project_id() {
-        let args = Args::try_parse_from(["dunno", "task", "list", "--project-id", "project:abc"]);
+        let args = Args::try_parse_from(["dn", "task", "ls", "--project-id", "project:abc"]);
         assert!(args.is_ok(), "should parse --project-id with task list");
         if let Commands::Task { command } = args.unwrap().command {
             if let TaskCommands::List { project_id, .. } = command {
@@ -1069,7 +1087,7 @@ mod tests {
 
     #[test]
     fn task_list_accepts_project_name() {
-        let args = Args::try_parse_from(["dunno", "task", "list", "--project", "My Project"]);
+        let args = Args::try_parse_from(["dn", "task", "ls", "--project", "My Project"]);
         assert!(args.is_ok(), "should parse --project with task list");
         if let Commands::Task { command } = args.unwrap().command {
             if let TaskCommands::List { project, .. } = command {
