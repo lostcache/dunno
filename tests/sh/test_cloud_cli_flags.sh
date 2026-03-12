@@ -35,22 +35,22 @@ assert_exit_ok    "config show exits 0"                "$RC"
 assert_contains   "backend is cloud"                   "$OUT" '"backend":"cloud"'
 assert_contains   "namespace is dunno"                 "$OUT" '"namespace":"dunno"'
 
-# ── 1. create project ─────────────────────────────────────────────
-cloud_run project create "${PREFIX}_Project" "Cloud project via CLI flag"
-assert_exit_ok    "project create exits 0"             "$RC"
+# ── 1. add project ─────────────────────────────────────────────
+cloud_run project add "${PREFIX}_Project" "Cloud project via CLI flag"
+assert_exit_ok    "project add exits 0"             "$RC"
 assert_contains   "project has id"                     "$OUT" '"id":"project:'
 assert_contains   "project has name"                   "$OUT" "\"name\":\"${PREFIX}_Project\""
 PROJECT_ID=$(json_str "$OUT" "id")
 
-# ── 2. create module ──────────────────────────────────────────────
-cloud_run module create "$PROJECT_ID" "${PREFIX}_Module" "Auth module"
-assert_exit_ok    "module create exits 0"              "$RC"
+# ── 2. add module ──────────────────────────────────────────────
+cloud_run module add --project-ids "$PROJECT_ID" "${PREFIX}_Module" "Auth module"
+assert_exit_ok    "module add exits 0"              "$RC"
 assert_contains   "module has id"                      "$OUT" '"id":"module:'
 MODULE_ID=$(json_str "$OUT" "id")
 
-# ── 3. create task ────────────────────────────────────────────────
-cloud_run task create "$MODULE_ID" "${PREFIX}_Task" "Login flow"
-assert_exit_ok    "task create exits 0"                "$RC"
+# ── 3. add task ────────────────────────────────────────────────
+cloud_run task add --module-ids "$MODULE_ID" --project-ids "$PROJECT_ID" "${PREFIX}_Task" "Login flow"
+assert_exit_ok    "task add exits 0"                "$RC"
 assert_contains   "task status is not_started"         "$OUT" '"status":"not_started"'
 TASK_ID=$(json_str "$OUT" "id")
 
@@ -59,44 +59,31 @@ cloud_run task update "$TASK_ID" --status finished
 assert_exit_ok    "task update exits 0"                "$RC"
 assert_contains   "task status is finished"            "$OUT" '"status":"finished"'
 
-# ── 5-7. task updates ─────────────────────────────────────────────
-cloud_run task append-update "$TASK_ID" "CLI cloud update note"
-assert_exit_ok    "append-update exits 0"              "$RC"
-UPDATE_ID=$(json_str "$OUT" "id")
-
-cloud_run task update-entry "$UPDATE_ID" "CLI cloud update note (edited)"
-assert_exit_ok    "update-entry exits 0"               "$RC"
-assert_contains   "content is edited"                  "$OUT" '(edited)'
-
-cloud_run task list-updates "$TASK_ID"
-assert_exit_ok    "list-updates exits 0"               "$RC"
-assert_contains   "list has edited update"             "$OUT" '(edited)'
-
 # ── 8-9. todos ────────────────────────────────────────────────────
-cloud_run todo create "$PROJECT_ID" "${PREFIX} Deploy to staging"
-assert_exit_ok    "todo create exits 0"                "$RC"
+cloud_run todo add --project-ids "$PROJECT_ID" "${PREFIX} Deploy to staging"
+assert_exit_ok    "todo add exits 0"                "$RC"
 assert_contains   "todo status is pending"             "$OUT" '"status":"pending"'
 
-cloud_run todo list "$PROJECT_ID"
-assert_exit_ok    "todo list exits 0"                  "$RC"
-assert_contains   "todo list has item"                 "$OUT" 'Deploy to staging'
+cloud_run todo ls --project-id "$PROJECT_ID"
+assert_exit_ok    "todo ls exits 0"                  "$RC"
+assert_contains   "todo ls has item"                 "$OUT" 'Deploy to staging'
 
-# ── 10-11. knowledge + context ────────────────────────────────────
-cloud_run add --category rust --type mistake -C "${PREFIX} CLI linked cloud mistake" --link-to "$TASK_ID"
+# ── 10-11. knowledge + ctx ────────────────────────────────────
+cloud_run add --field category --value rust --field type --value mistake --field content --value "${PREFIX} CLI linked cloud mistake" --link-to "$TASK_ID"
 assert_exit_ok    "add knowledge exits 0"              "$RC"
 
-cloud_run context --task-id "$TASK_ID"
-assert_exit_ok    "context exits 0"                    "$RC"
-assert_contains   "context has linked mistake"         "$OUT" 'CLI linked cloud mistake'
+cloud_run ctx --task-id "$TASK_ID"
+assert_exit_ok    "ctx exits 0"                    "$RC"
+assert_contains   "ctx has linked mistake"         "$OUT" 'CLI linked cloud mistake'
 
 # ── 12. structured error ──────────────────────────────────────────
-cloud_run context --task-id "task:nonexistent_${CLOUD_TS}"
+cloud_run ctx --task-id "task:nonexistent_${CLOUD_TS}"
 assert_exit_nonzero "error exits nonzero"              "$RC"
 assert_contains   "error is structured JSON"           "$OUT" '"status":"error"'
 
 # ── persistence ────────────────────────────────────────────────────
-cloud_run project list
-assert_exit_ok    "persistence: project list exits 0"  "$RC"
+cloud_run project ls
+assert_exit_ok    "persistence: project ls exits 0"  "$RC"
 assert_contains   "persistence: project still exists"  "$OUT" "${PREFIX}_Project"
 
 # ── teardown ───────────────────────────────────────────────────────

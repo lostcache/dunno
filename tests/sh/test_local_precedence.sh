@@ -68,12 +68,12 @@ assert_exit_ok    "cli overrides all: exits 0"             "$RC"
 assert_contains   "cli overrides all to local"             "$OUT" '"backend":"local"'
 
 # Verify it actually connects to local and works
-run_cmd env DUNNO_BACKEND=cloud "$BIN" --backend local project create "PrecedenceProject" "CLI wins"
-assert_exit_ok    "cli override: project create exits 0"   "$RC"
+run_cmd env DUNNO_BACKEND=cloud "$BIN" --backend local project add "PrecedenceProject" "CLI wins"
+assert_exit_ok    "cli override: project add exits 0"   "$RC"
 assert_contains   "cli override: project created"          "$OUT" '"name":"PrecedenceProject"'
 
 # ── 6. Without CLI override, cloud should fail (fake URL) ─────────
-run_cmd "$BIN" project list
+run_cmd "$BIN" project ls
 assert_exit_nonzero "cloud with fake URL fails"            "$RC"
 assert_contains   "cloud error is structured"              "$OUT" '"status":"error"'
 

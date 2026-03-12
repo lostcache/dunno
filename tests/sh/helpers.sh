@@ -7,7 +7,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TEST_DB_DIR="${PROJECT_ROOT}/db_data/_test_persistence"
-CONFIG_FILE="${HOME}/.config/dunno/config.toml"
+CONFIG_FILE="${HOME}/.config/dunno/dunno.toml"
 CONFIG_BAK="${CONFIG_FILE}.test-bak"
 
 _PASS=0
@@ -37,8 +37,8 @@ WRAPPER
 
 # ── Safe command runner ────────────────────────────────────────────
 # Captures stdout+stderr into $OUT and exit code into $RC.
-# Usage: run_cmd "$BIN" project list
-#        run_cmd env DUNNO_BACKEND=local "$BIN" project list
+# Usage: run_cmd "$BIN" project ls
+#        run_cmd env DUNNO_BACKEND=local "$BIN" project ls
 
 run_cmd() {
     OUT="$("$@" 2>&1)" && RC=0 || RC=$?

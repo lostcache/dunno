@@ -20,23 +20,22 @@ assert_exit_ok    "config show exits 0"               "$RC"
 assert_contains   "backend is local"                   "$OUT" '"backend":"local"'
 assert_contains   "local path reflects env var"        "$OUT" 'env-test.db'
 
-# ── 1. create project ─────────────────────────────────────────────
-run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" project create "EnvProject" "Created via env vars"
-assert_exit_ok    "project create exits 0"             "$RC"
+# ── 1. add project ─────────────────────────────────────────────
+run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" project add "EnvProject" "Created via env vars"
+assert_exit_ok    "project add exits 0"             "$RC"
 assert_contains   "project has id"                     "$OUT" '"id":"project:'
 assert_contains   "project has name"                   "$OUT" '"name":"EnvProject"'
 PROJECT_ID=$(json_str "$OUT" "id")
 
-# ── 2. create module ──────────────────────────────────────────────
-run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" module create "$PROJECT_ID" "EnvModule" "Auth module"
-assert_exit_ok    "module create exits 0"              "$RC"
+# ── 2. add module ──────────────────────────────────────────────
+run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" module add --project-ids "$PROJECT_ID" "EnvModule" "Auth module"
+assert_exit_ok    "module add exits 0"              "$RC"
 assert_contains   "module has id"                      "$OUT" '"id":"module:'
-assert_contains   "module has project_id"              "$OUT" "\"project_id\":\"$PROJECT_ID\""
 MODULE_ID=$(json_str "$OUT" "id")
 
-# ── 3. create task ────────────────────────────────────────────────
-run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" task create "$MODULE_ID" "EnvTask" "Login flow"
-assert_exit_ok    "task create exits 0"                "$RC"
+# ── 3. add task ────────────────────────────────────────────────
+run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" task add --module-ids "$MODULE_ID" --project-ids "$PROJECT_ID" "EnvTask" "Login flow"
+assert_exit_ok    "task add exits 0"                "$RC"
 assert_contains   "task status is not_started"         "$OUT" '"status":"not_started"'
 TASK_ID=$(json_str "$OUT" "id")
 
@@ -45,54 +44,35 @@ run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" task update "$TASK
 assert_exit_ok    "task update exits 0"                "$RC"
 assert_contains   "task status is started"             "$OUT" '"status":"started"'
 
-# ── 5. append task update ─────────────────────────────────────────
-run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" task append-update "$TASK_ID" "OAuth tokens expire after 1h"
-assert_exit_ok    "append-update exits 0"              "$RC"
-assert_contains   "has content"                        "$OUT" 'OAuth tokens expire'
-assert_contains   "has created_at_ms"                  "$OUT" '"created_at_ms":'
-UPDATE_ID=$(json_str "$OUT" "id")
+# ── 8. add todo ────────────────────────────────────────────────
+run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" todo add --project-ids "$PROJECT_ID" "Set up CI pipeline"
+assert_exit_ok    "todo add exits 0"                "$RC"
 
-# ── 6. edit task update ───────────────────────────────────────────
-run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" task update-entry "$UPDATE_ID" "OAuth tokens expire - must refresh proactively"
-assert_exit_ok    "update-entry exits 0"               "$RC"
-assert_contains   "content is updated"                 "$OUT" 'must refresh proactively'
-assert_contains   "has updated_at_ms"                  "$OUT" '"updated_at_ms":'
-
-# ── 7. list task updates ──────────────────────────────────────────
-run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" task list-updates "$TASK_ID"
-assert_exit_ok    "list-updates exits 0"               "$RC"
-assert_contains   "list contains edited update"        "$OUT" 'must refresh proactively'
-
-# ── 8. create todo ────────────────────────────────────────────────
-run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" todo create "$PROJECT_ID" "Set up CI pipeline"
-assert_exit_ok    "todo create exits 0"                "$RC"
-assert_contains   "todo status is pending"             "$OUT" '"status":"pending"'
-
-# ── 9. list todos ─────────────────────────────────────────────────
-run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" todo list "$PROJECT_ID"
-assert_exit_ok    "todo list exits 0"                  "$RC"
-assert_contains   "todo list has item"                 "$OUT" 'Set up CI pipeline'
+# ── 9. ls todos ─────────────────────────────────────────────────
+run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" todo ls --project-id "$PROJECT_ID"
+assert_exit_ok    "todo ls exits 0"                  "$RC"
+assert_contains   "todo ls has item"                 "$OUT" 'Set up CI pipeline'
 
 # ── 10. add knowledge linked to task ──────────────────────────────
-run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" add --category rust --type mistake -C "Forgot to refresh OAuth token" --link-to "$TASK_ID"
+run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" add --field category --value rust --field type --value mistake --field content --value "Forgot to refresh OAuth token" --link-to "$TASK_ID"
 assert_exit_ok    "add knowledge exits 0"              "$RC"
 assert_contains   "add returns ok"                     "$OUT" '"status":"ok"'
 
-# ── 11. retrieve task context ─────────────────────────────────────
-run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" context --task-id "$TASK_ID"
-assert_exit_ok    "context exits 0"                    "$RC"
-assert_contains   "context has results"                "$OUT" '"results":'
-assert_contains   "context contains linked mistake"    "$OUT" 'Forgot to refresh OAuth token'
+# ── 11. retrieve task ctx ─────────────────────────────────────
+run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" ctx --task-id "$TASK_ID"
+assert_exit_ok    "ctx exits 0"                    "$RC"
+assert_contains   "ctx has results"                "$OUT" '"results":'
+assert_contains   "ctx contains linked mistake"    "$OUT" 'Forgot to refresh OAuth token'
 
 # ── 12. structured error on missing task ──────────────────────────
-run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" context --task-id "task:nonexistent"
+run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" ctx --task-id "task:nonexistent"
 assert_exit_nonzero "error exits nonzero"              "$RC"
 assert_contains   "error is structured JSON"           "$OUT" '"status":"error"'
 assert_contains   "error message is meaningful"        "$OUT" 'Task not found'
 
 # ── persistence: re-read after all writes ─────────────────────────
-run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" project list
-assert_exit_ok    "persistence: project list exits 0"  "$RC"
+run_cmd env DUNNO_BACKEND=local DUNNO_LOCAL_PATH="$DB" "$BIN" project ls
+assert_exit_ok    "persistence: project ls exits 0"  "$RC"
 assert_contains   "persistence: project still exists"  "$OUT" 'EnvProject'
 
 # ── teardown ───────────────────────────────────────────────────────

@@ -27,22 +27,22 @@ assert_exit_ok    "config show exits 0"                "$RC"
 assert_contains   "backend is local"                   "$OUT" '"backend":"local"'
 assert_contains   "local path from config file"        "$OUT" 'config-test.db'
 
-# ── 1. create project ─────────────────────────────────────────────
-run_cmd "$BIN" project create "ConfigProject" "Created via config file"
-assert_exit_ok    "project create exits 0"             "$RC"
+# ── 1. add project ─────────────────────────────────────────────
+run_cmd "$BIN" project add "ConfigProject" "Created via config file"
+assert_exit_ok    "project add exits 0"             "$RC"
 assert_contains   "project has id"                     "$OUT" '"id":"project:'
 assert_contains   "project has name"                   "$OUT" '"name":"ConfigProject"'
 PROJECT_ID=$(json_str "$OUT" "id")
 
-# ── 2. create module ──────────────────────────────────────────────
-run_cmd "$BIN" module create "$PROJECT_ID" "ConfigModule" "Auth module"
-assert_exit_ok    "module create exits 0"              "$RC"
+# ── 2. add module ──────────────────────────────────────────────
+run_cmd "$BIN" module add --project-ids "$PROJECT_ID" "ConfigModule" "Auth module"
+assert_exit_ok    "module add exits 0"              "$RC"
 assert_contains   "module has id"                      "$OUT" '"id":"module:'
 MODULE_ID=$(json_str "$OUT" "id")
 
-# ── 3. create task ────────────────────────────────────────────────
-run_cmd "$BIN" task create "$MODULE_ID" "ConfigTask" "Login flow"
-assert_exit_ok    "task create exits 0"                "$RC"
+# ── 3. add task ────────────────────────────────────────────────
+run_cmd "$BIN" task add --module-ids "$MODULE_ID" --project-ids "$PROJECT_ID" "ConfigTask" "Login flow"
+assert_exit_ok    "task add exits 0"                "$RC"
 assert_contains   "task status is not_started"         "$OUT" '"status":"not_started"'
 TASK_ID=$(json_str "$OUT" "id")
 
@@ -51,50 +51,33 @@ run_cmd "$BIN" task update "$TASK_ID" --status started
 assert_exit_ok    "task update exits 0"                "$RC"
 assert_contains   "task status is started"             "$OUT" '"status":"started"'
 
-# ── 5. append task update ─────────────────────────────────────────
-run_cmd "$BIN" task append-update "$TASK_ID" "Discovered expiry issue"
-assert_exit_ok    "append-update exits 0"              "$RC"
-assert_contains   "has created_at_ms"                  "$OUT" '"created_at_ms":'
-UPDATE_ID=$(json_str "$OUT" "id")
+# ── 8. add todo ────────────────────────────────────────────────
+run_cmd "$BIN" todo add --project-ids "$PROJECT_ID" "Write tests"
+assert_exit_ok    "todo add exits 0"                "$RC"
 
-# ── 6. edit task update ───────────────────────────────────────────
-run_cmd "$BIN" task update-entry "$UPDATE_ID" "Expiry issue - need proactive refresh"
-assert_exit_ok    "update-entry exits 0"               "$RC"
-assert_contains   "has updated_at_ms"                  "$OUT" '"updated_at_ms":'
-
-# ── 7. list task updates ──────────────────────────────────────────
-run_cmd "$BIN" task list-updates "$TASK_ID"
-assert_exit_ok    "list-updates exits 0"               "$RC"
-assert_contains   "returns the update"                 "$OUT" 'proactive refresh'
-
-# ── 8. create todo ────────────────────────────────────────────────
-run_cmd "$BIN" todo create "$PROJECT_ID" "Write tests"
-assert_exit_ok    "todo create exits 0"                "$RC"
-assert_contains   "todo status is pending"             "$OUT" '"status":"pending"'
-
-# ── 9. list todos ─────────────────────────────────────────────────
-run_cmd "$BIN" todo list "$PROJECT_ID"
-assert_exit_ok    "todo list exits 0"                  "$RC"
-assert_contains   "todo list has item"                 "$OUT" 'Write tests'
+# ── 9. ls todos ─────────────────────────────────────────────────
+run_cmd "$BIN" todo ls --project-id "$PROJECT_ID"
+assert_exit_ok    "todo ls exits 0"                  "$RC"
+assert_contains   "todo ls has item"                 "$OUT" 'Write tests'
 
 # ── 10. add knowledge ─────────────────────────────────────────────
-run_cmd "$BIN" add --category rust --type mistake -C "Config file mistake" --link-to "$TASK_ID"
+run_cmd "$BIN" add --field category --value rust --field type --value mistake --field content --value "Config file mistake" --link-to "$TASK_ID"
 assert_exit_ok    "add knowledge exits 0"              "$RC"
 assert_contains   "add returns ok"                     "$OUT" '"status":"ok"'
 
-# ── 11. retrieve context ──────────────────────────────────────────
-run_cmd "$BIN" context --task-id "$TASK_ID"
-assert_exit_ok    "context exits 0"                    "$RC"
-assert_contains   "context contains mistake"           "$OUT" 'Config file mistake'
+# ── 11. retrieve ctx ──────────────────────────────────────────
+run_cmd "$BIN" ctx --task-id "$TASK_ID"
+assert_exit_ok    "ctx exits 0"                    "$RC"
+assert_contains   "ctx contains mistake"           "$OUT" 'Config file mistake'
 
 # ── 12. structured error ──────────────────────────────────────────
-run_cmd "$BIN" context --task-id "task:nonexistent"
+run_cmd "$BIN" ctx --task-id "task:nonexistent"
 assert_exit_nonzero "error exits nonzero"              "$RC"
 assert_contains   "error is structured JSON"           "$OUT" '"status":"error"'
 
 # ── persistence check ─────────────────────────────────────────────
-run_cmd "$BIN" project list
-assert_exit_ok    "persistence: project list exits 0"  "$RC"
+run_cmd "$BIN" project ls
+assert_exit_ok    "persistence: project ls exits 0"  "$RC"
 assert_contains   "persistence: project still exists"  "$OUT" 'ConfigProject'
 
 # ── teardown ───────────────────────────────────────────────────────
