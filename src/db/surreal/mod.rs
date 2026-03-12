@@ -3,19 +3,11 @@
 mod entities;
 mod schema;
 mod util;
+mod hierarchy;
 
 #[derive(Clone, Debug)]
 pub struct DB {
     pub(crate) client: surrealdb::Surreal<surrealdb::engine::any::Any>,
-}
-
-/// Full structural hierarchy for a node (used when creating reverse knowledge edges).
-#[allow(dead_code)]
-pub(crate) struct StructuralHierarchy {
-    pub(crate) project_id: Option<String>,
-    pub(crate) module_id: Option<String>,
-    pub(crate) submodule_id: Option<String>,
-    pub(crate) task_id: Option<String>,
 }
 
 impl DB {
