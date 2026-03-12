@@ -680,7 +680,6 @@ fn print_json(value: serde_json::Value, pretty: bool) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_print_json_compact_format() {

@@ -1,7 +1,6 @@
 //! SurrealDB backend: client, connection, and generic helpers.
 
 mod entities;
-mod flatten_context;
 mod schema;
 mod util;
 
