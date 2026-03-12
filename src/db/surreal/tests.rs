@@ -103,7 +103,7 @@ async fn test_link_context_all_levels() {
         .await
         .expect("link submodule context");
 
-    let task_ctx = crate::context::get_task_context(&task_id, &db)
+    let task_ctx = crate::context::get_task_context(&task_id, false, &db)
         .await
         .expect("get_task_context");
     // Task context should only include context directly linked to the task, not from hierarchy
@@ -113,7 +113,7 @@ async fn test_link_context_all_levels() {
         task_ctx
     );
 
-    let file_ctx = crate::context::get_file_context(&file_id, &db)
+    let file_ctx = crate::context::get_file_context(&file_id, false, &db)
         .await
         .expect("get_file_context");
     assert!(
@@ -325,7 +325,7 @@ async fn test_get_task_context() {
         .expect("Failed to link context");
 
     let context = db
-        .get_task_context(&task_id)
+        .get_task_context(&task_id, false)
         .await
         .expect("get_task_context failed");
 
@@ -462,7 +462,7 @@ async fn test_get_task_context_no_linked_knowledge() {
     let task_id = task.id.expect("task id");
 
     let context = db
-        .get_task_context(&task_id)
+        .get_task_context(&task_id, false)
         .await
         .expect("get_task_context failed");
 
@@ -553,7 +553,7 @@ async fn test_get_task_context_all_knowledge_types() {
         .expect("link security");
 
     let context = db
-        .get_task_context(&task_id)
+        .get_task_context(&task_id, false)
         .await
         .expect("get_task_context failed");
 
@@ -609,7 +609,7 @@ async fn test_get_task_context_under_submodule() {
         .expect("Failed to create task");
     let task_id = task.id.expect("task id");
     let context = db
-        .get_task_context(&task_id)
+        .get_task_context(&task_id, false)
         .await
         .expect("get_task_context failed");
     assert_eq!(context.hierarchy.module_name, "Auth");
@@ -644,7 +644,7 @@ async fn test_get_task_context_files_from_module() {
         .expect("Failed to create task");
     let task_id = task.id.expect("task id");
     let context = db
-        .get_task_context(&task_id)
+        .get_task_context(&task_id, false)
         .await
         .expect("get_task_context failed");
     assert!(context.files.is_empty());
@@ -1844,7 +1844,7 @@ async fn test_get_task_context_nonexistent_task() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
 
     let err = db
-        .get_task_context("task:nonexistent")
+        .get_task_context("task:nonexistent", false)
         .await
         .expect_err("Should fail");
     assert!(err.to_string().contains("not found"));
@@ -2545,7 +2545,7 @@ async fn test_get_task_context_with_files_and_linked_context() {
     
     // Get task context
     let context = db
-        .get_task_context(&task_id)
+        .get_task_context(&task_id, false)
         .await
         .expect("get_task_context failed");
     
@@ -2965,3 +2965,152 @@ async fn test_file_belongs_to_edges_with_submodule() {
         .expect("project id");
     assert_eq!(found_project_id, project_id);
 }
+
+#[tokio::test]
+async fn test_context_inheritance_project() {
+    let db = DB::new("mem://").await.expect("init db");
+    let p = db.create_project(&crate::models::Project { id: None, name: "p".into(), description: "d".into() }).await.unwrap();
+    let pid = p.id.unwrap();
+
+    let ctx1 = db.create_context(&crate::models::Context { id: None, content: Some("c1".into()), ..Default::default() }).await.unwrap();
+    db.link_context(&pid, ctx1.id.as_ref().unwrap()).await.unwrap();
+
+    let contexts = db.get_project_context(&pid, true).await.unwrap();
+    assert_eq!(contexts.len(), 1);
+    let contents: Vec<String> = contexts.iter().map(|c| c.content.clone().unwrap()).collect();
+    assert!(contents.contains(&"c1".into()));
+}
+
+#[tokio::test]
+async fn test_context_inheritance_module() {
+    let db = DB::new("mem://").await.expect("init db");
+    let p = db.create_project(&crate::models::Project { id: None, name: "p".into(), description: "d".into() }).await.unwrap();
+    let pid = p.id.unwrap();
+    let m = db.create_module("m", "d", None, Some(&pid)).await.unwrap();
+    let mid = m.id.unwrap();
+
+    let p_ctx = db.create_context(&crate::models::Context { id: None, content: Some("p_rule".into()), ..Default::default() }).await.unwrap();
+    let m_ctx = db.create_context(&crate::models::Context { id: None, content: Some("m_rule".into()), ..Default::default() }).await.unwrap();
+    db.link_context(&pid, p_ctx.id.as_ref().unwrap()).await.unwrap();
+    db.link_context(&mid, m_ctx.id.as_ref().unwrap()).await.unwrap();
+
+    let contexts = db.get_module_context(&mid, true).await.unwrap();
+
+    assert_eq!(contexts.len(), 2);
+    let contents: Vec<String> = contexts.iter().map(|c| c.content.clone().unwrap()).collect();
+    assert!(contents.contains(&"p_rule".to_string()));
+    assert!(contents.contains(&"m_rule".to_string()));
+}
+
+#[tokio::test]
+async fn test_context_inheritance_submodule() {
+    let db = DB::new("mem://").await.expect("init db");
+    let p = db.create_project(&crate::models::Project { id: None, name: "p".into(), description: "d".into() }).await.unwrap();
+    let pid = p.id.unwrap();
+    let m = db.create_module("m", "d", None, Some(&pid)).await.unwrap();
+    let mid = m.id.unwrap();
+    let s = db.create_submodule("s", "d", None, Some(&mid)).await.unwrap();
+    let sid = s.id.unwrap();
+
+    let p_ctx = db.create_context(&crate::models::Context { id: None, content: Some("p".into()), ..Default::default() }).await.unwrap();
+    let m_ctx = db.create_context(&crate::models::Context { id: None, content: Some("m".into()), ..Default::default() }).await.unwrap();
+    let s_ctx = db.create_context(&crate::models::Context { id: None, content: Some("s".into()), ..Default::default() }).await.unwrap();
+    
+    db.link_context(&pid, p_ctx.id.as_ref().unwrap()).await.unwrap();
+    db.link_context(&mid, m_ctx.id.as_ref().unwrap()).await.unwrap();
+    db.link_context(&sid, s_ctx.id.as_ref().unwrap()).await.unwrap();
+
+    let contexts = db.get_submodule_context(&sid, true).await.unwrap();
+
+    assert_eq!(contexts.len(), 3);
+    let contents: Vec<String> = contexts.iter().map(|c| c.content.clone().unwrap()).collect();
+    assert!(contents.contains(&"p".to_string()));
+    assert!(contents.contains(&"m".to_string()));
+    assert!(contents.contains(&"s".to_string()));
+}
+
+#[tokio::test]
+async fn test_context_inheritance_task() {
+    let db = DB::new("mem://").await.expect("init db");
+
+    let p = db.create_project(&crate::models::Project { id: None, name: "p".into(), description: "d".into() }).await.unwrap();
+    let pid = p.id.unwrap();
+    let m = db.create_module("m", "d", None, Some(&pid)).await.unwrap();
+    let mid = m.id.unwrap();
+    let s = db.create_submodule("s", "d", None, Some(&mid)).await.unwrap();
+    let sid = s.id.unwrap();
+    let t = db.create_task("t", "d", Some(&mid), Some(&pid)).await.unwrap();
+    let tid = t.id.unwrap();
+    db.link(&sid, "contains", &tid).await.unwrap();
+    db.link(&tid, "belongs_to_submodule", &sid).await.unwrap();
+
+    let p_ctx = db.create_context(&crate::models::Context { id: None, content: Some("p".into()), ..Default::default() }).await.unwrap();
+    let m_ctx = db.create_context(&crate::models::Context { id: None, content: Some("m".into()), ..Default::default() }).await.unwrap();
+    let s_ctx = db.create_context(&crate::models::Context { id: None, content: Some("s".into()), ..Default::default() }).await.unwrap();
+    let t_ctx = db.create_context(&crate::models::Context { id: None, content: Some("t".into()), ..Default::default() }).await.unwrap();
+
+    db.link_context(&pid, p_ctx.id.as_ref().unwrap()).await.unwrap();
+    db.link_context(&mid, m_ctx.id.as_ref().unwrap()).await.unwrap();
+    db.link_context(&sid, s_ctx.id.as_ref().unwrap()).await.unwrap();
+    db.link_context(&tid, t_ctx.id.as_ref().unwrap()).await.unwrap();
+
+    let ctx_full = db.get_task_context(&tid, true).await.expect("get full failed");
+    
+    assert_eq!(ctx_full.contexts.len(), 4, "Should have exactly 4 inherited contexts");
+    let contents: Vec<String> = ctx_full.contexts.iter().map(|c| c.content.clone().unwrap()).collect();
+    assert!(contents.contains(&"p".to_string()), "Missing project context");
+    assert!(contents.contains(&"m".to_string()), "Missing module context");
+    assert!(contents.contains(&"s".to_string()), "Missing submodule context");
+    assert!(contents.contains(&"t".to_string()), "Missing task context");
+}
+
+#[tokio::test]
+async fn test_context_inheritance_file() {
+    let db = DB::new("mem://").await.expect("init db");
+
+    let p = db.create_project(&crate::models::Project { id: None, name: "p".into(), description: "d".into() }).await.unwrap();
+    let pid = p.id.unwrap();
+    let m = db.create_module("m", "d", None, Some(&pid)).await.unwrap();
+    let mid = m.id.unwrap();
+    let f = db.create_file("f", "src/f.rs", None, None, Some(&mid)).await.unwrap();
+    let fid = f.id.unwrap();
+
+    let p_ctx = db.create_context(&crate::models::Context { id: None, content: Some("p".into()), ..Default::default() }).await.unwrap();
+    let m_ctx = db.create_context(&crate::models::Context { id: None, content: Some("m".into()), ..Default::default() }).await.unwrap();
+    let f_ctx = db.create_context(&crate::models::Context { id: None, content: Some("f".into()), ..Default::default() }).await.unwrap();
+
+    db.link_context(&pid, p_ctx.id.as_ref().unwrap()).await.unwrap();
+    db.link_context(&mid, m_ctx.id.as_ref().unwrap()).await.unwrap();
+    db.link_context(&fid, f_ctx.id.as_ref().unwrap()).await.unwrap();
+
+    let ctx = db.get_file_context(&fid, true).await.expect("get full context");
+    assert_eq!(ctx.contexts.len(), 3);
+    let contents: Vec<String> = ctx.contexts.iter().map(|c| c.content.clone().unwrap()).collect();
+    assert!(contents.contains(&"p".into()));
+    assert!(contents.contains(&"m".into()));
+    assert!(contents.contains(&"f".into()));
+}
+
+#[tokio::test]
+async fn test_context_inheritance_epic() {
+    let db = DB::new("mem://").await.expect("init db");
+
+    let p = db.create_project(&crate::models::Project { id: None, name: "p".into(), description: "d".into() }).await.unwrap();
+    let pid = p.id.unwrap();
+    let e = db.create_epic("e", "d", &pid).await.unwrap();
+    let eid = e.id.unwrap();
+
+    let p_ctx = db.create_context(&crate::models::Context { id: None, content: Some("p".into()), ..Default::default() }).await.unwrap();
+    let e_ctx = db.create_context(&crate::models::Context { id: None, content: Some("e".into()), ..Default::default() }).await.unwrap();
+
+    db.link_context(&pid, p_ctx.id.as_ref().unwrap()).await.unwrap();
+    db.link_context(&eid, e_ctx.id.as_ref().unwrap()).await.unwrap();
+
+    let ctx = db.get_epic_context(&eid, true).await.expect("get full context");
+    assert_eq!(ctx.contexts.len(), 2);
+    let contents: Vec<String> = ctx.contexts.iter().map(|c| c.content.clone().unwrap()).collect();
+    assert!(contents.contains(&"p".into()));
+    assert!(contents.contains(&"e".into()));
+}
+
+
