@@ -72,7 +72,8 @@ async fn dispatch_command(
             task_id,
             file_id,
             epic_id,
-        } => handle_context(task_id, file_id, epic_id, db, pretty).await,
+            full,
+        } => handle_context(task_id, file_id, epic_id, full, db, pretty).await,
         dunno::args::Commands::Purge => handle_purge(db, pretty).await,
         dunno::args::Commands::Config { .. } => {
             unreachable!("config command handled before db init")
@@ -619,20 +620,21 @@ async fn handle_context(
     task_id: Option<String>,
     file_id: Option<String>,
     epic_id: Option<String>,
+    full: bool,
     db: &dunno::db::DB,
     pretty: bool,
 ) -> anyhow::Result<()> {
     match (task_id, file_id, epic_id) {
         (Some(t_id), _, _) => {
-            let results = dunno::context::get_task_context(&t_id, db).await?;
+            let results = dunno::context::get_task_context(&t_id, full, db).await?;
             print_json(serde_json::json!({ "results": serde_json::to_value(results)? }), pretty);
         }
         (_, Some(f_id), _) => {
-            let results = dunno::context::get_file_context(&f_id, db).await?;
+            let results = dunno::context::get_file_context(&f_id, full, db).await?;
             print_json(serde_json::json!({ "results": serde_json::to_value(results)? }), pretty);
         }
         (_, _, Some(e_id)) => {
-            let results = dunno::context::get_epic_context(&e_id, db).await?;
+            let results = dunno::context::get_epic_context(&e_id, full, db).await?;
             print_json(serde_json::json!({ "results": serde_json::to_value(results)? }), pretty);
         }
         (None, None, None) => {

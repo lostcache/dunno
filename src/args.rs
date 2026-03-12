@@ -117,6 +117,10 @@ pub enum Commands {
         /// The Epic ID to retrieve context for.
         #[arg(long, value_name = "EPIC_ID", conflicts_with_all = ["task_id", "file_id"])]
         epic_id: Option<String>,
+
+        /// Retrieve full inherited context from parent nodes (Project, Module, Submodule).
+        #[arg(long)]
+        full: bool,
     },
 
     #[command(
@@ -384,6 +388,16 @@ mod tests {
 
         let file_ok = Args::try_parse_from(["dn", "ctx", "--file-id", "file:2"]);
         assert!(file_ok.is_ok());
+    }
+
+    #[test]
+    fn context_command_accepts_full_flag() {
+        let args = Args::try_parse_from(["dn", "ctx", "--task-id", "task:123", "--full"]).expect("parse full flag");
+        if let Commands::Context { full, .. } = args.command {
+            assert!(full);
+        } else {
+            panic!("expected Context command");
+        }
     }
 
     #[test]
