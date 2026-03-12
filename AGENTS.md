@@ -1,6 +1,6 @@
 # AI Agent & Developer Complete Guide
 
-Complete reference for AI agents and developers working with dunno knowledge management and agent behavior standards.
+Complete reference for AI agents and developers working with dn knowledge management and agent behavior standards.
 
 ---
 
@@ -115,7 +115,7 @@ Include scope when helpful: `feat({package/module/submodule}):`, `fix({package/m
 
 ### Learning Extraction
 
-When discovering non-obvious and non-recorded information, add it to dunno with appropriate type and link it to appropriate `package/module/submodule` node.
+When discovering non-obvious and non-recorded information, add it to dn with appropriate type and link it to appropriate `package/module/submodule` node.
 
 **What counts as a learning:**
 - Hidden relationships between files/modules
@@ -136,9 +136,9 @@ When discovering non-obvious and non-recorded information, add it to dunno with 
 
 **Keep entries to 1-3 lines per insight.**
 
-Use dunno to capture:
+Use dn to capture:
 ```bash
-dunno add \
+dn add \
   --field type --value insight \
   --field mistake|insight|some_other_field_name --value "Your learning here" \
   --field discovered_while --value "task:abc" \
@@ -157,17 +157,17 @@ dunno add \
 
 ### Overview
 
-`dunno` is a Rust CLI tool that captures coding knowledge (mistakes, style guides, security details, custom fields) in a graph database and retrieves deterministic context for AI agents. Unlike traditional natural language search, dunno uses a strict graph hierarchy where context is linked to nodes and inherited down the tree.
+`dn` is a Rust CLI tool that captures coding knowledge (mistakes, style guides, security details, custom fields) in a graph database and retrieves deterministic context for AI agents. Unlike traditional natural language search, dn uses a strict graph hierarchy where context is linked to nodes and inherited down the tree.
 
 **Key Philosophy**: Store knowledge once, retrieve it contextually based on where you are in the project hierarchy.
 
-**AI Agent Rule**: Always query dunno context before implementing. Always capture learnings after completing work.
+**AI Agent Rule**: Always query dn context before implementing. Always capture learnings after completing work.
 
 ---
 
 ### Core Hierarchy
 
-dunno organizes knowledge in a graph with two parallel structural paths:
+dn organizes knowledge in a graph with two parallel structural paths:
 
 #### Code Structure Path
 ```
@@ -199,54 +199,54 @@ Always start by establishing the hierarchy before adding knowledge.
 
 ```bash
 # Create a project (returns JSON with id like "project:abc")
-dunno project create "MyProject" "Description of the project"
+dn project add "MyProject" "Description of the project"
 
 # Create a module within a project using project ID
-dunno module create --project-ids project:abc "Auth" "Authentication system"
+dn module add --project-ids project:abc "Auth" "Authentication system"
 
 # Create a module using project name (alternative)
-dunno module create --project "MyProject" "Auth" "Authentication system"
+dn module add --project "MyProject" "Auth" "Authentication system"
 # Returns: {"id":"module:def",...}
 
 # Create a submodule (link with --module-ids)
-dunno submodule create --module-ids module:def "OAuth" "OAuth2 implementation"
+dn submodule add --module-ids module:def "OAuth" "OAuth2 implementation"
 # Returns: {"id":"submodule:ghi",...}
 
 # Register a file (with optional description)
-dunno file create --parent-ids module:def "auth.rs" "src/auth.rs" "Authentication module entry point"
+dn file add --parent-ids module:def "auth.rs" "src/auth.rs" "Authentication module entry point"
 # Returns: {"id":"file:jkl",...}
 
 # Register a file without description
-dunno file create --parent-ids module:def "utils.rs" "src/utils.rs"
+dn file add --parent-ids module:def "utils.rs" "src/utils.rs"
 
 # Create a task using IDs (requires both --module-ids and --project-ids, or neither for freestanding)
-dunno task create --module-ids module:def --project-ids project:abc "Implement JWT" "Add JWT authentication"
+dn task add --module-ids module:def --project-ids project:abc "Implement JWT" "Add JWT authentication"
 # Returns: {"id":"task:mno",...}
 
 # Create a task using project name (alternative)
-dunno task create --module-ids module:def --project "MyProject" "Implement JWT" "Add JWT authentication"
+dn task add --module-ids module:def --project "MyProject" "Implement JWT" "Add JWT authentication"
 
 # Create a task with case-insensitive project name matching
-dunno task create --module-ids module:def --project "myproject" -i "Implement JWT" "Add JWT authentication"
+dn task add --module-ids module:def --project "myproject" -i "Implement JWT" "Add JWT authentication"
 
 # List modules in a project
-dunno module list --project-id project:abc
-dunno module list --project "MyProject"
+dn module ls --project-id project:abc
+dn module ls --project "MyProject"
 
 # List submodules (by module or by project)
-dunno submodule list --module-id module:def
-dunno submodule list --project-id project:abc
-dunno submodule list --project "MyProject"
+dn submodule ls --module-id module:def
+dn submodule ls --project-id project:abc
+dn submodule ls --project "MyProject"
 
 # List files (cascading filter priority: submodule > module > project)
-dunno file list --submodule-id submodule:ghi
-dunno file list --module-id module:def
-dunno file list --project-id project:abc
-dunno file list --project "MyProject"
+dn file ls --submodule-id submodule:ghi
+dn file ls --module-id module:def
+dn file ls --project-id project:abc
+dn file ls --project "MyProject"
 
 # List tasks in a project
-dunno task list --project-id project:abc
-dunno task list --project "MyProject"
+dn task ls --project-id project:abc
+dn task ls --project "MyProject"
 ```
 
 **AI Agent Pattern**: Capture IDs from JSON output for subsequent commands. When using project names, remember that names are unique and case-sensitive by default (use `-i` for case-insensitive matching).
@@ -260,13 +260,13 @@ Knowledge is stored with arbitrary key-value pairs using `--field` for names and
 ```bash
 # Basic knowledge entry
 # Each --field must be paired with a --value
-dunno add \
+dn add \
   --field type --value mistake \
   --field content --value "Avoid using unwrap in production code" \
   --link-to task:mno
 
 # Multiple custom fields
-dunno add \
+dn add \
   --field type --value security \
   --field content --value "Always validate user inputs" \
   --field severity --value high \
@@ -276,7 +276,7 @@ dunno add \
   --link-to project:abc
 
 # Link to multiple structural nodes
-dunno add \
+dn add \
   --field type --value style \
   --field content --value "Use Result types instead of panicking" \
   --field language --value rust \
@@ -303,13 +303,13 @@ Query context for a task to get the task details, related files, hierarchy, and 
 
 ```bash
 # Get context for a task (returns JSON with task, files, hierarchy, and task-linked context)
-dunno context --task-id task:mno
+dn ctx --task-id task:mno
 
 # Get context for a file (returns file-only context)
-dunno context --file-id file:jkl
+dn ctx --file-id file:jkl
 
 # Get context for an epic (returns epic-only context)
-dunno context --epic-id epic:stu
+dn ctx --epic-id epic:stu
 ```
 
 **Task Context Returns:**
@@ -318,7 +318,7 @@ dunno context --epic-id epic:stu
 - **Hierarchy** - Project, module, submodule structural info
 - **Contexts** - Only knowledge directly linked to this task via `--link-to task:<id>`
 
-**AI Agent Rule**: Always run `dunno context --task-id <id>` before implementing to see task-specific knowledge.
+**AI Agent Rule**: Always run `dn ctx --task-id <id>` before implementing to see task-specific knowledge.
 
 ---
 
@@ -326,57 +326,57 @@ dunno context --epic-id epic:stu
 
 ```bash
 # Create a user story using project ID
-dunno user-story create --project-id project:abc \
+dn user-story add --project-id project:abc \
   "As a user, I want to login" \
   "User authentication feature"
 
 # Create a user story using project name (alternative)
-dunno user-story create --project "MyProject" \
+dn user-story add --project "MyProject" \
   "As a user, I want to login" \
   "User authentication feature"
 
 # Create an epic using project ID
-dunno epic create --project-id project:abc \
+dn epic add --project-id project:abc \
   "Authentication Epic" \
   "Complete authentication system implementation"
 
 # Create an epic using project name (alternative)
-dunno epic create --project "MyProject" \
+dn epic add --project "MyProject" \
   "Authentication Epic" \
   "Complete authentication system implementation"
 
 # Create todo items using project ID
-dunno todo create --project-ids project:abc \
+dn todo add --project-ids project:abc \
   "Review security requirements"
 
 # Create todo items using project name (alternative)
-dunno todo create --project "MyProject" \
+dn todo add --project "MyProject" \
   "Review security requirements"
 
 # List items using project ID
-dunno user-story list --project-id project:abc
-dunno epic list --project-id project:abc
-dunno todo list --project-id project:abc
-dunno task list --project-id project:abc
-dunno module list --project-id project:abc
-dunno submodule list --project-id project:abc
-dunno file list --project-id project:abc
+dn user-story ls --project-id project:abc
+dn epic ls --project-id project:abc
+dn todo ls --project-id project:abc
+dn task ls --project-id project:abc
+dn module ls --project-id project:abc
+dn submodule ls --project-id project:abc
+dn file ls --project-id project:abc
 
 # List items using project name (alternative)
-dunno user-story list --project "MyProject"
-dunno epic list --project "MyProject"
-dunno todo list --project "MyProject"
-dunno task list --project "MyProject"
-dunno module list --project "MyProject"
-dunno submodule list --project "MyProject"
-dunno file list --project "MyProject"
+dn user-story ls --project "MyProject"
+dn epic ls --project "MyProject"
+dn todo ls --project "MyProject"
+dn task ls --project "MyProject"
+dn module ls --project "MyProject"
+dn submodule ls --project "MyProject"
+dn file ls --project "MyProject"
 
 # List with case-insensitive matching
-dunno todo list --project "myproject" -i
-dunno task list --project "myproject" -i
+dn todo ls --project "myproject" -i
+dn task ls --project "myproject" -i
 
 # Delete a task when no longer needed
-dunno task delete task:mno
+dn task rm task:mno
 ```
 
 ---
@@ -387,8 +387,8 @@ For connecting existing nodes:
 
 ```bash
 # Link any two nodes with a named edge
-dunno link --from-id task:mno --edge has_context --to-ids context:xyz
-dunno link --from-id project:abc --edge contains --to-ids module:def
+dn link --from-id task:mno --edge has_context --to-ids context:xyz
+dn link --from-id project:abc --edge contains --to-ids module:def
 ```
 
 **Valid Edges**:
@@ -413,21 +413,21 @@ dunno link --from-id project:abc --edge contains --to-ids module:def
 
 #### 1. Establish Hierarchy First
 
-Always create the project structure before adding knowledge:
+Always add the project structure before adding knowledge:
 
 ```bash
 # Step 1: Create project and capture ID
-PROJECT=$(dunno project create "MyApp" "Web application" | jq -r '.id')
+PROJECT=$(dn project add "MyApp" "Web application" | jq -r '.id')
 
 # Step 2: Create modules with project link
-MODULE=$(dunno module create --project-ids "$PROJECT" "API" "REST API" | jq -r '.id')
+MODULE=$(dn module add --project-ids "$PROJECT" "API" "REST API" | jq -r '.id')
 
 # Step 3: Create tasks with module and project links
-TASK=$(dunno task create --module-ids "$MODULE" --project-ids "$PROJECT" \
+TASK=$(dn task add --module-ids "$MODULE" --project-ids "$PROJECT" \
   "Implement auth" "JWT authentication" | jq -r '.id')
 
 # Step 4: Now add knowledge linked to appropriate nodes
-dunno add \
+dn add \
   --field type --value mistake \
   --field content --value "Don't store secrets in env vars" \
   --link-to "$TASK"
@@ -441,11 +441,11 @@ Always parse JSON responses to capture IDs for subsequent operations:
 
 ```bash
 # Capture IDs for reuse
-PROJECT_ID=$(dunno project create "App" "Description" | jq -r '.id')
+PROJECT_ID=$(dn project add "App" "Description" | jq -r '.id')
 echo "Created project: $PROJECT_ID"
 
 # Use in subsequent commands
-dunno module create --project-ids "$PROJECT_ID" "Core" "Core module"
+dn module add --project-ids "$PROJECT_ID" "Core" "Core module"
 ```
 
 ---
@@ -455,7 +455,7 @@ dunno module create --project-ids "$PROJECT_ID" "Core" "Core module"
 Always add context-enriching fields:
 
 ```bash
-dunno add \
+dn add \
   --field type --value security \
   --field content --value "SQL injection vulnerability in user input" \
   --field severity --value critical \
@@ -475,10 +475,10 @@ When working on a task, always retrieve relevant context:
 
 ```bash
 # Before implementing, get context for the task
-dunno context --task-id task:abc --pretty'
+dn ctx --task-id task:abc --pretty'
 
 # Also check module-level context
-dunno context --file-id file:def --pretty'
+dn ctx --file-id file:def --pretty'
 
 # Combine and analyze all relevant knowledge
 ```
@@ -507,7 +507,7 @@ All commands return structured JSON:
 
 ```bash
 # User reports an issue - capture as knowledge
-MISTAKE_ID=$(dunno add \
+MISTAKE_ID=$(dn add \
   --field type --value mistake \
   --field content --value "Race condition in async handler" \
   --field language --value rust \
@@ -517,7 +517,7 @@ MISTAKE_ID=$(dunno add \
   --link-to task:abc | jq -r '.id // empty')
 
 # Later, when working on similar tasks, query context
-dunno context --task-id task:abc
+dn ctx --task-id task:abc
 ```
 
 ---
@@ -526,7 +526,7 @@ dunno context --task-id task:abc
 
 ```bash
 # Store code review feedback as knowledge
-REVIEW_ID=$(dunno add \
+REVIEW_ID=$(dn add \
   --field type --value code_review \
   --field content --value "Extract database queries into repository pattern" \
   --field severity --value medium \
@@ -542,7 +542,7 @@ REVIEW_ID=$(dunno add \
 
 ```bash
 # Log security findings with rich metadata
-SECURITY_ID=$(dunno add \
+SECURITY_ID=$(dn add \
   --field type --value security \
   --field content --value "Hardcoded API key in config file" \
   --field severity --value critical \
@@ -562,7 +562,7 @@ SECURITY_ID=$(dunno add \
 
 ```bash
 # Capture performance insights
-PERF_ID=$(dunno add \
+PERF_ID=$(dn add \
   --field type --value performance \
   --field content --value "N+1 query problem in user listing" \
   --field severity --value high \
@@ -589,10 +589,10 @@ Complete workflow for planning and executing tasks with proper context retrieval
 
 # Step 6: Query knowledge base again for relevant patterns before implementation
 # Get context specific to the task
-dunno context --task-id "$TASK_ID" | jq '.results[]'
+dn ctx --task-id "$TASK_ID" | jq '.results[]'
 
 # Step 7: After completion, capture insights and lessons learned
-dunno add \
+dn add \
   --field type --value insight \
   --field content --value "JWT tokens should have short expiry with refresh token pattern" \
   --field related_task --value "$TASK_ID" \
@@ -607,33 +607,33 @@ dunno add \
 3. **Link strategically**: Attach tasks to the most specific module/submodule and relevant epics
 4. **Always link to files/modules**: After adding a task, link it to relevant files and modules it touches
 5. **Store plans as knowledge**: Use `--field type --value plan` to document implementation approach
-6. **Query task context before coding**: Always run `dunno context --task-id <id>` before implementation
+6. **Query task context before coding**: Always run `dn ctx --task-id <id>` before implementation
 7. **Capture learnings**: After task completion, add insights linked to the task and relevant modules
 
 **Example: Full Planning Session**:
 
 ```bash
 # 1. Initial query - understand existing structure
-dunno context --project-id project:abc | jq '.results[] | {type, content}'
+dn ctx --project-id project:abc | jq '.results[] | {type, content}'
 
 # 2. Create tracking todo
-TODO=$(dunno todo create --project-ids project:abc "Add OAuth integration" | jq -r '.id')
+TODO=$(dn todo add --project-ids project:abc "Add OAuth integration" | jq -r '.id')
 
 # 3. Explore specific module context
-dunno context --module-id module:auth | jq '.results[]'
+dn ctx --module-id module:auth | jq '.results[]'
 
 # 4. Create and link task
-TASK=$(dunno task create \
+TASK=$(dn task add \
   --module-ids module:auth \
   --project-ids project:abc \
   "Implement OAuth2 flow" \
   "Add OAuth2 authentication with Google and GitHub providers" | jq -r '.id')
 
 # 4b. Link task to relevant files
-# dunno link --from "$TASK" --edge has_file --to file:auth.rs
+# dn link --from "$TASK" --edge has_file --to file:auth.rs
 
 # 5. Document the plan
-dunno add \
+dn add \
   --field type --value plan \
   --field content --value "OAuth2 implementation strategy" \
   --field approach --value "Use OAuth2 crate with state parameter for CSRF protection" \
@@ -642,7 +642,7 @@ dunno add \
   --link-to "$TASK"
 
 # 6. Verify context is properly linked
-dunno context --task-id "$TASK" | jq '.results | length'
+dn ctx --task-id "$TASK" | jq '.results | length'
 ```
 
 ---
@@ -659,7 +659,7 @@ import json
 
 def get_task_context(task_id):
     result = subprocess.run(
-        ["dunno", "context", "--task-id", task_id],
+        ["dn", "ctx", "--task-id", task_id],
         capture_output=True,
         text=True
     )
@@ -691,7 +691,7 @@ After completing a task, automatically capture insights:
 
 ```python
 def capture_knowledge(task_id, content, knowledge_type="insight", **fields):
-    cmd = ["dunno", "add", "--field", "type", "--value", knowledge_type]
+    cmd = ["dn", "add", "--field", "type", "--value", knowledge_type]
     cmd.extend(["--field", "content", "--value", content])
     cmd.extend(["--field", "source_task", "--value", task_id])
     
@@ -725,13 +725,13 @@ capture_knowledge(
 
 2. **"Task not found" / "Module not found"**
    - Verify IDs are correct format (e.g., `task:abc`, `module:def`)
-   - Check that the node exists with `dunno task list` or similar
+   - Check that the node exists with `dn task ls` or similar
 
 3. **"At least one --field key=value pair is required"**
    - The `add` command requires at least one pair of `--field` and `--value`
 
 4. **Database connection errors**
-   - For local: Check write permissions to `~/.local/share/dunno/`
+   - For local: Check write permissions to `~/.local/share/dn/`
    - For cloud: Verify credentials and network connectivity
 
 ---
@@ -740,10 +740,10 @@ capture_knowledge(
 
 ```bash
 # Check resolved configuration
-dunno config show
+dn config show
 
 # Test with explicit backend
-dunno --backend local add --field type --value test --field content --value "test"
+dn --backend local add --field type --value test --field content --value "test"
 ```
 
 ---
@@ -752,7 +752,7 @@ dunno --backend local add --field type --value test --field content --value "tes
 
 ```bash
 # ⚠️ DANGER: Delete all data (irreversible)
-dunno purge
+dn purge
 ```
 
 ---
@@ -766,7 +766,7 @@ dunno purge
 5. **Keep it actionable**: Content should guide future decisions
 6. **Version your knowledge**: Add `date`, `version`, or `commit` fields for temporal context
 7. **Cross-reference**: Use `--link-to` to connect knowledge to multiple relevant nodes
-8. **Query before acting**: Always check `dunno context` before implementing
+8. **Query before acting**: Always check `dn ctx` before implementing
 
 ---
 
@@ -778,7 +778,7 @@ Create reusable knowledge structures:
 
 ```bash
 # Security vulnerability template
-dunno add \
+dn add \
   --field type --value security \
   --field content --value "[VULNERABILITY NAME]" \
   --field severity --value "[critical|high|medium|low]" \
@@ -800,13 +800,13 @@ Use jq for sophisticated filtering:
 
 ```bash
 # Find all high-security knowledge
-dunno context --task-id task:abc | jq '.results[] | select(.severity == "high" and .type == "security")'
+dn ctx --task-id task:abc | jq '.results[] | select(.severity == "high" and .type == "security")'
 
 # Find mistakes in specific language
-dunno context --module-id module:def | jq '.results[] | select(.type == "mistake" and .language == "rust")'
+dn ctx --module-id module:def | jq '.results[] | select(.type == "mistake" and .language == "rust")'
 
 # Find unreviewed knowledge (no pr_number field)
-dunno context --project-id project:abc | jq '.results[] | select(has("pr_number") | not)'
+dn ctx --project-id project:abc | jq '.results[] | select(has("pr_number") | not)'
 ```
 
 ---
@@ -819,7 +819,7 @@ Process multiple knowledge entries:
 # Create a file with knowledge entries
 while read -r line; do
   IFS='|' read -r type content module <<< "$line"
-  dunno add \
+  dn add \
     --field type --value "$type" \
     --field content --value "$content" \
     --link-to "$module"
@@ -831,7 +831,7 @@ done < knowledge_list.txt
 ## Summary for AI Agents
 
 **Before Starting Work:**
-1. Query dunno context for your task: `dunno context --task-id <id>`
+1. Query dn context for your task: `dn ctx --task-id <id>`
 2. Review captured learnings and pitfalls
 3. Follow naming conventions (single words)
 
@@ -842,13 +842,13 @@ done < knowledge_list.txt
 4. No AI-generated walls of text
 
 **After Completing Work:**
-1. Capture learnings: `dunno add --field type --value insight`
+1. Capture learnings: `dn add --field type --value insight`
 2. Link to task and relevant modules
 3. Keep entries to 1-3 lines
 4. Use specific, actionable content
 
-**Remember**: The power of dunno lies in its deterministic, hierarchical context retrieval. Always structure your knowledge to match your project hierarchy, and query context before making decisions.
+**Remember**: The power of dn lies in its deterministic, hierarchical context retrieval. Always structure your knowledge to match your project hierarchy, and query context before making decisions.
 
 ---
 
-**Note**: This codebase is documented in dunno under project ID `project:nx7h5j92o078xa4pmo1y` with modules for CLI, Config, Database, Context, Ingest, and Models.
+**Note**: This codebase is documented in dn under project ID `project:nx7h5j92o078xa4pmo1y` with modules for CLI, Config, Database, Context, Ingest, and Models.

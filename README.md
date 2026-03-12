@@ -1,6 +1,6 @@
-# dunno
+# dn
 
-`dunno` is a Rust CLI that captures coding knowledge and retrieves deterministic context for AI agents.
+`dn` is a Rust CLI that captures coding knowledge and retrieves deterministic context for AI agents.
 
 Currently it just supports SurrealDB as a backend, but the architecture is designed to allow adding more backends in the future (e.g. SQLite, Postgres, etc.) without changing the core logic.
 
@@ -15,16 +15,16 @@ Currently it just supports SurrealDB as a backend, but the architecture is desig
 ```bash
 # Clone the repository
 git clone <repo-url>
-cd dunno
+cd dn
 
 # Build release binary
 cargo build --release
 
 # The binary is now available at:
-./target/release/dunno
+./target/release/dn
 
 # Optional: Install to system PATH
-sudo cp target/release/dunno /usr/local/bin/
+sudo cp target/release/dn /usr/local/bin/
 ```
 
 #### Option 2: Install via Cargo
@@ -41,13 +41,13 @@ Coming soon - pre-built binaries not yet available in releases.
 
 ```bash
 # Verify installation
-dunno --version
+dn --version
 
 # Check current configuration
-dunno config show
+dn config show
 ```
 
-By default, dunno uses local embedded storage at `~/.local/share/dunno/data.db`. No configuration is required to get started.
+By default, dn uses local embedded storage at `~/.local/share/dn/data.db`. No configuration is required to get started.
 
 #### 2. Project Setup (Recommended)
 
@@ -55,31 +55,31 @@ For project-specific settings, create a local config file:
 
 ```bash
 # Create local config
-cat > dunno.toml << 'EOF'
+cat > dn.toml << 'EOF'
 [local]
-path = "./.dunno/data.db"
+path = "./.dn/data.db"
 EOF
 
 # Create data directory
-mkdir -p .dunno
+mkdir -p .dn
 ```
 
 #### 3. Create Your First Project
 
 ```bash
 # Create a project
-dunno project create "My App" "A web application"
+dn project add "My App" "A web application"
 # Returns: {"id":"project:abc","name":"My App","description":"A web application"}
 
 # Create a module using project ID
-dunno module create --project-ids project:abc "Auth" "Authentication system"
+dn module add --project-ids project:abc "Auth" "Authentication system"
 # Returns: {"id":"module:def", ...}
 
 # Create a module using project name (alternative)
-dunno module create --project "My App" "Auth" "Authentication system"
+dn module add --project "My App" "Auth" "Authentication system"
 
 # Create a task using project name with case-insensitive matching
-dunno task create --module-ids module:def --project "my app" -i "Implement login" "Add JWT authentication"
+dn task add --module-ids module:def --project "my app" -i "Implement login" "Add JWT authentication"
 # Returns: {"id":"task:ghi", ...}
 ```
 
@@ -89,13 +89,13 @@ dunno task create --module-ids module:def --project "my app" -i "Implement login
 
 ```bash
 # Add a coding mistake to remember
-dunno add --field type --value mistake --field content --value "Don't use unwrap() in production" --link-to task:ghi
+dn add --field type --value mistake --field content --value "Don't use unwrap() in production" --link-to task:ghi
 
 # Add a style rule
-dunno add --field type --value style --field content --value "Use Result for error handling" --link-to module:def
+dn add --field type --value style --field content --value "Use Result for error handling" --link-to module:def
 
 # Add security note
-dunno add --field type --value security --field content --value "Validate all JWT tokens" --link-to project:abc
+dn add --field type --value security --field content --value "Validate all JWT tokens" --link-to project:abc
 ```
 
 #### 5. Retrieve Context
@@ -104,22 +104,22 @@ Retrieve context for a task to get the task details, related files, hierarchy, a
 
 ```bash
 # Get context for a task (returns task, files, hierarchy, and directly linked context)
-dunno context --task-id task:ghi
+dn ctx --task-id task:ghi
 ```
 
 Returns:
 - **Task** - The task object with id, name, description, status
 - **Files** - File IDs related to the task (files in the parent module/submodule)
 - **Hierarchy** - Project, module, and optional submodule info
-- **Contexts** - Only knowledge directly linked to the task via `dunno add --link-to task:<id>`
+- **Contexts** - Only knowledge directly linked to the task via `dn add --link-to task:<id>`
 
 ### Configuration
 
-Dunno uses a layered configuration system on a **per-field basis** (highest to lowest priority):
+dn uses a layered configuration system on a **per-field basis** (highest to lowest priority):
 
 1. **CLI flags** (`--backend`, `--pretty`)
-2. **Local project config** (`./dunno.toml`)
-3. **Global user config** (`~/.config/dunno/dunno.toml`)
+2. **Local project config** (`./dn.toml`)
+3. **Global user config** (`~/.config/dn/dn.toml`)
 4. **Environment variables**
 5. **Built-in defaults**
 
@@ -131,45 +131,45 @@ Dunno uses a layered configuration system on a **per-field basis** (highest to l
 
 ```bash
 # View config in JSON format (default)
-dunno config show
+dn config show
 
 # View config in human-readable format
-dunno config show --pretty
+dn config show --pretty
 
 # Pretty output works with all commands
-dunno project list --pretty
-dunno task list --pretty
-dunno context --task-id task:abc --pretty
+dn project ls --pretty
+dn task ls --pretty
+dn ctx --task-id task:abc --pretty
 
 # Use project name with case-insensitive matching
-dunno module create --project "my project" -i "Auth" "Auth module"
+dn module add --project "my project" -i "Auth" "Auth module"
 ```
 
 #### Config File Locations
 
-- **Local:** `./dunno.toml` (project-specific, not committed to git)
-- **Global:** `~/.config/dunno/dunno.toml` (user-wide settings)
+- **Local:** `./dn.toml` (project-specific, not committed to git)
+- **Global:** `~/.config/dn/dn.toml` (user-wide settings)
 
 #### Example Configuration
 
-**Global config** (`~/.config/dunno/dunno.toml`):
+**Global config** (`~/.config/dn/dn.toml`):
 ```toml
 backend = "cloud"
 
 [cloud]
 url = "wss://my-instance.surrealdb.com"
 namespace = "my-namespace"
-database = "dunno"
+database = "dn"
 username = "root"
 password = "root"
 auth_type = "root"
 ```
 
-**Local config** (`./dunno.toml`):
+**Local config** (`./dn.toml`):
 ```toml
 # Override only the database path for this project
 [local]
-path = "./.dunno/data.db"
+path = "./.dn/data.db"
 ```
 
 #### Environment Variables
@@ -189,7 +189,7 @@ All config fields can be set via environment:
 
 #### Hierarchy
 
-Dunno organizes work into two parallel paths:
+dn organizes work into two parallel paths:
 
 **Code Structure:**
 ```
@@ -218,7 +218,7 @@ Link knowledge to any structural node:
 
 #### Global Flags
 ```bash
-dunno [GLOBAL FLAGS] <COMMAND>
+dn [GLOBAL FLAGS] <COMMAND>
 
 Global Flags:
   --backend <BACKEND>  # Override storage backend (local or cloud)
@@ -228,120 +228,121 @@ Global Flags:
 
 #### Project Management
 ```bash
-dunno project create "<name>" "<description>"  # Create project
-dunno project list                              # List all projects
+dn project add "<name>" "<description>"  # Create project
+dn project ls                              # List all projects
 ```
 
 #### Module Management
 ```bash
 # Using project ID
-dunno module create --project-ids <id> "<name>" "<description>" [--notes <notes>]
+dn module add --project-ids <id> "<name>" "<description>" [--notes <notes>]
 
 # Using project name (alternative)
-dunno module create --project "<project_name>" "<name>" "<description>" [--notes <notes>]
+dn module add --project "<project_name>" "<name>" "<description>" [--notes <notes>]
 
 # List modules (all or filtered by project)
-dunno module list
-dunno module list --project-id <id>
-dunno module list --project "<project_name>"
+dn module ls
+dn module ls --project-id <id>
+dn module ls --project "<project_name>"
 ```
 
 #### Submodule Management
 ```bash
 # Create submodule linked to module
-dunno submodule create --module-ids <id> "<name>" "<description>" [--notes <notes>]
+dn submodule add --module-ids <id> "<name>" "<description>" [--notes <notes>]
 
 # List submodules (all, by module, or by project)
-dunno submodule list
-dunno submodule list --module-id <id>
-dunno submodule list --project-id <id>
-dunno submodule list --project "<project_name>"
+dn submodule ls
+dn submodule ls --module-id <id>
+dn submodule ls --project-id <id>
+dn submodule ls --project "<project_name>"
 ```
 
 #### Task Management
 ```bash
 # Using IDs
-dunno task create --module-ids <id> --project-ids <id> "<name>" "<description>"
+dn task add --module-ids <id> --project-ids <id> "<name>" "<description>"
 
 # Using project name (alternative)
-dunno task create --module-ids <id> --project "<project_name>" "<name>" "<description>"
+dn task add --module-ids <id> --project "<project_name>" "<name>" "<description>"
 
 # List tasks (all or filtered by project)
-dunno task list
-dunno task list --project-id <id>
-dunno task list --project "<project_name>"
+dn task ls
+dn task ls --project-id <id>
+dn task ls --project "<project_name>"
 
-dunno task update <id> --status started
-dunno task delete <id>   # Delete a task by ID
+dn task update <id> --status started
+dn task rm <id>   # Delete a task by ID
 ```
 
 #### File Management
 ```bash
 # Create file linked to module or submodule
-dunno file create --parent-ids <module_id> "<name>" "<path>" ["<description>"] [--notes <notes>]
-dunno file create --parent-ids <submodule_id> "<name>" "<path>" ["<description>"] [--notes <notes>]
+dn file add --parent-ids <module_id> "<name>" "<path>" ["<description>"] [--notes <notes>]
+dn file add --parent-ids <submodule_id> "<name>" "<path>" ["<description>"] [--notes <notes>]
 
 # List files (cascading filter priority: submodule > module > project)
-dunno file list
-dunno file list --submodule-id <id>   # Most specific
-dunno file list --module-id <id>      # Filter by module
-dunno file list --project-id <id>    # Filter by project (all files in project)
-dunno file list --project "<project_name>"
+dn file ls
+dn file ls --submodule-id <id>   # Most specific
+dn file ls --module-id <id>      # Filter by module
+dn file ls --project-id <id>    # Filter by project (all files in project)
+dn file ls --project "<project_name>"
 ```
 
 #### User Story Management
 ```bash
 # Using project ID
-dunno user-story create --project-id <id> "<title>" "<description>"
-dunno user-story list --project-id <id>
+dn user-story add --project-id <id> "<title>" "<description>"
+dn user-story ls --project-id <id>
 
 # Using project name (alternative)
-dunno user-story create --project "<project_name>" "<title>" "<description>"
-dunno user-story list --project "<project_name>"
+dn user-story add --project "<project_name>" "<title>" "<description>"
+dn user-story ls --project "<project_name>"
 ```
 
 #### Epic Management
 ```bash
 # Using project ID
-dunno epic create --project-id <id> "<title>" "<description>"
-dunno epic list --project-id <id>
+dn epic add --project-id <id> "<title>" "<description>"
+dn epic ls --project-id <id>
 
 # Using project name (alternative)
-dunno epic create --project "<project_name>" "<title>" "<description>"
-dunno epic list --project "<project_name>"
+dn epic add --project "<project_name>" "<title>" "<description>"
+dn epic ls --project "<project_name>"
 ```
 
 #### Todo Management
 ```bash
 # Using project ID
-dunno todo create --project-ids <id> "<content>"
-dunno todo list --project-id <id>
+dn todo add --project-ids <id> "<content>"
+dn todo ls --project-id <id>
 
 # Using project name (alternative)
-dunno todo create --project "<project_name>" "<content>"
-dunno todo list --project "<project_name>"
+dn todo add --project "<project_name>" "<content>"
+dn todo ls --project "<project_name>"
 ```
 
 #### Knowledge Management
 ```bash
 # Add knowledge with arbitrary fields
-dunno add --field <key> --value <val> [--link-to <id> ...]
+dn add --field <key> --value <val> [--link-to <id> ...]
 
 # Examples:
-dunno add --field type --value mistake --field content --value "Avoid panic!" --link-to project:abc
-dunno add --field type --value style --field language --value rust --field rule --value "Use ? operator" --link-to module:def
+dn add --field type --value mistake --field content --value "Avoid panic!" --link-to project:abc
+dn add --field type --value style --field language --value rust --field rule --value "Use ? operator" --link-to module:def
 ```
 
 #### Context Retrieval
 ```bash
-dunno context --task-id <id>
-dunno context --file-id <id>
-dunno context --epic-id <id>
+# Header: Context Retrieval
+dn ctx --task-id <id>
+dn ctx --file-id <id>
+dn ctx --epic-id <id>
 ```
 
 #### Linking
 ```bash
-dunno link --from-id <id> --edge <type> --to-ids <id> [<id> ...]
+dn link --from-id <id> --edge <type> --to-ids <id> [<id> ...]
 ```
 
 ### Common Workflows
@@ -349,19 +350,19 @@ dunno link --from-id <id> --edge <type> --to-ids <id> [<id> ...]
 **1. Starting a New Feature:**
 ```bash
 # Create epic for the feature (using project name)
-dunno epic create --project "My App" "User Authentication" "Complete auth system"
+dn epic add --project "My App" "User Authentication" "Complete auth system"
 
 # Create user story (using project name with case-insensitive match)
-dunno user-story create --project "my app" -i --epic-ids epic:mno "As a user, I want to login" "Authentication feature"
+dn user-story add --project "my app" -i --epic-ids epic:mno "As a user, I want to login" "Authentication feature"
 
 # Create implementation task
-dunno task create --module-ids module:def --project "My App" --epic-ids epic:mno "Implement JWT" "Add token support"
+dn task add --module-ids module:def --project "My App" --epic-ids epic:mno "Implement JWT" "Add token support"
 ```
 
 **2. Recording Mistakes:**
 ```bash
 # After fixing a bug, record it for future reference
-dunno add --field type --value mistake \
+dn add --field type --value mistake \
   --field content --value "MutexGuard across await causes deadlock" \
   --field solution --value "Use tokio::sync::Mutex instead" \
   --field severity --value high \
@@ -371,19 +372,19 @@ dunno add --field type --value mistake \
 **3. Code Review Context:**
 ```bash
 # Before reviewing, get all context for a task
-dunno context --task-id task:ghi | jq '.[] | select(.fields.type == "mistake")'
+dn ctx --task-id task:ghi | jq '.[] | select(.fields.type == "mistake")'
 ```
 
 **4. Cleaning Up:**
 ```bash
 # List all tasks
-dunno task list
+dn task ls
 
 # Delete a task that's no longer needed
-dunno task delete task:abc123
+dn task rm task:abc123
 
 # Verify deletion
-dunno task list
+dn task ls
 ```
 
 ---
@@ -516,8 +517,8 @@ Configuration is loaded in priority order (lowest to highest):
 
 1. **Defaults** - Hardcoded in `Config::default()`
 2. **ENV vars** - Applied via `apply_env_overrides()`
-3. **Global config** - `~/.config/dunno/dunno.toml`
-4. **Local config** - `./dunno.toml`
+3. **Global config** - `~/.config/dn/dn.toml`
+4. **Local config** - `./dn.toml`
 5. **CLI args** - Overrides passed to `Config::load()`
 
 Each source only overrides fields it explicitly defines (partial config support).
@@ -553,7 +554,7 @@ Results are:
 No code changes needed! Knowledge is schemaless. Users can add any fields:
 
 ```bash
-dunno add --field my_custom_field --value "anything" --link-to task:abc
+dn add --field my_custom_field --value "anything" --link-to task:abc
 ```
 
 #### 3. New Config Option
@@ -582,13 +583,13 @@ cargo test -- --test-threads=1
 
 **Database locked:**
 ```bash
-# Kill any hanging dunno processes
-pkill -f dunno
+# Kill any hanging dn processes
+pkill -f dn
 ```
 
 **Reset local database:**
 ```bash
-rm -rf ~/.local/share/dunno/
+rm -rf ~/.local/share/dn/
 # or for project-specific:
-rm -rf ./.dunno/
+rm -rf ./.dn/
 ```
