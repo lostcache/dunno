@@ -67,17 +67,20 @@ impl DB {
         ensure_context_record_id(to_context_id)?;
         self.link(from_id, "has_context", to_context_id).await?;
 
-        let hierarchy = self.resolve_structural_hierarchy(from_id).await?;
-        if let Some(id) = hierarchy.project_id {
+        let ancestry = self.resolve_structural_ancestry(from_id).await?;
+        for id in ancestry.project_ids {
             self.link(to_context_id, "belongs_to_project", &id).await?;
         }
-        if let Some(id) = hierarchy.module_id {
+        for id in ancestry.module_ids {
             self.link(to_context_id, "belongs_to_module", &id).await?;
         }
-        if let Some(id) = hierarchy.task_id {
+        for id in ancestry.task_ids {
             self.link(to_context_id, "belongs_to_task", &id).await?;
         }
-        if let Some(id) = hierarchy.submodule_id {
+        for id in ancestry.epic_ids {
+            self.link(to_context_id, "belongs_to_epic", &id).await?;
+        }
+        for id in ancestry.submodule_ids {
             self.link(to_context_id, "belongs_to_submodule", &id).await?;
         }
         Ok(())
@@ -90,18 +93,18 @@ impl DB {
             ("belongs_to_project", "project"),
             ("belongs_to_module", "module"),
             ("belongs_to_task", "task"),
+            ("belongs_to_epic", "epic"),
+            ("belongs_to_submodule", "submodule"),
         ] {
-            let id = self
-                .first_record_id_from_query(
+            let ids = self
+                .record_ids_from_query(
                     &format!("SELECT ->{edge}->{table}.* AS out FROM ONLY type::record($kid)"),
                     "kid",
                     context_id.to_string(),
                     "out",
                 )
                 .await?;
-            if let Some(id) = id {
-                out.push(id);
-            }
+            out.extend(ids);
         }
         Ok(out)
     }

@@ -178,8 +178,8 @@ impl DB {
         module_id: &str,
     ) -> anyhow::Result<Vec<crate::models::Context>> {
         let mut contexts = self.get_module_context_node(module_id).await?;
-        let h = self.resolve_structural_hierarchy(module_id).await?;
-        if let Some(pid) = h.project_id {
+        let h = self.resolve_structural_ancestry(module_id).await?;
+        for pid in h.project_ids {
             if pid != module_id {
                 contexts.extend(self.get_linked_context(&pid).await?);
             }
@@ -224,14 +224,14 @@ impl DB {
         submodule_id: &str,
     ) -> anyhow::Result<Vec<crate::models::Context>> {
         let mut contexts = self.get_submodule_context_node(submodule_id).await?;
-        let h = self.resolve_structural_hierarchy(submodule_id).await?;
+        let h = self.resolve_structural_ancestry(submodule_id).await?;
         
-        if let Some(mid) = h.module_id {
+        for mid in h.module_ids {
             if mid != submodule_id {
                 contexts.extend(self.get_linked_context(&mid).await?);
             }
         }
-        if let Some(pid) = h.project_id {
+        for pid in h.project_ids {
             if pid != submodule_id {
                 contexts.extend(self.get_linked_context(&pid).await?);
             }

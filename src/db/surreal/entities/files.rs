@@ -182,16 +182,16 @@ impl DB {
     ) -> anyhow::Result<crate::models::FileContext> {
         let mut ctx = self.get_file_context_node(file_id).await?;
 
-        // Resolve hierarchy for this file
-        let hierarchy = self.resolve_structural_hierarchy(file_id).await?;
+        // Resolve ancestry for this file
+        let ancestry = self.resolve_structural_ancestry(file_id).await?;
 
-        if let Some(sid) = hierarchy.submodule_id {
+        for sid in ancestry.submodule_ids {
             ctx.contexts.extend(self.get_linked_context(&sid).await?);
         }
-        if let Some(mid) = hierarchy.module_id {
+        for mid in ancestry.module_ids {
             ctx.contexts.extend(self.get_linked_context(&mid).await?);
         }
-        if let Some(pid) = hierarchy.project_id {
+        for pid in ancestry.project_ids {
             ctx.contexts.extend(self.get_linked_context(&pid).await?);
         }
 

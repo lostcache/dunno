@@ -172,10 +172,10 @@ impl DB {
     ) -> anyhow::Result<crate::models::EpicContext> {
         let mut ctx = self.get_epic_context_node(epic_id).await?;
 
-        // Resolve hierarchy for this epic
-        let hierarchy = self.resolve_structural_hierarchy(epic_id).await?;
+        // Resolve ancestry for this epic
+        let ancestry = self.resolve_structural_ancestry(epic_id).await?;
 
-        if let Some(pid) = hierarchy.project_id {
+        for pid in ancestry.project_ids {
             ctx.contexts.extend(self.get_linked_context(&pid).await?);
         }
 
