@@ -150,10 +150,15 @@ json_str() {
 # ── Cloud prerequisite check ──────────────────────────────────────
 
 require_cloud_env() {
-    if [[ -z "${DUNNO_CLOUD_URL:-}" ]]; then
-        echo "SKIP: DUNNO_CLOUD_URL is not set."
-        echo "  Cloud tests require: DUNNO_CLOUD_URL"
-        echo "  (namespace, database, username, password are set in each test script)"
+    local missing=()
+    [[ -z "${DUNNO_CLOUD_URL:-}" ]] && missing+=("DUNNO_CLOUD_URL")
+    [[ -z "${DUNNO_CLOUD_NS:-}" ]] && missing+=("DUNNO_CLOUD_NS")
+    [[ -z "${DUNNO_CLOUD_DB:-}" ]] && missing+=("DUNNO_CLOUD_DB")
+    [[ -z "${DUNNO_CLOUD_USER:-}" ]] && missing+=("DUNNO_CLOUD_USER")
+    [[ -z "${DUNNO_CLOUD_PASS:-}" ]] && missing+=("DUNNO_CLOUD_PASS")
+
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo "SKIP: Cloud tests require the following env vars: ${missing[*]}"
         exit 0
     fi
 }

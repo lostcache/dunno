@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Test D: Verify configuration precedence order.
+# Test: Verify configuration hierarchy and precedence.
 #   defaults  →  config file  →  env vars  →  CLI flags
 #
 # Each layer should override the previous one.
@@ -11,9 +11,9 @@ build_binary
 setup_test_db_dir
 backup_config
 
-DB="${TEST_DB_DIR}/precedence-test.db"
+DB="${TEST_DB_DIR}/hierarchy-test.db"
 
-print_header "Test D: Configuration Precedence"
+print_header "Test: Configuration Hierarchy"
 
 # ── 1. Defaults (no file, no env, no CLI) ─────────────────────────
 remove_config
@@ -32,7 +32,7 @@ TOML
 )"
 run_cmd "$BIN" config show
 assert_exit_ok    "file: config show exits 0"              "$RC"
-assert_contains   "file: path overrides default"           "$OUT" 'precedence-test.db'
+assert_contains   "file: path overrides default"           "$OUT" 'hierarchy-test.db'
 
 # ── 3. Env var overrides config file ──────────────────────────────
 run_cmd env DUNNO_LOCAL_PATH="/tmp/env-override.db" "$BIN" config show
