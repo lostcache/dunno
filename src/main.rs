@@ -532,6 +532,14 @@ async fn handle_todo_command(
             let todos = db.list_todos_by_project(&pid).await?;
             print_json(serde_json::json!(todos), pretty);
         }
+        dunno::args::TodoCommands::Delete { todo_id } => {
+            let deleted = db.delete_todo(&todo_id).await?;
+            if deleted {
+                print_json(serde_json::json!({ "status": "ok", "deleted": todo_id }), pretty);
+            } else {
+                return Err(anyhow::anyhow!("Todo not found: {}", todo_id));
+            }
+        }
     }
     Ok(())
 }

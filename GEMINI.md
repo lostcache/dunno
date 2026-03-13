@@ -377,6 +377,9 @@ dunno task list --project "myproject" -i
 
 # Delete a task when no longer needed
 dunno task delete task:mno
+
+# Delete a todo item
+dunno todo delete todo_item:xyz
 ```
 
 ---

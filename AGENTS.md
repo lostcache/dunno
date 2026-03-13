@@ -380,6 +380,9 @@ dn task ls --project "myproject" -i
 
 # Delete a task when no longer needed
 dn task rm task:mno
+
+# Delete a todo item
+dn todo rm todo_item:xyz
 ```
 
 ---

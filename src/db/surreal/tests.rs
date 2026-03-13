@@ -2471,6 +2471,48 @@ async fn test_delete_task_with_context() {
 }
 
 #[tokio::test]
+async fn test_delete_todo_success() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    
+    let todo = db
+        .create_todo("Buy milk", None)
+        .await
+        .expect("Failed to create todo");
+    let todo_id = todo.id.expect("todo id");
+
+    let fetched = db.get_todo(&todo_id).await.expect("Failed to fetch todo");
+    assert!(fetched.is_some());
+
+    let deleted = db
+        .delete_todo(&todo_id)
+        .await
+        .expect("Failed to delete todo");
+    assert!(deleted, "delete_todo should return true for existing todo");
+
+    let after_delete = db.get_todo(&todo_id).await.expect("Failed to check todo");
+    assert!(after_delete.is_none(), "Todo should be deleted");
+}
+
+#[tokio::test]
+async fn test_delete_nonexistent_todo() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+
+    // First create a todo to ensure the table exists
+    let todo = db
+        .create_todo("Test Todo", None)
+        .await
+        .expect("create todo");
+    let _todo_id = todo.id.expect("todo id");
+
+    let deleted = db
+        .delete_todo("todo_item:nonexistent12345")
+        .await
+        .expect("Should not error on nonexistent todo");
+
+    assert!(!deleted, "delete_todo should return false for nonexistent todo");
+}
+
+#[tokio::test]
 async fn test_get_task_context_with_files_and_linked_context() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
 

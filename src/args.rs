@@ -357,6 +357,10 @@ pub enum TodoCommands {
         #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
         project: Option<String>,
     },
+    #[command(name = "rm")]
+    Delete {
+        todo_id: String,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -543,6 +547,27 @@ mod tests {
     fn task_delete_command_requires_task_id() {
         let args = Args::try_parse_from(["dn", "task", "rm"]);
         assert!(args.is_err(), "should require task_id for delete command");
+    }
+
+    #[test]
+    fn todo_delete_command_accepts_todo_id() {
+        let args = Args::try_parse_from(["dn", "todo", "rm", "todo_item:abc123"]);
+        assert!(args.is_ok(), "should parse todo delete command");
+        if let Commands::Todo { command } = args.unwrap().command {
+            if let TodoCommands::Delete { todo_id } = command {
+                assert_eq!(todo_id, "todo_item:abc123");
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected Todo command");
+        }
+    }
+
+    #[test]
+    fn todo_delete_command_requires_todo_id() {
+        let args = Args::try_parse_from(["dn", "todo", "rm"]);
+        assert!(args.is_err(), "should require todo_id for delete command");
     }
 
     #[test]

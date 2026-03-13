@@ -58,6 +58,17 @@ impl DB {
     pub async fn list_todos(&self) -> anyhow::Result<Vec<crate::models::TodoItem>> {
         self.list_records("todo_item").await
     }
+
+    /// Deletes a todo by record id.
+    pub async fn delete_todo(&self, todo_id: &str) -> anyhow::Result<bool> {
+        let key = todo_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(todo_id);
+
+        let deleted: Option<surrealdb::types::Value> = self.client.delete(("todo_item", key)).await?;
+        Ok(deleted.is_some())
+    }
 }
 
 #[cfg(test)]

@@ -323,6 +323,9 @@ dn todo ls --project-id <id>
 # Using project name (alternative)
 dn todo add --project "<project_name>" "<content>"
 dn todo ls --project "<project_name>"
+
+# Delete a todo item
+dn todo rm <id>
 ```
 
 #### Knowledge Management
