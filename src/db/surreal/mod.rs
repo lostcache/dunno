@@ -1,9 +1,9 @@
 //! SurrealDB backend: client, connection, and generic helpers.
 
 mod entities;
+mod hierarchy;
 mod schema;
 mod util;
-mod hierarchy;
 
 #[derive(Clone, Debug)]
 pub struct DB {

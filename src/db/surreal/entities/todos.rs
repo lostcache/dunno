@@ -66,7 +66,8 @@ impl DB {
             .map(|(_, key)| key)
             .unwrap_or(todo_id);
 
-        let deleted: Option<surrealdb::types::Value> = self.client.delete(("todo_item", key)).await?;
+        let deleted: Option<surrealdb::types::Value> =
+            self.client.delete(("todo_item", key)).await?;
         Ok(deleted.is_some())
     }
 }
@@ -105,7 +106,7 @@ mod tests {
     #[tokio::test]
     async fn test_delete_todo_success() {
         let db = DB::new("mem://").await.expect("Failed to init DB");
-        
+
         let todo = db
             .create_todo("Buy milk", None)
             .await
@@ -141,6 +142,9 @@ mod tests {
             .await
             .expect("Should not error on nonexistent todo");
 
-        assert!(!deleted, "delete_todo should return false for nonexistent todo");
+        assert!(
+            !deleted,
+            "delete_todo should return false for nonexistent todo"
+        );
     }
 }

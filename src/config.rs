@@ -101,16 +101,16 @@ impl Config {
         let mut config = Self::default();
         // Priority order (lowest to highest):
         // 5. Defaults (already set)
-        
+
         // 4. Global config
         config.apply_config_file(&Self::global_config_path())?;
-        
+
         // 3. Local project config
         config.apply_config_file(&Self::local_config_path())?;
-        
+
         // 2. ENV vars
         config.apply_env_overrides()?;
-        
+
         // 1. CLI args (highest)
         config.apply_cli_overrides(cli_backend)?;
         Ok(config)
@@ -215,7 +215,10 @@ impl Config {
         output.push_str(&format!("Qdrant URL: {}\n", self.qdrant_url));
 
         output.push_str("\n--- Config File Paths ---\n");
-        output.push_str(&format!("Global: {}\n", Self::global_config_path().display()));
+        output.push_str(&format!(
+            "Global: {}\n",
+            Self::global_config_path().display()
+        ));
         output.push_str(&format!("Local: {}\n", Self::local_config_path().display()));
 
         output
@@ -389,7 +392,8 @@ mod tests {
     #[test]
     fn test_load_defaults_when_file_missing() {
         let missing = std::path::PathBuf::from("/tmp/definitely-missing-dunno-config.toml");
-        let config = Config::load_from_optional_paths(None, Some(&missing), None, true).expect("load should succeed");
+        let config = Config::load_from_optional_paths(None, Some(&missing), None, true)
+            .expect("load should succeed");
         assert!(matches!(config.backend, StorageBackend::Local));
         assert_eq!(config.qdrant_url, "mem://");
     }
@@ -443,21 +447,22 @@ password = "local"
     #[test]
     fn test_local_config_overrides_global() {
         use std::sync::atomic::{AtomicU64, Ordering};
-        
+
         // Use a counter for uniqueness in parallel tests
         static COUNTER: AtomicU64 = AtomicU64::new(0);
         let counter = COUNTER.fetch_add(1, Ordering::SeqCst);
-        
+
         let ts = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("time should be valid")
             .as_micros(); // Use microseconds for better uniqueness
-        
+
         let unique_id = format!("{}-{}", ts, counter);
-        
-        let global_path = std::env::temp_dir().join(format!("dunno-global-config-{unique_id}.toml"));
+
+        let global_path =
+            std::env::temp_dir().join(format!("dunno-global-config-{unique_id}.toml"));
         let local_path = std::env::temp_dir().join(format!("dunno-local-config-{unique_id}.toml"));
-        
+
         let global_raw = r#"
 backend = "cloud"
 [cloud]
@@ -467,19 +472,20 @@ database = "global"
 username = "global"
 password = "global"
 "#;
-        
+
         let local_raw = r#"
 backend = "local"
 [local]
 path = "/tmp/local-override.db"
 "#;
-        
+
         std::fs::write(&global_path, global_raw).expect("should write temp global config");
         std::fs::write(&local_path, local_raw).expect("should write temp local config");
 
         // Local config should override global
-        let loaded = Config::load_from_optional_paths(None, Some(&global_path), Some(&local_path), true)
-            .expect("load should succeed");
+        let loaded =
+            Config::load_from_optional_paths(None, Some(&global_path), Some(&local_path), true)
+                .expect("load should succeed");
         assert!(matches!(loaded.backend, StorageBackend::Local));
         assert_eq!(loaded.local.path, "/tmp/local-override.db");
 
@@ -542,9 +548,14 @@ path = "/tmp/local-override.db"
         let missing_local = std::env::temp_dir().join(format!("dunno-missing-local-{ts}.toml"));
 
         // Skip env to ensure test isolation - we're testing defaults
-        let loaded = Config::load_from_optional_paths(None, Some(&missing_global), Some(&missing_local), true)
-            .expect("load should succeed with defaults");
-        
+        let loaded = Config::load_from_optional_paths(
+            None,
+            Some(&missing_global),
+            Some(&missing_local),
+            true,
+        )
+        .expect("load should succeed with defaults");
+
         // Should have defaults since no files exist and env is skipped
         assert!(matches!(loaded.backend, StorageBackend::Local));
         assert_eq!(loaded.local.path, "~/.local/share/dunno/data.db");
@@ -558,7 +569,7 @@ path = "/tmp/local-override.db"
             .as_millis();
         let global_path = std::env::temp_dir().join(format!("dunno-global-only-{ts}.toml"));
         let missing_local = std::env::temp_dir().join(format!("dunno-missing-local-{ts}.toml"));
-        
+
         let global_raw = r#"
 backend = "cloud"
 [cloud]
@@ -568,12 +579,13 @@ database = "global-db"
 username = "global-user"
 password = "global-pass"
 "#;
-        
+
         std::fs::write(&global_path, global_raw).expect("should write global config");
 
-        let loaded = Config::load_from_optional_paths(None, Some(&global_path), Some(&missing_local), true)
-            .expect("load should succeed");
-        
+        let loaded =
+            Config::load_from_optional_paths(None, Some(&global_path), Some(&missing_local), true)
+                .expect("load should succeed");
+
         assert!(matches!(loaded.backend, StorageBackend::Cloud));
         assert_eq!(loaded.cloud.url, "wss://global-only.example.com");
         assert_eq!(loaded.cloud.namespace, "global-ns");
@@ -589,7 +601,7 @@ password = "global-pass"
             .as_millis();
         let global_path = std::env::temp_dir().join(format!("dunno-global-partial-{ts}.toml"));
         let local_path = std::env::temp_dir().join(format!("dunno-local-partial-{ts}.toml"));
-        
+
         let global_raw = r#"
 backend = "cloud"
 [cloud]
@@ -599,19 +611,20 @@ database = "global-db"
 username = "global-user"
 password = "global-pass"
 "#;
-        
+
         let local_raw = r#"
 [cloud]
 url = "wss://local.example.com"
 namespace = "local-ns"
 "#;
-        
+
         std::fs::write(&global_path, global_raw).expect("should write global config");
         std::fs::write(&local_path, local_raw).expect("should write local config");
 
-        let loaded = Config::load_from_optional_paths(None, Some(&global_path), Some(&local_path), true)
-            .expect("load should succeed");
-        
+        let loaded =
+            Config::load_from_optional_paths(None, Some(&global_path), Some(&local_path), true)
+                .expect("load should succeed");
+
         // Local should override specific fields
         assert!(matches!(loaded.backend, StorageBackend::Cloud)); // From global
         assert_eq!(loaded.cloud.url, "wss://local.example.com"); // Overridden by local
@@ -630,7 +643,7 @@ namespace = "local-ns"
             .expect("time should be valid")
             .as_millis();
         let local_path = std::env::temp_dir().join(format!("dunno-local-cli-{ts}.toml"));
-        
+
         let local_raw = r#"
 backend = "cloud"
 [cloud]
@@ -642,13 +655,13 @@ password = "cli-pass"
 [local]
 path = "/tmp/cli-test.db"
 "#;
-        
+
         std::fs::write(&local_path, local_raw).expect("should write local config");
 
         // CLI overrides backend to local, but cloud values remain from config
         let loaded = Config::load_from_optional_paths(Some("local"), None, Some(&local_path), true)
             .expect("load should succeed");
-        
+
         assert!(matches!(loaded.backend, StorageBackend::Local)); // CLI override
         assert_eq!(loaded.cloud.url, "wss://cli-test.example.com"); // From local config
         assert_eq!(loaded.local.path, "/tmp/cli-test.db"); // From local config
@@ -667,14 +680,14 @@ path = "/tmp/cli-test.db"
             .expect("time should be valid")
             .as_millis();
         let invalid_path = std::env::temp_dir().join(format!("dunno-invalid-{ts}.toml"));
-        
+
         // Invalid TOML - missing closing bracket
         let invalid_raw = r#"
 backend = "cloud"
 [cloud
 url = "wss://example.com"
 "#;
-        
+
         std::fs::write(&invalid_path, invalid_raw).expect("should write invalid config");
 
         let result = Config::load_from_optional_paths(None, Some(&invalid_path), None, true);
@@ -692,13 +705,13 @@ url = "wss://example.com"
             .expect("time should be valid")
             .as_millis();
         let empty_path = std::env::temp_dir().join(format!("dunno-empty-{ts}.toml"));
-        
+
         // Empty file
         std::fs::write(&empty_path, "").expect("should write empty config");
 
         let loaded = Config::load_from_optional_paths(None, Some(&empty_path), None, true)
             .expect("load should succeed with defaults");
-        
+
         // Should use defaults
         assert!(matches!(loaded.backend, StorageBackend::Local));
         assert_eq!(loaded.local.path, "~/.local/share/dunno/data.db");
@@ -714,25 +727,26 @@ url = "wss://example.com"
             .as_millis();
         let global_path = std::env::temp_dir().join(format!("dunno-mixed-{ts}-global.toml"));
         let local_path = std::env::temp_dir().join(format!("dunno-mixed-{ts}-local.toml"));
-        
+
         let global_raw = r#"
 backend = "cloud"
 [cloud]
 url = "wss://cloud.example.com"
 "#;
-        
+
         let local_raw = r#"
 backend = "local"
 [local]
 path = "/tmp/mixed.db"
 "#;
-        
+
         std::fs::write(&global_path, global_raw).expect("should write global config");
         std::fs::write(&local_path, local_raw).expect("should write local config");
 
-        let loaded = Config::load_from_optional_paths(None, Some(&global_path), Some(&local_path), true)
-            .expect("load should succeed");
-        
+        let loaded =
+            Config::load_from_optional_paths(None, Some(&global_path), Some(&local_path), true)
+                .expect("load should succeed");
+
         // Local backend setting should win
         assert!(matches!(loaded.backend, StorageBackend::Local));
         assert_eq!(loaded.local.path, "/tmp/mixed.db");
@@ -750,13 +764,14 @@ path = "/tmp/mixed.db"
             .expect("time should be valid")
             .as_millis();
         let whitespace_path = std::env::temp_dir().join(format!("dunno-whitespace-{ts}.toml"));
-        
+
         // Only whitespace
-        std::fs::write(&whitespace_path, "   \n\n  \t  \n").expect("should write whitespace config");
+        std::fs::write(&whitespace_path, "   \n\n  \t  \n")
+            .expect("should write whitespace config");
 
         let loaded = Config::load_from_optional_paths(None, Some(&whitespace_path), None, true)
             .expect("load should succeed with defaults");
-        
+
         // Should use defaults
         assert!(matches!(loaded.backend, StorageBackend::Local));
 
@@ -767,13 +782,13 @@ path = "/tmp/mixed.db"
     fn test_config_path_methods_return_expected_paths() {
         let global = Config::global_config_path();
         let local = Config::local_config_path();
-        
+
         // Global should contain .config/dunno/dunno.toml
         let global_str = global.to_string_lossy();
         assert!(global_str.contains(".config"));
         assert!(global_str.contains("dunno"));
         assert!(global_str.ends_with("dunno.toml"));
-        
+
         // Local should be just dunno.toml in current dir
         let local_str = local.to_string_lossy();
         assert_eq!(local_str, "dunno.toml");
@@ -786,16 +801,16 @@ path = "/tmp/mixed.db"
             .expect("time should be valid")
             .as_millis();
         let config_path = std::env::temp_dir().join(format!("dunno-qdrant-{ts}.toml"));
-        
+
         let config_raw = r#"
 qdrant_url = "http://localhost:6333"
 "#;
-        
+
         std::fs::write(&config_path, config_raw).expect("should write config");
 
         let loaded = Config::load_from_optional_paths(None, Some(&config_path), None, true)
             .expect("load should succeed");
-        
+
         assert_eq!(loaded.qdrant_url, "http://localhost:6333");
 
         let _ = std::fs::remove_file(config_path);
@@ -808,17 +823,17 @@ qdrant_url = "http://localhost:6333"
             .expect("time should be valid")
             .as_millis();
         let config_path = std::env::temp_dir().join(format!("dunno-qdrant-invalid-{ts}.toml"));
-        
+
         // Any string is accepted for qdrant_url (validation happens elsewhere)
         let config_raw = r#"
 qdrant_url = "not-a-valid-url"
 "#;
-        
+
         std::fs::write(&config_path, config_raw).expect("should write config");
 
         let loaded = Config::load_from_optional_paths(None, Some(&config_path), None, true)
             .expect("load should succeed");
-        
+
         assert_eq!(loaded.qdrant_url, "not-a-valid-url");
 
         let _ = std::fs::remove_file(config_path);
@@ -831,18 +846,18 @@ qdrant_url = "not-a-valid-url"
             .expect("time should be valid")
             .as_millis();
         let config_path = std::env::temp_dir().join(format!("dunno-partial-{ts}.toml"));
-        
+
         let config_raw = r#"
 backend = "cloud"
 [cloud]
 url = "wss://partial.example.com"
 "#;
-        
+
         std::fs::write(&config_path, config_raw).expect("should write config");
 
         let loaded = Config::load_from_optional_paths(None, Some(&config_path), None, true)
             .expect("load should succeed");
-        
+
         assert!(matches!(loaded.backend, StorageBackend::Cloud));
         assert_eq!(loaded.cloud.url, "wss://partial.example.com");
         // Other cloud fields should use defaults

@@ -281,9 +281,7 @@ pub enum TaskCommands {
         status: Option<String>,
     },
     #[command(name = "rm")]
-    Delete {
-        task_id: String,
-    },
+    Delete { task_id: String },
     #[command(name = "ls")]
     List {
         #[arg(long, conflicts_with = "project")]
@@ -370,9 +368,7 @@ pub enum TodoCommands {
         project: Option<String>,
     },
     #[command(name = "rm")]
-    Delete {
-        todo_id: String,
-    },
+    Delete { todo_id: String },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -388,14 +384,8 @@ mod tests {
     #[test]
     fn context_command_enforces_mutual_exclusion_of_ids() {
         // TASK_ID and FILE_ID together should be rejected by clap.
-        let result = Args::try_parse_from([
-            "dn",
-            "ctx",
-            "--task-id",
-            "task:1",
-            "--file-id",
-            "file:2",
-        ]);
+        let result =
+            Args::try_parse_from(["dn", "ctx", "--task-id", "task:1", "--file-id", "file:2"]);
         assert!(result.is_err(), "expected clap to reject conflicting ids");
 
         // Single id variants should parse successfully.
@@ -408,7 +398,8 @@ mod tests {
 
     #[test]
     fn context_command_accepts_full_flag() {
-        let args = Args::try_parse_from(["dn", "ctx", "--task-id", "task:123", "--full"]).expect("parse full flag");
+        let args = Args::try_parse_from(["dn", "ctx", "--task-id", "task:123", "--full"])
+            .expect("parse full flag");
         if let Commands::Context { full, .. } = args.command {
             assert!(full);
         } else {
@@ -516,14 +507,8 @@ mod tests {
 
     #[test]
     fn add_command_single_field_value() {
-        let args = Args::try_parse_from([
-            "dn",
-            "add",
-            "--field",
-            "content",
-            "--value",
-            "Simple note",
-        ]);
+        let args =
+            Args::try_parse_from(["dn", "add", "--field", "content", "--value", "Simple note"]);
         assert!(args.is_ok(), "should parse single --field/--value pair");
         if let Commands::Add {
             field_names,
@@ -614,8 +599,7 @@ mod tests {
 
     #[test]
     fn pretty_flag_works_with_backend_flag() {
-        let args =
-            Args::try_parse_from(["dn", "--backend", "cloud", "--pretty", "config", "show"]);
+        let args = Args::try_parse_from(["dn", "--backend", "cloud", "--pretty", "config", "show"]);
         assert!(args.is_ok(), "should parse both --backend and --pretty");
         let parsed = args.unwrap();
         assert_eq!(parsed.backend, Some("cloud".to_string()));
@@ -624,8 +608,7 @@ mod tests {
 
     #[test]
     fn pretty_flag_works_with_context_command() {
-        let args =
-            Args::try_parse_from(["dn", "--pretty", "ctx", "--task-id", "task:abc123"]);
+        let args = Args::try_parse_from(["dn", "--pretty", "ctx", "--task-id", "task:abc123"]);
         assert!(args.is_ok(), "should parse --pretty with context command");
         assert!(args.unwrap().pretty, "pretty should be true");
     }
@@ -746,14 +729,8 @@ mod tests {
             "should parse file create with description"
         );
 
-        let args2 = Args::try_parse_from([
-            "dn",
-            "--pretty",
-            "file",
-            "ls",
-            "--module-id",
-            "module:abc",
-        ]);
+        let args2 =
+            Args::try_parse_from(["dn", "--pretty", "file", "ls", "--module-id", "module:abc"]);
         assert!(args2.is_ok(), "should parse --pretty with file list");
         assert!(args2.unwrap().pretty, "pretty should be true");
     }
@@ -928,14 +905,8 @@ mod tests {
 
     #[test]
     fn todo_create_accepts_project_name() {
-        let args = Args::try_parse_from([
-            "dn",
-            "todo",
-            "add",
-            "--project",
-            "My Project",
-            "Buy milk",
-        ]);
+        let args =
+            Args::try_parse_from(["dn", "todo", "add", "--project", "My Project", "Buy milk"]);
         assert!(args.is_ok(), "should parse --project with todo create");
         if let Commands::Todo { command } = args.unwrap().command {
             if let TodoCommands::Create {
@@ -1042,8 +1013,7 @@ mod tests {
 
     #[test]
     fn submodule_list_accepts_project_id() {
-        let args =
-            Args::try_parse_from(["dn", "submodule", "ls", "--project-id", "project:abc"]);
+        let args = Args::try_parse_from(["dn", "submodule", "ls", "--project-id", "project:abc"]);
         assert!(
             args.is_ok(),
             "should parse --project-id with submodule list"
@@ -1061,8 +1031,7 @@ mod tests {
 
     #[test]
     fn submodule_list_accepts_module_id() {
-        let args =
-            Args::try_parse_from(["dn", "submodule", "ls", "--module-id", "module:abc"]);
+        let args = Args::try_parse_from(["dn", "submodule", "ls", "--module-id", "module:abc"]);
         assert!(args.is_ok(), "should parse --module-id with submodule list");
         if let Commands::Submodule { command } = args.unwrap().command {
             if let SubmoduleCommands::List { module_id, .. } = command {
@@ -1107,8 +1076,7 @@ mod tests {
 
     #[test]
     fn file_list_accepts_submodule_id() {
-        let args =
-            Args::try_parse_from(["dn", "file", "ls", "--submodule-id", "submodule:abc"]);
+        let args = Args::try_parse_from(["dn", "file", "ls", "--submodule-id", "submodule:abc"]);
         assert!(args.is_ok(), "should parse --submodule-id with file list");
         if let Commands::File { command } = args.unwrap().command {
             if let FileCommands::List { submodule_id, .. } = command {

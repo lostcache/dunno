@@ -209,7 +209,8 @@ impl DB {
             .map(|(_, key)| key)
             .unwrap_or(user_story_id);
 
-        let deleted: Option<surrealdb::types::Value> = self.client.delete(("user_story", key)).await?;
+        let deleted: Option<surrealdb::types::Value> =
+            self.client.delete(("user_story", key)).await?;
         Ok(deleted.is_some())
     }
 }

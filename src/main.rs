@@ -58,16 +58,30 @@ async fn dispatch_command(
             edge,
             to_ids,
         } => handle_link(from_id, edge, to_ids, db, pretty).await,
-        dunno::args::Commands::Project { command } => handle_project_command(command, db, pretty).await,
-        dunno::args::Commands::Module { command } => handle_module_command(command, db, pretty, ignore_case).await,
-        dunno::args::Commands::Submodule { command } => handle_submodule_command(command, db, pretty, ignore_case).await,
-        dunno::args::Commands::File { command } => handle_file_command(command, db, pretty, ignore_case).await,
-        dunno::args::Commands::Task { command } => handle_task_command(command, db, pretty, ignore_case).await,
-        dunno::args::Commands::Todo { command } => handle_todo_command(command, db, pretty, ignore_case).await,
+        dunno::args::Commands::Project { command } => {
+            handle_project_command(command, db, pretty).await
+        }
+        dunno::args::Commands::Module { command } => {
+            handle_module_command(command, db, pretty, ignore_case).await
+        }
+        dunno::args::Commands::Submodule { command } => {
+            handle_submodule_command(command, db, pretty, ignore_case).await
+        }
+        dunno::args::Commands::File { command } => {
+            handle_file_command(command, db, pretty, ignore_case).await
+        }
+        dunno::args::Commands::Task { command } => {
+            handle_task_command(command, db, pretty, ignore_case).await
+        }
+        dunno::args::Commands::Todo { command } => {
+            handle_todo_command(command, db, pretty, ignore_case).await
+        }
         dunno::args::Commands::UserStory { command } => {
             handle_user_story_command(command, db, pretty, ignore_case).await
         }
-        dunno::args::Commands::Epic { command } => handle_epic_command(command, db, pretty, ignore_case).await,
+        dunno::args::Commands::Epic { command } => {
+            handle_epic_command(command, db, pretty, ignore_case).await
+        }
         dunno::args::Commands::Context {
             task_id,
             file_id,
@@ -242,10 +256,16 @@ async fn handle_module_command(
             notes,
         } => {
             // Resolve project name to ID if provided
-            let resolved_project_id = resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
+            let resolved_project_id =
+                resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
 
             let created = db
-                .create_module(&name, &description, notes.as_deref(), resolved_project_id.as_deref())
+                .create_module(
+                    &name,
+                    &description,
+                    notes.as_deref(),
+                    resolved_project_id.as_deref(),
+                )
                 .await?;
             let module_id = match &created.id {
                 Some(id) => id.as_str(),
@@ -262,7 +282,10 @@ async fn handle_module_command(
 
             print_json(serde_json::json!(created), pretty);
         }
-        dunno::args::ModuleCommands::List { project_id, project } => {
+        dunno::args::ModuleCommands::List {
+            project_id,
+            project,
+        } => {
             let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
             let modules = match resolved_id {
                 Some(pid) => db.list_modules_by_project(&pid).await?,
@@ -297,7 +320,12 @@ async fn handle_submodule_command(
             notes,
         } => {
             let created = db
-                .create_submodule(&name, &description, notes.as_deref(), module_ids.first().map(String::as_str))
+                .create_submodule(
+                    &name,
+                    &description,
+                    notes.as_deref(),
+                    module_ids.first().map(String::as_str),
+                )
                 .await?;
 
             let sub_id = match &created.id {
@@ -314,11 +342,16 @@ async fn handle_submodule_command(
 
             print_json(serde_json::json!(created), pretty);
         }
-        dunno::args::SubmoduleCommands::List { project_id, project, module_id } => {
+        dunno::args::SubmoduleCommands::List {
+            project_id,
+            project,
+            module_id,
+        } => {
             let submodules = match module_id {
                 Some(mid) => db.list_submodules_by_module(&mid).await?,
                 None => {
-                    let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
+                    let resolved_id =
+                        resolve_project_id(db, project_id, project, ignore_case).await?;
                     match resolved_id {
                         Some(pid) => db.list_submodules_by_project(&pid).await?,
                         None => db.list_submodules().await?,
@@ -355,7 +388,13 @@ async fn handle_file_command(
             notes,
         } => {
             let created = db
-                .create_file(&name, &path, description.as_deref(), notes.as_deref(), parent_ids.first().map(String::as_str))
+                .create_file(
+                    &name,
+                    &path,
+                    description.as_deref(),
+                    notes.as_deref(),
+                    parent_ids.first().map(String::as_str),
+                )
                 .await?;
 
             let file_id = match &created.id {
@@ -382,7 +421,8 @@ async fn handle_file_command(
                 (Some(sid), _, _, _) => db.list_files_by_submodule(&sid).await?,
                 (_, Some(mid), _, _) => db.list_files_by_module(&mid).await?,
                 (_, _, pid_opt, proj_opt) => {
-                    let resolved_id = resolve_project_id(db, pid_opt, proj_opt, ignore_case).await?;
+                    let resolved_id =
+                        resolve_project_id(db, pid_opt, proj_opt, ignore_case).await?;
                     match resolved_id {
                         Some(pid) => db.list_files_by_project(&pid).await?,
                         None => db.list_files().await?,
@@ -421,19 +461,15 @@ async fn handle_task_command(
             description,
         } => {
             // Resolve project name to ID if provided
-            let resolved_project_id = resolve_project_id(
-                db,
-                project_ids.first().cloned(),
-                project,
-                ignore_case
-            ).await?;
-            
+            let resolved_project_id =
+                resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
+
             // Convert resolved ID back to Vec<String> for compatibility
             let effective_project_ids: Vec<String> = match resolved_project_id {
                 Some(id) => vec![id],
                 None => project_ids,
             };
-            
+
             let (mid, pid) = validate_task_parents(&module_ids, &effective_project_ids)?;
             let created = db.create_task(&name, &description, mid, pid).await?;
 
@@ -464,7 +500,10 @@ async fn handle_task_command(
                 None => return Err(anyhow::anyhow!("Task not found: {}", task_id)),
             }
         }
-        dunno::args::TaskCommands::List { project_id, project } => {
+        dunno::args::TaskCommands::List {
+            project_id,
+            project,
+        } => {
             let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
             let tasks = match resolved_id {
                 Some(pid) => db.list_tasks_by_project(&pid).await?,
@@ -475,7 +514,10 @@ async fn handle_task_command(
         dunno::args::TaskCommands::Delete { task_id } => {
             let deleted = db.delete_task(&task_id).await?;
             if deleted {
-                print_json(serde_json::json!({ "status": "ok", "deleted": task_id }), pretty);
+                print_json(
+                    serde_json::json!({ "status": "ok", "deleted": task_id }),
+                    pretty,
+                );
             } else {
                 return Err(anyhow::anyhow!("Task not found: {}", task_id));
             }
@@ -532,13 +574,9 @@ async fn handle_todo_command(
             content,
         } => {
             // Resolve project name to ID if provided
-            let resolved_project_id = resolve_project_id(
-                db,
-                project_ids.first().cloned(),
-                project,
-                ignore_case
-            ).await?;
-            
+            let resolved_project_id =
+                resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
+
             let created = db
                 .create_todo(&content, resolved_project_id.as_deref())
                 .await?;
@@ -558,16 +596,24 @@ async fn handle_todo_command(
 
             print_json(serde_json::json!(created), pretty);
         }
-        dunno::args::TodoCommands::List { project_id, project } => {
+        dunno::args::TodoCommands::List {
+            project_id,
+            project,
+        } => {
             let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
-            let pid = resolved_id.ok_or_else(|| anyhow::anyhow!("Either --project-id or --project must be provided"))?;
+            let pid = resolved_id.ok_or_else(|| {
+                anyhow::anyhow!("Either --project-id or --project must be provided")
+            })?;
             let todos = db.list_todos_by_project(&pid).await?;
             print_json(serde_json::json!(todos), pretty);
         }
         dunno::args::TodoCommands::Delete { todo_id } => {
             let deleted = db.delete_todo(&todo_id).await?;
             if deleted {
-                print_json(serde_json::json!({ "status": "ok", "deleted": todo_id }), pretty);
+                print_json(
+                    serde_json::json!({ "status": "ok", "deleted": todo_id }),
+                    pretty,
+                );
             } else {
                 return Err(anyhow::anyhow!("Todo not found: {}", todo_id));
             }
@@ -592,11 +638,11 @@ async fn handle_user_story_command(
             description,
         } => {
             let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
-            let pid = resolved_id.ok_or_else(|| anyhow::anyhow!("Either --project-id or --project must be provided"))?;
-            
-            let created = db
-                .create_user_story(&title, &description, &pid)
-                .await?;
+            let pid = resolved_id.ok_or_else(|| {
+                anyhow::anyhow!("Either --project-id or --project must be provided")
+            })?;
+
+            let created = db.create_user_story(&title, &description, &pid).await?;
 
             if let Some(us_id) = &created.id {
                 for epic_id in &epic_ids {
@@ -646,12 +692,17 @@ async fn handle_epic_command(
             description,
         } => {
             let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
-            let pid = resolved_id.ok_or_else(|| anyhow::anyhow!("Either --project-id or --project must be provided"))?;
-            
+            let pid = resolved_id.ok_or_else(|| {
+                anyhow::anyhow!("Either --project-id or --project must be provided")
+            })?;
+
             let created = db.create_epic(&title, &description, &pid).await?;
             print_json(serde_json::json!(created), pretty);
         }
-        dunno::args::EpicCommands::List { project_id, project } => {
+        dunno::args::EpicCommands::List {
+            project_id,
+            project,
+        } => {
             let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
             let epics = match resolved_id {
                 Some(pid) => db.list_epics_by_project(&pid).await?,
@@ -683,15 +734,24 @@ async fn handle_context(
     match (task_id, file_id, epic_id) {
         (Some(t_id), _, _) => {
             let results = dunno::context::get_task_context(&t_id, full, db).await?;
-            print_json(serde_json::json!({ "results": serde_json::to_value(results)? }), pretty);
+            print_json(
+                serde_json::json!({ "results": serde_json::to_value(results)? }),
+                pretty,
+            );
         }
         (_, Some(f_id), _) => {
             let results = dunno::context::get_file_context(&f_id, full, db).await?;
-            print_json(serde_json::json!({ "results": serde_json::to_value(results)? }), pretty);
+            print_json(
+                serde_json::json!({ "results": serde_json::to_value(results)? }),
+                pretty,
+            );
         }
         (_, _, Some(e_id)) => {
             let results = dunno::context::get_epic_context(&e_id, full, db).await?;
-            print_json(serde_json::json!({ "results": serde_json::to_value(results)? }), pretty);
+            print_json(
+                serde_json::json!({ "results": serde_json::to_value(results)? }),
+                pretty,
+            );
         }
         (None, None, None) => {
             return Err(anyhow::anyhow!(
@@ -730,7 +790,10 @@ fn print_error_json(kind: &str, message: String) {
 /// Prints JSON output with optional pretty formatting.
 fn print_json(value: serde_json::Value, pretty: bool) {
     if pretty {
-        println!("{}", serde_json::to_string_pretty(&value).unwrap_or_default());
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&value).unwrap_or_default()
+        );
     } else {
         println!("{}", value);
     }
@@ -743,21 +806,36 @@ mod tests {
     fn test_print_json_compact_format() {
         let value = serde_json::json!({"status": "ok", "id": "task:abc123"});
         let json_str = value.to_string();
-        
+
         // Compact format should not contain newlines
-        assert!(!json_str.contains('\n'), "compact JSON should not have newlines");
-        assert!(json_str.contains("status"), "JSON should contain field names");
-        assert!(json_str.contains("task:abc123"), "JSON should contain values");
+        assert!(
+            !json_str.contains('\n'),
+            "compact JSON should not have newlines"
+        );
+        assert!(
+            json_str.contains("status"),
+            "JSON should contain field names"
+        );
+        assert!(
+            json_str.contains("task:abc123"),
+            "JSON should contain values"
+        );
     }
 
     #[test]
     fn test_print_json_pretty_format() {
         let value = serde_json::json!({"status": "ok", "id": "task:abc123"});
         let pretty_str = serde_json::to_string_pretty(&value).unwrap();
-        
+
         // Pretty format should contain newlines and indentation
-        assert!(pretty_str.contains('\n'), "pretty JSON should have newlines");
-        assert!(pretty_str.contains("  "), "pretty JSON should have indentation");
+        assert!(
+            pretty_str.contains('\n'),
+            "pretty JSON should have newlines"
+        );
+        assert!(
+            pretty_str.contains("  "),
+            "pretty JSON should have indentation"
+        );
     }
 
     #[test]
@@ -769,14 +847,14 @@ mod tests {
             },
             "tasks": ["task:1", "task:2"]
         });
-        
+
         let compact = value.to_string();
         let pretty = serde_json::to_string_pretty(&value).unwrap();
-        
+
         // Both should parse back to the same value
         let parsed_compact: serde_json::Value = serde_json::from_str(&compact).unwrap();
         let parsed_pretty: serde_json::Value = serde_json::from_str(&pretty).unwrap();
-        
+
         assert_eq!(parsed_compact, parsed_pretty);
         assert_eq!(parsed_compact["project"]["id"], "project:abc");
     }
@@ -787,11 +865,17 @@ mod tests {
             {"id": "task:1", "name": "Task 1"},
             {"id": "task:2", "name": "Task 2"}
         ]);
-        
+
         let pretty = serde_json::to_string_pretty(&value).unwrap();
-        
+
         // Pretty format should have newlines between array items
-        assert!(pretty.contains('\n'), "pretty JSON array should have newlines");
-        assert!(pretty.contains("Task 1"), "pretty JSON should preserve values");
+        assert!(
+            pretty.contains('\n'),
+            "pretty JSON array should have newlines"
+        );
+        assert!(
+            pretty.contains("Task 1"),
+            "pretty JSON should preserve values"
+        );
     }
 }

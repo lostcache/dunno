@@ -102,7 +102,9 @@ impl DB {
             // Get module's project and link submodule to project
             let mut response = self
                 .client
-                .query("SELECT ->belongs_to_project->project.id AS pid FROM ONLY type::record($mid)")
+                .query(
+                    "SELECT ->belongs_to_project->project.id AS pid FROM ONLY type::record($mid)",
+                )
                 .bind(("mid", mid.to_string()))
                 .await?;
             let project_record: Option<surrealdb::types::Value> = response.take(0)?;
@@ -184,7 +186,7 @@ impl DB {
                 contexts.extend(self.get_linked_context(&pid).await?);
             }
         }
-        
+
         // Deduplicate
         let mut seen = std::collections::HashSet::new();
         contexts.retain(|c| {
@@ -225,7 +227,7 @@ impl DB {
     ) -> anyhow::Result<Vec<crate::models::Context>> {
         let mut contexts = self.get_submodule_context_node(submodule_id).await?;
         let h = self.resolve_structural_ancestry(submodule_id).await?;
-        
+
         for mid in h.module_ids {
             if mid != submodule_id {
                 contexts.extend(self.get_linked_context(&mid).await?);
@@ -280,7 +282,8 @@ impl DB {
             .map(|(_, key)| key)
             .unwrap_or(submodule_id);
 
-        let deleted: Option<surrealdb::types::Value> = self.client.delete(("submodule", key)).await?;
+        let deleted: Option<surrealdb::types::Value> =
+            self.client.delete(("submodule", key)).await?;
         Ok(deleted.is_some())
     }
 }

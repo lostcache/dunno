@@ -2469,7 +2469,10 @@ async fn test_get_task_context_with_files_and_linked_context() {
     assert_eq!(context.files[0].id.as_deref().unwrap(), file_id);
     assert_eq!(context.files[0].name, "auth.rs");
     assert_eq!(context.files[0].path, "src/auth.rs");
-    assert_eq!(context.files[0].description, Some("Auth implementation".to_string()));
+    assert_eq!(
+        context.files[0].description,
+        Some("Auth implementation".to_string())
+    );
 
     // Verify hierarchy is correct
     assert_eq!(context.hierarchy.project_id, project_id);

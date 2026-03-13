@@ -62,9 +62,18 @@ mod tests {
             .expect("Failed to init DB");
 
         let mut fields = serde_json::Map::new();
-        fields.insert("type".to_string(), serde_json::Value::String("performance".to_string()));
-        fields.insert("content".to_string(), serde_json::Value::String("Use parallel iterators".to_string()));
-        fields.insert("category".to_string(), serde_json::Value::String("optimization".to_string()));
+        fields.insert(
+            "type".to_string(),
+            serde_json::Value::String("performance".to_string()),
+        );
+        fields.insert(
+            "content".to_string(),
+            serde_json::Value::String("Use parallel iterators".to_string()),
+        );
+        fields.insert(
+            "category".to_string(),
+            serde_json::Value::String("optimization".to_string()),
+        );
 
         let result = crate::ingest::add_knowledge_schemaless(fields, vec![], &db)
             .await
@@ -75,7 +84,10 @@ mod tests {
         assert!(!result.linked);
 
         // Verify the record was created with custom fields
-        let contexts = db.list_contexts().await.expect("list_contexts should succeed");
+        let contexts = db
+            .list_contexts()
+            .await
+            .expect("list_contexts should succeed");
         assert_eq!(contexts.len(), 1);
         // Note: The legacy Context struct won't have the custom 'category' field,
         // but the data is stored in the database
@@ -98,9 +110,18 @@ mod tests {
         let project_id = project.id.expect("project id");
 
         let mut fields = serde_json::Map::new();
-        fields.insert("type".to_string(), serde_json::Value::String("security".to_string()));
-        fields.insert("content".to_string(), serde_json::Value::String("Validate inputs".to_string()));
-        fields.insert("severity".to_string(), serde_json::Value::String("high".to_string()));
+        fields.insert(
+            "type".to_string(),
+            serde_json::Value::String("security".to_string()),
+        );
+        fields.insert(
+            "content".to_string(),
+            serde_json::Value::String("Validate inputs".to_string()),
+        );
+        fields.insert(
+            "severity".to_string(),
+            serde_json::Value::String("high".to_string()),
+        );
 
         let result = crate::ingest::add_knowledge_schemaless(fields, vec![project_id.clone()], &db)
             .await
@@ -120,7 +141,12 @@ mod tests {
 
         let result = crate::ingest::add_knowledge_schemaless(fields, vec![], &db).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("At least one --field"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("At least one --field")
+        );
     }
 
     #[tokio::test]
@@ -131,7 +157,10 @@ mod tests {
 
         let mut fields = serde_json::Map::new();
         // Only content, no type
-        fields.insert("content".to_string(), serde_json::Value::String("Some content".to_string()));
+        fields.insert(
+            "content".to_string(),
+            serde_json::Value::String("Some content".to_string()),
+        );
 
         let result = crate::ingest::add_knowledge_schemaless(fields, vec![], &db)
             .await
@@ -159,14 +188,25 @@ mod tests {
         let project_id = project.id.expect("project id");
 
         let module = db
-            .create_module(&"Auth".to_string(), &"Auth module".to_string(), None, Some(&project_id))
+            .create_module(
+                &"Auth".to_string(),
+                &"Auth module".to_string(),
+                None,
+                Some(&project_id),
+            )
             .await
             .expect("create module");
         let module_id = module.id.expect("module id");
 
         let mut fields = serde_json::Map::new();
-        fields.insert("type".to_string(), serde_json::Value::String("deployment".to_string()));
-        fields.insert("content".to_string(), serde_json::Value::String("Backup DB".to_string()));
+        fields.insert(
+            "type".to_string(),
+            serde_json::Value::String("deployment".to_string()),
+        );
+        fields.insert(
+            "content".to_string(),
+            serde_json::Value::String("Backup DB".to_string()),
+        );
 
         let result = crate::ingest::add_knowledge_schemaless(
             fields,
@@ -190,7 +230,10 @@ mod tests {
         fields.insert("content".to_string(), json!("Use parallel iterators"));
         fields.insert("priority".to_string(), json!(5));
         fields.insert("tags".to_string(), json!(["optimization", "rust"]));
-        fields.insert("metadata".to_string(), json!({"author": "test", "version": 1}));
+        fields.insert(
+            "metadata".to_string(),
+            json!({"author": "test", "version": 1}),
+        );
 
         let result = crate::ingest::add_knowledge_schemaless(fields, vec![], &db)
             .await
@@ -216,7 +259,7 @@ mod tests {
             .expect("add_knowledge_schemaless should succeed");
 
         assert_eq!(result.kind, "note");
-        assert_eq!(result.content, "");  // Empty string default
+        assert_eq!(result.content, ""); // Empty string default
     }
 
     #[tokio::test]
@@ -228,7 +271,10 @@ mod tests {
         let mut fields = serde_json::Map::new();
         fields.insert("type".to_string(), json!("mistake"));
         fields.insert("content".to_string(), json!("日本語テキスト and emojis 🎉"));
-        fields.insert("description".to_string(), json!("Special chars: \"quoted\" and =equals="));
+        fields.insert(
+            "description".to_string(),
+            json!("Special chars: \"quoted\" and =equals="),
+        );
 
         let result = crate::ingest::add_knowledge_schemaless(fields, vec![], &db)
             .await

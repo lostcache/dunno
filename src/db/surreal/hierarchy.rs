@@ -137,7 +137,7 @@ impl DB {
                         "s",
                     )
                     .await?;
-                
+
                 Ok(StructuralAncestry {
                     project_ids,
                     module_ids,
