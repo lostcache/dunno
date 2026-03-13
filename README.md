@@ -72,14 +72,14 @@ dn project add "My App" "A web application"
 # Returns: {"id":"project:abc","name":"My App","description":"A web application"}
 
 # Create a module using project ID
-dn module add --project-ids project:abc "Auth" "Authentication system"
+dn module add {--project-ids|--pids} project:abc "Auth" "Authentication system"
 # Returns: {"id":"module:def", ...}
 
 # Create a module using project name (alternative)
-dn module add --project "My App" "Auth" "Authentication system"
+dn module add {--project|-p} "My App" "Auth" "Authentication system"
 
 # Create a task using project name with case-insensitive matching
-dn task add --module-ids module:def --project "my app" -i "Implement login" "Add JWT authentication"
+dn task add {--module-ids|--mids} module:def {--project|-p} "my app" -i "Implement login" "Add JWT authentication"
 # Returns: {"id":"task:ghi", ...}
 ```
 
@@ -89,13 +89,13 @@ dn task add --module-ids module:def --project "my app" -i "Implement login" "Add
 
 ```bash
 # Add a coding mistake to remember
-dn add --field type --value mistake --field content --value "Don't use unwrap() in production" --link-to task:ghi
+dn add {--field|-f} type {--value|-v} mistake {--field|-f} content {--value|-v} "Don't use unwrap() in production" {--link-to|--ln} task:ghi
 
 # Add a style rule
-dn add --field type --value style --field content --value "Use Result for error handling" --link-to module:def
+dn add {--field|-f} type {--value|-v} style {--field|-f} content {--value|-v} "Use Result for error handling" {--link-to|--ln} module:def
 
 # Add security note
-dn add --field type --value security --field content --value "Validate all JWT tokens" --link-to project:abc
+dn add {--field|-f} type {--value|-v} security {--field|-f} content {--value|-v} "Validate all JWT tokens" {--link-to|--ln} project:abc
 ```
 
 #### 5. Retrieve Context
@@ -128,8 +128,8 @@ dn uses a layered configuration system on a **per-field basis** (highest to lowe
 
 #### Global CLI Flags
 
-- `--backend <BACKEND>` - Override storage backend (`local` or `cloud`)
-- `--pretty` - Format output with indentation for better readability (applies to **all** JSON output)
+- `{--backend|--b} <BACKEND>` - Override storage backend (`local` or `cloud`)
+- `{--pretty|--pp}` - Format output with indentation for better readability (applies to **all** JSON output)
 - `-i, --ignore-case` - Ignore case when matching project names (use with `--project`)
 
 ```bash
@@ -137,15 +137,15 @@ dn uses a layered configuration system on a **per-field basis** (highest to lowe
 dn config show
 
 # View config in human-readable format
-dn config show --pretty
+dn config show {--pretty|--pp}
 
 # Pretty output works with all commands
-dn project ls --pretty
-dn task ls --pretty
-dn ctx --task-id task:abc --pretty
+dn project ls {--pretty|--pp}
+dn task ls {--pretty|--pp}
+dn ctx {--task-id|--tid} task:abc {--pretty|--pp}
 
 # Use project name with case-insensitive matching
-dn module add --project "my project" -i "Auth" "Auth module"
+dn module add {--project|-p} "my project" -i "Auth" "Auth module"
 ```
 
 #### Config File Locations
@@ -224,9 +224,9 @@ Link knowledge to any structural node:
 dn [GLOBAL FLAGS] <COMMAND>
 
 Global Flags:
-  --backend <BACKEND>  # Override storage backend (local or cloud)
-  --pretty             # Format output with indentation
-  -i, --ignore-case    # Ignore case when matching project names
+  --backend <BACKEND>    # Override storage backend (local or cloud)
+  --pretty               # Format output with indentation
+  -i, --ignore-case      # Ignore case when matching project names
 ```
 
 #### Project Management
@@ -238,41 +238,41 @@ dn project ls                              # List all projects
 #### Module Management
 ```bash
 # Using project ID
-dn module add --project-ids <id> "<name>" "<description>" [--notes <notes>]
+dn module add {--project-ids|--pids} <id> "<name>" "<description>" [--notes <notes>]
 
 # Using project name (alternative)
-dn module add --project "<project_name>" "<name>" "<description>" [--notes <notes>]
+dn module add {--project|-p} "<project_name>" "<name>" "<description>" [--notes <notes>]
 
 # List modules (all or filtered by project)
 dn module ls
-dn module ls --project-id <id>
-dn module ls --project "<project_name>"
+dn module ls {--project-id|--pid} <id>
+dn module ls {--project|-p} "<project_name>"
 ```
 
 #### Submodule Management
 ```bash
 # Create submodule linked to module
-dn submodule add --module-ids <id> "<name>" "<description>" [--notes <notes>]
+dn submodule add {--module-ids|--mids} <id> "<name>" "<description>" [--notes <notes>]
 
 # List submodules (all, by module, or by project)
 dn submodule ls
-dn submodule ls --module-id <id>
-dn submodule ls --project-id <id>
-dn submodule ls --project "<project_name>"
+dn submodule ls {--module-id|--mid} <id>
+dn submodule ls {--project-id|--pid} <id>
+dn submodule ls {--project|-p} "<project_name>"
 ```
 
 #### Task Management
 ```bash
 # Using IDs
-dn task add --module-ids <id> --project-ids <id> "<name>" "<description>"
+dn task add {--module-ids|--mids} <id> {--project-ids|--pids} <id> "<name>" "<description>"
 
 # Using project name (alternative)
-dn task add --module-ids <id> --project "<project_name>" "<name>" "<description>"
+dn task add {--module-ids|--mids} <id> {--project|-p} "<project_name>" "<name>" "<description>"
 
 # List tasks (all or filtered by project)
 dn task ls
-dn task ls --project-id <id>
-dn task ls --project "<project_name>"
+dn task ls {--project-id|--pid} <id>
+dn task ls {--project|-p} "<project_name>"
 
 dn task update <id> --status started
 dn task rm <id>   # Delete a task by ID
@@ -286,43 +286,46 @@ dn file add --parent-ids <submodule_id> "<name>" "<path>" ["<description>"] [--n
 
 # List files (cascading filter priority: submodule > module > project)
 dn file ls
-dn file ls --submodule-id <id>   # Most specific
-dn file ls --module-id <id>      # Filter by module
-dn file ls --project-id <id>    # Filter by project (all files in project)
-dn file ls --project "<project_name>"
+dn file ls {--submodule-id|--smid} <id>   # Most specific
+dn file ls {--module-id|--mid} <id>       # Filter by module
+dn file ls {--project-id|--pid} <id>     # Filter by project (all files in project)
+dn file ls {--project|-p} "<project_name>"
 ```
 
 #### User Story Management
 ```bash
 # Using project ID
-dn user-story add --project-id <id> "<title>" "<description>"
-dn user-story ls --project-id <id>
+dn user-story add {--project-id|--pid} <id> [--eids <epic_id>] "<title>" "<description>"
+dn user-story ls {--project-id|--pid} <id>
 
 # Using project name (alternative)
-dn user-story add --project "<project_name>" "<title>" "<description>"
-dn user-story ls --project "<project_name>"
+dn user-story add {--project|-p} "<project_name>" "<title>" "<description>"
+dn user-story ls {--project|-p} "<project_name>"
+
+# List with epic filter
+dn user-story ls {--project-id|--pid} <id> {--epic-id|--eid} <epic_id>
 ```
 
 #### Epic Management
 ```bash
 # Using project ID
-dn epic add --project-id <id> "<title>" "<description>"
-dn epic ls --project-id <id>
+dn epic add {--project-id|--pid} <id> "<title>" "<description>"
+dn epic ls {--project-id|--pid} <id>
 
 # Using project name (alternative)
-dn epic add --project "<project_name>" "<title>" "<description>"
-dn epic ls --project "<project_name>"
+dn epic add {--project|-p} "<project_name>" "<title>" "<description>"
+dn epic ls {--project|-p} "<project_name>"
 ```
 
 #### Todo Management
 ```bash
 # Using project ID
-dn todo add --project-ids <id> "<content>"
-dn todo ls --project-id <id>
+dn todo add {--project-ids|--pids} <id> "<content>"
+dn todo ls {--project-id|--pid} <id>
 
 # Using project name (alternative)
-dn todo add --project "<project_name>" "<content>"
-dn todo ls --project "<project_name>"
+dn todo add {--project|-p} "<project_name>" "<content>"
+dn todo ls {--project|-p} "<project_name>"
 
 # Delete a todo item
 dn todo rm <id>
@@ -331,54 +334,100 @@ dn todo rm <id>
 #### Knowledge Management
 ```bash
 # Add knowledge with arbitrary fields
-dn add --field <key> --value <val> [--link-to <id> ...]
+dn add {--field|-f} <key> {--value|-v} <val> [{--link-to|--ln} <id> ...]
 
 # Examples:
-dn add --field type --value mistake --field content --value "Avoid panic!" --link-to project:abc
-dn add --field type --value style --field language --value rust --field rule --value "Use ? operator" --link-to module:def
+dn add {--field|-f} type {--value|-v} mistake {--field|-f} content {--value|-v} "Avoid panic!" {--link-to|--ln} project:abc
+dn add {--field|-f} type {--value|-v} style {--field|-f} language {--value|-v} rust {--link-to|--ln} module:def
 ```
 
 #### Context Retrieval
 ```bash
-# Header: Context Retrieval
-dn ctx --task-id <id>
-dn ctx --file-id <id>
-dn ctx --epic-id <id>
+dn ctx {--task-id|--tid} <id>
+dn ctx {--file-id|--fid} <id>
+dn ctx {--epic-id|--eid} <id>
 ```
 
 #### Linking
 ```bash
-dn link --from-id <id> --edge <type> --to-ids <id> [<id> ...]
+dn link {--from-id|-f} <id> {--edge|-e} <type> {--to-ids|-t} <id> [<id> ...]
+
+# Examples:
+dn link {--from-id|-f} project:abc {--edge|-e} contains {--to-ids|-t} module:def
+dn link {--from-id|-f} project:abc {--edge|-e} has_todo {--to-ids|-t} todo_item:1 {--to-ids|-t} todo_item:2
 ```
+
+#### Short Flags & Aliases Reference
+
+**Flag Shortcuts:**
+
+| Long | Short |
+|------|-------|
+| `--backend` | `--b` |
+| `--pretty` | `--pp` |
+| `--ignore-case` | `-i` |
+| `--field` | `-f` |
+| `--value` | `-v` |
+| `--link-to` | `--ln` |
+| `--project` | `-p` |
+| `--project-id` | `--pid` |
+| `--project-ids` | `--pids` |
+| `--module-id` | `--mid` |
+| `--module-ids` | `--mids` |
+| `--submodule-id` | `--smid` |
+| `--task-id` | `--tid` |
+| `--file-id` | `--fid` |
+| `--epic-id` | `--eid` |
+| `--epic-ids` | `--eids` |
+| `--user-story-ids` | `--usids` |
+| `--from-id` | `-f` |
+| `--edge` | `-e` |
+| `--to-ids` | `-t` |
+
+**Command Aliases:**
+
+| Command | Aliases |
+|---------|---------|
+| `project` | `proj`, `prj` |
+| `module` | `mod`, `mdl` |
+| `submodule` | `submod`, `sub` |
+| `file` | `f`, `fi` |
+| `task` | `t`, `tk` |
+| `user-story` | `us`, `story` |
+| `epic` | `ep`, `e` |
+| `todo` | `td`, `to` |
+| `config` | `cfg`, `conf` |
+| `link` | `ln` |
+| `context` | `ctx` |
 
 ### Common Workflows
 
 **1. Starting a New Feature:**
 ```bash
 # Create epic for the feature (using project name)
-dn epic add --project "My App" "User Authentication" "Complete auth system"
+dn epic add {--project|-p} "My App" "User Authentication" "Complete auth system"
 
 # Create user story (using project name with case-insensitive match)
-dn user-story add --project "my app" -i --epic-ids epic:mno "As a user, I want to login" "Authentication feature"
+dn user-story add {--project|-p} "my app" -i {--epic-ids|--eids} epic:mno "As a user, I want to login" "Authentication feature"
 
 # Create implementation task
-dn task add --module-ids module:def --project "My App" --epic-ids epic:mno "Implement JWT" "Add token support"
+dn task add {--module-ids|--mids} module:def {--project|-p} "My App" {--epic-ids|--eids} epic:mno "Implement JWT" "Add token support"
 ```
 
 **2. Recording Mistakes:**
 ```bash
 # After fixing a bug, record it for future reference
-dn add --field type --value mistake \
-  --field content --value "MutexGuard across await causes deadlock" \
-  --field solution --value "Use tokio::sync::Mutex instead" \
-  --field severity --value high \
-  --link-to task:ghi
+dn add {--field|-f} type {--value|-v} mistake \
+  {--field|-f} content {--value|-v} "MutexGuard across await causes deadlock" \
+  {--field|-f} solution {--value|-v} "Use tokio::sync::Mutex instead" \
+  {--field|-f} severity {--value|-v} high \
+  {--link-to|--ln} task:ghi
 ```
 
 **3. Code Review Context:**
 ```bash
 # Before reviewing, get all context for a task
-dn ctx --task-id task:ghi | jq '.[] | select(.fields.type == "mistake")'
+dn ctx {--task-id|--tid} task:ghi | jq '.[] | select(.fields.type == "mistake")'
 ```
 
 **4. Cleaning Up:**
