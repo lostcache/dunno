@@ -9,11 +9,11 @@
 )]
 pub struct Args {
     /// Optional storage backend override (`local` or `cloud`).
-    #[arg(long, global = true, value_name = "BACKEND")]
+    #[arg(long, visible_alias = "b", global = true, value_name = "BACKEND")]
     pub backend: Option<String>,
 
     /// Format output with indentation for better readability.
-    #[arg(long, global = true)]
+    #[arg(long, visible_alias = "pp", global = true)]
     pub pretty: bool,
 
     /// Ignore case when matching project names (use with --project).
@@ -33,67 +33,101 @@ pub enum Commands {
     )]
     Add {
         /// Field name. Must be paired with --value. Repeat for multiple fields.
-        #[arg(long = "field", value_name = "FIELD_NAME", required = true)]
+        #[arg(
+            short = 'f',
+            long = "field",
+            value_name = "FIELD_NAME",
+            required = true
+        )]
         field_names: Vec<String>,
 
         /// Field value. Must be paired with --field. Repeat for multiple fields.
-        #[arg(long = "value", value_name = "FIELD_VALUE", required = true)]
+        #[arg(
+            short = 'v',
+            long = "value",
+            value_name = "FIELD_VALUE",
+            required = true
+        )]
         field_values: Vec<String>,
 
         /// Structural node ID(s) to link this knowledge to. Repeat for multiple.
-        #[arg(long, value_name = "LINK_TO")]
+        #[arg(long, visible_alias = "ln", value_name = "LINK_TO")]
         link_to: Vec<String>,
     },
 
-    #[command(about = "Manage projects.")]
+    #[command(
+        about = "Manage projects.",
+        visible_alias = "proj",
+        visible_alias = "prj"
+    )]
     Project {
         #[command(subcommand)]
         command: ProjectCommands,
     },
 
-    #[command(about = "Manage modules.")]
+    #[command(
+        about = "Manage modules.",
+        visible_alias = "mod",
+        visible_alias = "mdl"
+    )]
     Module {
         #[command(subcommand)]
         command: ModuleCommands,
     },
 
-    #[command(about = "Manage submodules.")]
+    #[command(
+        about = "Manage submodules.",
+        visible_alias = "submod",
+        visible_alias = "sub"
+    )]
     Submodule {
         #[command(subcommand)]
         command: SubmoduleCommands,
     },
 
-    #[command(about = "Manage files.")]
+    #[command(about = "Manage files.", visible_alias = "f", visible_alias = "fi")]
     File {
         #[command(subcommand)]
         command: FileCommands,
     },
 
-    #[command(about = "Manage tasks.")]
+    #[command(about = "Manage tasks.", visible_alias = "t", visible_alias = "tk")]
     Task {
         #[command(subcommand)]
         command: TaskCommands,
     },
 
-    #[command(about = "Manage user stories.")]
+    #[command(
+        about = "Manage user stories.",
+        visible_alias = "us",
+        visible_alias = "story"
+    )]
     UserStory {
         #[command(subcommand)]
         command: UserStoryCommands,
     },
 
-    #[command(about = "Manage epics.")]
+    #[command(about = "Manage epics.", visible_alias = "ep", visible_alias = "e")]
     Epic {
         #[command(subcommand)]
         command: EpicCommands,
     },
 
-    #[command(about = "Manage todo items.")]
+    #[command(
+        about = "Manage todo items.",
+        visible_alias = "td",
+        visible_alias = "to"
+    )]
     Todo {
         #[command(subcommand)]
         command: TodoCommands,
     },
 
-    #[command(about = "Inspect resolved runtime configuration.")]
+    #[command(
+        about = "Inspect resolved runtime configuration.",
+        visible_alias = "cfg",
+        visible_alias = "conf"
+    )]
     Config {
         #[command(subcommand)]
         command: ConfigCommands,
@@ -107,15 +141,15 @@ pub enum Commands {
     )]
     Context {
         /// The Task ID to retrieve context for.
-        #[arg(long, value_name = "TASK_ID", conflicts_with_all = ["file_id", "epic_id"])]
+        #[arg(long, visible_alias = "tid", value_name = "TASK_ID", conflicts_with_all = ["file_id", "epic_id"])]
         task_id: Option<String>,
 
         /// The File ID to retrieve context for.
-        #[arg(long, value_name = "FILE_ID", conflicts_with_all = ["task_id", "epic_id"])]
+        #[arg(long, visible_alias = "fid", value_name = "FILE_ID", conflicts_with_all = ["task_id", "epic_id"])]
         file_id: Option<String>,
 
         /// The Epic ID to retrieve context for.
-        #[arg(long, value_name = "EPIC_ID", conflicts_with_all = ["task_id", "file_id"])]
+        #[arg(long, visible_alias = "eid", value_name = "EPIC_ID", conflicts_with_all = ["task_id", "file_id"])]
         epic_id: Option<String>,
 
         /// Retrieve full inherited context from parent nodes (Project, Module, Submodule).
@@ -125,18 +159,19 @@ pub enum Commands {
 
     #[command(
         about = "Create an edge between existing nodes.",
+        visible_alias = "ln",
         long_about = "Link a source node to one or more target nodes via a named edge.",
         after_help = "Example:\n  dn link --from project:abc --edge contains --to module:def\n  dn link --from project:abc --edge has_todo --to todo_item:1 --to todo_item:2"
     )]
     Link {
         /// Source record ID (e.g. project:abc, task:xyz).
-        #[arg(long, value_name = "FROM_ID")]
+        #[arg(short, long, value_name = "FROM_ID")]
         from_id: String,
         /// Edge name (e.g. contains, has_task, has_todo, has_context, belongs_to_project, belongs_to_module, belongs_to_task).
-        #[arg(long, value_name = "EDGE")]
+        #[arg(short, long, value_name = "EDGE")]
         edge: String,
         /// Target record ID(s). Repeat for multiple.
-        #[arg(long, value_name = "TO_ID")]
+        #[arg(short, long, value_name = "TO_ID")]
         to_ids: Vec<String>,
     },
 
@@ -163,10 +198,20 @@ pub enum ModuleCommands {
     #[command(name = "add")]
     Create {
         /// Project ID(s) to link this module to. Repeat for multiple. Omit for freestanding.
-        #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
+        #[arg(
+            long,
+            visible_alias = "pids",
+            value_name = "PROJECT_ID",
+            conflicts_with = "project"
+        )]
         project_ids: Vec<String>,
         /// Project name to link this module to (alternative to --project-ids).
-        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_ids")]
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_ids"
+        )]
         project: Option<String>,
         name: String,
         description: String,
@@ -176,10 +221,15 @@ pub enum ModuleCommands {
     },
     #[command(name = "ls")]
     List {
-        #[arg(long, conflicts_with = "project")]
+        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
         /// Project name to filter by (alternative to --project-id).
-        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
         project: Option<String>,
     },
     #[command(name = "rm")]
@@ -191,7 +241,7 @@ pub enum SubmoduleCommands {
     #[command(name = "add")]
     Create {
         /// Module ID(s) to link this submodule to. Repeat for multiple. Omit for freestanding.
-        #[arg(long, value_name = "MODULE_ID")]
+        #[arg(long, visible_alias = "mids", value_name = "MODULE_ID")]
         module_ids: Vec<String>,
         name: String,
         description: String,
@@ -201,12 +251,17 @@ pub enum SubmoduleCommands {
     },
     #[command(name = "ls")]
     List {
-        #[arg(long, conflicts_with = "project")]
+        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
         /// Project name to filter by (alternative to --project-id).
-        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
         project: Option<String>,
-        #[arg(long)]
+        #[arg(long, visible_alias = "mid")]
         module_id: Option<String>,
     },
     #[command(name = "rm")]
@@ -231,14 +286,19 @@ pub enum FileCommands {
     },
     #[command(name = "ls")]
     List {
-        #[arg(long, conflicts_with = "project")]
+        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
         /// Project name to filter by (alternative to --project-id).
-        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
         project: Option<String>,
-        #[arg(long, conflicts_with = "submodule_id")]
+        #[arg(long, visible_alias = "mid", conflicts_with = "submodule_id")]
         module_id: Option<String>,
-        #[arg(long, conflicts_with = "module_id")]
+        #[arg(long, visible_alias = "smid", conflicts_with = "module_id")]
         submodule_id: Option<String>,
     },
     #[command(name = "rm")]
@@ -250,19 +310,29 @@ pub enum TaskCommands {
     #[command(name = "add")]
     Create {
         /// Module ID (single). Use with one project_id to link task.
-        #[arg(long, value_name = "MODULE_ID")]
+        #[arg(long, visible_alias = "mids", value_name = "MODULE_ID")]
         module_ids: Vec<String>,
         /// Project ID (single). Use with one module_id to link task.
-        #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
+        #[arg(
+            long,
+            visible_alias = "pids",
+            value_name = "PROJECT_ID",
+            conflicts_with = "project"
+        )]
         project_ids: Vec<String>,
         /// Project name (single). Use with one module_id to link task (alternative to --project-ids).
-        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_ids")]
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_ids"
+        )]
         project: Option<String>,
         /// User Story ID(s) to link this task to. Optional.
-        #[arg(long, value_name = "USER_STORY_ID")]
+        #[arg(long, visible_alias = "usids", value_name = "USER_STORY_ID")]
         user_story_ids: Vec<String>,
         /// Epic ID(s) to link this task to. Optional.
-        #[arg(long, value_name = "EPIC_ID")]
+        #[arg(long, visible_alias = "eids", value_name = "EPIC_ID")]
         epic_ids: Vec<String>,
         name: String,
         description: String,
@@ -284,10 +354,15 @@ pub enum TaskCommands {
     Delete { task_id: String },
     #[command(name = "ls")]
     List {
-        #[arg(long, conflicts_with = "project")]
+        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
         /// Project name to filter by (alternative to --project-id).
-        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
         project: Option<String>,
     },
 }
@@ -297,25 +372,40 @@ pub enum UserStoryCommands {
     #[command(name = "add")]
     Create {
         /// Project ID to link this user story to.
-        #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
+        #[arg(
+            long,
+            visible_alias = "pid",
+            value_name = "PROJECT_ID",
+            conflicts_with = "project"
+        )]
         project_id: Option<String>,
         /// Project name to link this user story to (alternative to --project-id).
-        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
         project: Option<String>,
         /// Epic ID(s) to link this user story to. Optional.
-        #[arg(long, value_name = "EPIC_ID")]
+        #[arg(long, visible_alias = "eids", value_name = "EPIC_ID")]
         epic_ids: Vec<String>,
         title: String,
         description: String,
     },
     #[command(name = "ls")]
     List {
-        #[arg(long, conflicts_with = "project")]
+        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
         /// Project name to filter by (alternative to --project-id).
-        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
         project: Option<String>,
-        #[arg(long, value_name = "EPIC_ID")]
+        #[arg(long, visible_alias = "eid", value_name = "EPIC_ID")]
         epic_id: Option<String>,
     },
     #[command(name = "rm")]
@@ -327,20 +417,35 @@ pub enum EpicCommands {
     #[command(name = "add")]
     Create {
         /// Project ID to link this epic to.
-        #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
+        #[arg(
+            long,
+            visible_alias = "pid",
+            value_name = "PROJECT_ID",
+            conflicts_with = "project"
+        )]
         project_id: Option<String>,
         /// Project name to link this epic to (alternative to --project-id).
-        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
         project: Option<String>,
         title: String,
         description: String,
     },
     #[command(name = "ls")]
     List {
-        #[arg(long, conflicts_with = "project")]
+        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
         /// Project name to filter by (alternative to --project-id).
-        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
         project: Option<String>,
     },
     #[command(name = "rm")]
@@ -352,19 +457,34 @@ pub enum TodoCommands {
     #[command(name = "add")]
     Create {
         /// Project ID(s) to link this todo to. Repeat for multiple. Omit for freestanding.
-        #[arg(long, value_name = "PROJECT_ID", conflicts_with = "project")]
+        #[arg(
+            long,
+            visible_alias = "pids",
+            value_name = "PROJECT_ID",
+            conflicts_with = "project"
+        )]
         project_ids: Vec<String>,
         /// Project name to link this todo to (alternative to --project-ids).
-        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_ids")]
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_ids"
+        )]
         project: Option<String>,
         content: String,
     },
     #[command(name = "ls")]
     List {
-        #[arg(long, conflicts_with = "project")]
+        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
         /// Project name to filter by (alternative to --project-id).
-        #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
         project: Option<String>,
     },
     #[command(name = "rm")]
@@ -1206,6 +1326,599 @@ mod tests {
             }
         } else {
             panic!("expected Epic command");
+        }
+    }
+
+    // Short flag tests
+    #[test]
+    fn add_command_accepts_short_field_value_flags() {
+        let args = Args::try_parse_from([
+            "dn",
+            "add",
+            "-f",
+            "type",
+            "-v",
+            "mistake",
+            "-f",
+            "content",
+            "-v",
+            "Short flag test",
+        ]);
+        assert!(args.is_ok(), "should parse -f and -v short flags");
+        if let Commands::Add {
+            field_names,
+            field_values,
+            ..
+        } = args.unwrap().command
+        {
+            assert_eq!(field_names.len(), 2);
+            assert_eq!(field_values.len(), 2);
+            assert_eq!(field_names[0], "type");
+            assert_eq!(field_values[0], "mistake");
+            assert_eq!(field_names[1], "content");
+            assert_eq!(field_values[1], "Short flag test");
+        } else {
+            panic!("expected Add command");
+        }
+    }
+
+    #[test]
+    fn add_command_accepts_short_link_to_flag() {
+        let args = Args::try_parse_from([
+            "dn",
+            "add",
+            "-f",
+            "type",
+            "-v",
+            "test",
+            "--ln",
+            "project:abc",
+            "--ln",
+            "task:def",
+        ]);
+        assert!(args.is_ok(), "should parse --ln alias for --link-to");
+        if let Commands::Add { link_to, .. } = args.unwrap().command {
+            assert_eq!(link_to.len(), 2);
+            assert_eq!(link_to[0], "project:abc");
+            assert_eq!(link_to[1], "task:def");
+        } else {
+            panic!("expected Add command");
+        }
+    }
+
+    #[test]
+    fn link_command_accepts_short_flags() {
+        let args = Args::try_parse_from([
+            "dn",
+            "link",
+            "-f",
+            "project:abc",
+            "-e",
+            "contains",
+            "-t",
+            "module:def",
+            "-t",
+            "module:ghi",
+        ]);
+        assert!(args.is_ok(), "should parse -f, -e, -t short flags for link");
+        if let Commands::Link {
+            from_id,
+            edge,
+            to_ids,
+        } = args.unwrap().command
+        {
+            assert_eq!(from_id, "project:abc");
+            assert_eq!(edge, "contains");
+            assert_eq!(to_ids.len(), 2);
+            assert_eq!(to_ids[0], "module:def");
+            assert_eq!(to_ids[1], "module:ghi");
+        } else {
+            panic!("expected Link command");
+        }
+    }
+
+    #[test]
+    fn context_command_accepts_short_id_flags() {
+        // Test --tid alias
+        let args = Args::try_parse_from(["dn", "ctx", "--tid", "task:abc"]);
+        assert!(args.is_ok(), "should parse --tid alias");
+        if let Commands::Context { task_id, .. } = args.unwrap().command {
+            assert_eq!(task_id, Some("task:abc".to_string()));
+        } else {
+            panic!("expected Context command");
+        }
+
+        // Test --fid alias
+        let args = Args::try_parse_from(["dn", "ctx", "--fid", "file:def"]);
+        assert!(args.is_ok(), "should parse --fid alias");
+        if let Commands::Context { file_id, .. } = args.unwrap().command {
+            assert_eq!(file_id, Some("file:def".to_string()));
+        } else {
+            panic!("expected Context command");
+        }
+
+        // Test --eid alias
+        let args = Args::try_parse_from(["dn", "ctx", "--eid", "epic:ghi"]);
+        assert!(args.is_ok(), "should parse --eid alias");
+        if let Commands::Context { epic_id, .. } = args.unwrap().command {
+            assert_eq!(epic_id, Some("epic:ghi".to_string()));
+        } else {
+            panic!("expected Context command");
+        }
+    }
+
+    #[test]
+    fn module_commands_accepts_short_project_flags() {
+        // Test module add with -p (project name)
+        let args = Args::try_parse_from([
+            "dn",
+            "module",
+            "add",
+            "-p",
+            "My Project",
+            "Auth",
+            "Auth module",
+        ]);
+        assert!(
+            args.is_ok(),
+            "should parse -p short flag for project name in module add"
+        );
+        if let Commands::Module { command } = args.unwrap().command {
+            if let ModuleCommands::Create { project, .. } = command {
+                assert_eq!(project, Some("My Project".to_string()));
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Module command");
+        }
+
+        // Test module ls with --pid alias
+        let args = Args::try_parse_from(["dn", "module", "ls", "--pid", "project:abc"]);
+        assert!(args.is_ok(), "should parse --pid alias for module list");
+        if let Commands::Module { command } = args.unwrap().command {
+            if let ModuleCommands::List { project_id, .. } = command {
+                assert_eq!(project_id, Some("project:abc".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected Module command");
+        }
+
+        // Test module add with --pids alias
+        let args = Args::try_parse_from([
+            "dn",
+            "module",
+            "add",
+            "--pids",
+            "project:abc",
+            "--pids",
+            "project:def",
+            "Auth",
+            "Auth module",
+        ]);
+        assert!(args.is_ok(), "should parse --pids alias for module add");
+        if let Commands::Module { command } = args.unwrap().command {
+            if let ModuleCommands::Create { project_ids, .. } = command {
+                assert_eq!(project_ids.len(), 2);
+                assert_eq!(project_ids[0], "project:abc");
+                assert_eq!(project_ids[1], "project:def");
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Module command");
+        }
+    }
+
+    #[test]
+    fn submodule_commands_accepts_short_flags() {
+        // Test submodule ls with --pid and --mid aliases
+        let args = Args::try_parse_from([
+            "dn",
+            "submodule",
+            "ls",
+            "--pid",
+            "project:abc",
+            "--mid",
+            "module:def",
+        ]);
+        assert!(args.is_ok(), "should parse --pid and --mid aliases");
+        if let Commands::Submodule { command } = args.unwrap().command {
+            if let SubmoduleCommands::List {
+                project_id,
+                module_id,
+                ..
+            } = command
+            {
+                assert_eq!(project_id, Some("project:abc".to_string()));
+                assert_eq!(module_id, Some("module:def".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected Submodule command");
+        }
+
+        // Test submodule add with --mids alias
+        let args = Args::try_parse_from([
+            "dn",
+            "submodule",
+            "add",
+            "--mids",
+            "module:abc",
+            "--mids",
+            "module:def",
+            "OAuth",
+            "OAuth submodule",
+        ]);
+        assert!(args.is_ok(), "should parse --mids alias");
+        if let Commands::Submodule { command } = args.unwrap().command {
+            if let SubmoduleCommands::Create { module_ids, .. } = command {
+                assert_eq!(module_ids.len(), 2);
+                assert_eq!(module_ids[0], "module:abc");
+                assert_eq!(module_ids[1], "module:def");
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Submodule command");
+        }
+    }
+
+    #[test]
+    fn file_commands_accepts_short_flags() {
+        // Test file ls with --pid, --mid, and --smid aliases
+        let args = Args::try_parse_from([
+            "dn",
+            "file",
+            "ls",
+            "--pid",
+            "project:abc",
+            "--mid",
+            "module:def",
+        ]);
+        assert!(args.is_ok(), "should parse --pid and --mid aliases");
+        if let Commands::File { command } = args.unwrap().command {
+            if let FileCommands::List {
+                project_id,
+                module_id,
+                submodule_id,
+                ..
+            } = command
+            {
+                assert_eq!(project_id, Some("project:abc".to_string()));
+                assert_eq!(module_id, Some("module:def".to_string()));
+                assert_eq!(submodule_id, None);
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected File command");
+        }
+
+        // Test file ls with --smid alias
+        let args = Args::try_parse_from(["dn", "file", "ls", "--smid", "submodule:abc"]);
+        assert!(args.is_ok(), "should parse --smid alias");
+        if let Commands::File { command } = args.unwrap().command {
+            if let FileCommands::List { submodule_id, .. } = command {
+                assert_eq!(submodule_id, Some("submodule:abc".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected File command");
+        }
+    }
+
+    #[test]
+    fn task_commands_accepts_short_flags() {
+        // Test task add with -p, --pids, --mids, --usids, and --eids aliases
+        let args = Args::try_parse_from([
+            "dn",
+            "task",
+            "add",
+            "-p",
+            "My Project",
+            "--mids",
+            "module:abc",
+            "--usids",
+            "user_story:def",
+            "--eids",
+            "epic:ghi",
+            "Task Name",
+            "Task Description",
+        ]);
+        assert!(args.is_ok(), "should parse task add with all short aliases");
+        if let Commands::Task { command } = args.unwrap().command {
+            if let TaskCommands::Create {
+                project,
+                module_ids,
+                user_story_ids,
+                epic_ids,
+                ..
+            } = command
+            {
+                assert_eq!(project, Some("My Project".to_string()));
+                assert_eq!(module_ids, vec!["module:abc"]);
+                assert_eq!(user_story_ids, vec!["user_story:def"]);
+                assert_eq!(epic_ids, vec!["epic:ghi"]);
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Task command");
+        }
+
+        // Test task ls with --pid alias
+        let args = Args::try_parse_from(["dn", "task", "ls", "--pid", "project:abc"]);
+        assert!(args.is_ok(), "should parse --pid alias for task list");
+        if let Commands::Task { command } = args.unwrap().command {
+            if let TaskCommands::List { project_id, .. } = command {
+                assert_eq!(project_id, Some("project:abc".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected Task command");
+        }
+    }
+
+    #[test]
+    fn user_story_commands_accepts_short_flags() {
+        // Test user-story add with -p, --pid, and --eids aliases
+        let args = Args::try_parse_from([
+            "dn",
+            "user-story",
+            "add",
+            "-p",
+            "My Project",
+            "--eids",
+            "epic:abc",
+            "As a user",
+            "I want to test",
+        ]);
+        assert!(
+            args.is_ok(),
+            "should parse user-story add with short aliases"
+        );
+        if let Commands::UserStory { command } = args.unwrap().command {
+            if let UserStoryCommands::Create {
+                project, epic_ids, ..
+            } = command
+            {
+                assert_eq!(project, Some("My Project".to_string()));
+                assert_eq!(epic_ids, vec!["epic:abc"]);
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected UserStory command");
+        }
+
+        // Test user-story ls with --pid and --eid aliases
+        let args = Args::try_parse_from([
+            "dn",
+            "user-story",
+            "ls",
+            "--pid",
+            "project:abc",
+            "--eid",
+            "epic:def",
+        ]);
+        assert!(args.is_ok(), "should parse --pid and --eid aliases");
+        if let Commands::UserStory { command } = args.unwrap().command {
+            if let UserStoryCommands::List {
+                project_id,
+                epic_id,
+                ..
+            } = command
+            {
+                assert_eq!(project_id, Some("project:abc".to_string()));
+                assert_eq!(epic_id, Some("epic:def".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected UserStory command");
+        }
+    }
+
+    #[test]
+    fn epic_commands_accepts_short_flags() {
+        // Test epic add with -p and --pid aliases
+        let args = Args::try_parse_from([
+            "dn",
+            "epic",
+            "add",
+            "-p",
+            "My Project",
+            "Epic Title",
+            "Epic Description",
+        ]);
+        assert!(args.is_ok(), "should parse epic add with -p short flag");
+        if let Commands::Epic { command } = args.unwrap().command {
+            if let EpicCommands::Create { project, .. } = command {
+                assert_eq!(project, Some("My Project".to_string()));
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Epic command");
+        }
+
+        // Test epic ls with --pid alias
+        let args = Args::try_parse_from(["dn", "epic", "ls", "--pid", "project:abc"]);
+        assert!(args.is_ok(), "should parse --pid alias for epic list");
+        if let Commands::Epic { command } = args.unwrap().command {
+            if let EpicCommands::List { project_id, .. } = command {
+                assert_eq!(project_id, Some("project:abc".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected Epic command");
+        }
+    }
+
+    #[test]
+    fn todo_commands_accepts_short_flags() {
+        // Test todo add with -p and --pids aliases
+        let args = Args::try_parse_from(["dn", "todo", "add", "-p", "My Project", "Todo content"]);
+        assert!(args.is_ok(), "should parse todo add with -p short flag");
+        if let Commands::Todo { command } = args.unwrap().command {
+            if let TodoCommands::Create { project, .. } = command {
+                assert_eq!(project, Some("My Project".to_string()));
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Todo command");
+        }
+
+        // Test todo add with --pids alias
+        let args = Args::try_parse_from([
+            "dn",
+            "todo",
+            "add",
+            "--pids",
+            "project:abc",
+            "--pids",
+            "project:def",
+            "Todo content",
+        ]);
+        assert!(args.is_ok(), "should parse --pids alias for todo add");
+        if let Commands::Todo { command } = args.unwrap().command {
+            if let TodoCommands::Create { project_ids, .. } = command {
+                assert_eq!(project_ids.len(), 2);
+                assert_eq!(project_ids[0], "project:abc");
+                assert_eq!(project_ids[1], "project:def");
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Todo command");
+        }
+
+        // Test todo ls with --pid alias
+        let args = Args::try_parse_from(["dn", "todo", "ls", "--pid", "project:abc"]);
+        assert!(args.is_ok(), "should parse --pid alias for todo list");
+        if let Commands::Todo { command } = args.unwrap().command {
+            if let TodoCommands::List { project_id, .. } = command {
+                assert_eq!(project_id, Some("project:abc".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected Todo command");
+        }
+    }
+
+    #[test]
+    fn global_flags_accept_short_aliases() {
+        // Test --pp alias for --pretty
+        let args = Args::try_parse_from(["dn", "--pp", "config", "show"]);
+        assert!(args.is_ok(), "should parse --pp alias");
+        assert!(args.unwrap().pretty, "pretty should be true");
+
+        // Test --b alias for --backend
+        let args = Args::try_parse_from(["dn", "--b", "local", "config", "show"]);
+        assert!(args.is_ok(), "should parse --b alias");
+        assert_eq!(args.unwrap().backend, Some("local".to_string()));
+    }
+
+    #[test]
+    fn command_aliases_are_recognized() {
+        // Test project aliases
+        let args = Args::try_parse_from(["dn", "proj", "ls"]);
+        assert!(args.is_ok(), "should parse proj alias");
+
+        let args = Args::try_parse_from(["dn", "prj", "ls"]);
+        assert!(args.is_ok(), "should parse prj alias");
+
+        // Test module aliases
+        let args = Args::try_parse_from(["dn", "mod", "ls"]);
+        assert!(args.is_ok(), "should parse mod alias");
+
+        let args = Args::try_parse_from(["dn", "mdl", "ls"]);
+        assert!(args.is_ok(), "should parse mdl alias");
+
+        // Test submodule aliases
+        let args = Args::try_parse_from(["dn", "sub", "ls"]);
+        assert!(args.is_ok(), "should parse sub alias");
+
+        // Test file aliases
+        let args = Args::try_parse_from(["dn", "fi", "ls"]);
+        assert!(args.is_ok(), "should parse fi alias");
+
+        // Test task aliases
+        let args = Args::try_parse_from(["dn", "tk", "ls"]);
+        assert!(args.is_ok(), "should parse tk alias");
+
+        // Test user-story aliases
+        let args = Args::try_parse_from(["dn", "us", "ls"]);
+        assert!(args.is_ok(), "should parse us alias");
+
+        let args = Args::try_parse_from(["dn", "story", "ls"]);
+        assert!(args.is_ok(), "should parse story alias");
+
+        // Test epic aliases
+        let args = Args::try_parse_from(["dn", "ep", "ls"]);
+        assert!(args.is_ok(), "should parse ep alias");
+
+        // Test todo aliases
+        let args = Args::try_parse_from(["dn", "td", "ls"]);
+        assert!(args.is_ok(), "should parse td alias");
+
+        // Test config aliases
+        let args = Args::try_parse_from(["dn", "cfg", "show"]);
+        assert!(args.is_ok(), "should parse cfg alias");
+
+        // Test link alias
+        let args = Args::try_parse_from([
+            "dn",
+            "ln",
+            "-f",
+            "project:abc",
+            "-e",
+            "contains",
+            "-t",
+            "module:def",
+        ]);
+        assert!(args.is_ok(), "should parse ln alias");
+    }
+
+    #[test]
+    fn mixed_short_and_long_flags_work_together() {
+        // Test mixing short and long flags in add command
+        let args = Args::try_parse_from([
+            "dn",
+            "add",
+            "-f",
+            "type",
+            "--value",
+            "mistake",
+            "-f",
+            "content",
+            "-v",
+            "Mixed flags test",
+            "--ln",
+            "project:abc",
+        ]);
+        assert!(args.is_ok(), "should parse mixed short and long flags");
+        if let Commands::Add {
+            field_names,
+            field_values,
+            link_to,
+            ..
+        } = args.unwrap().command
+        {
+            assert_eq!(field_names.len(), 2);
+            assert_eq!(field_values.len(), 2);
+            assert_eq!(link_to.len(), 1);
+        } else {
+            panic!("expected Add command");
         }
     }
 }
