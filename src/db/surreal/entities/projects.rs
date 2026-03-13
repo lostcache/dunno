@@ -100,6 +100,17 @@ impl DB {
             self.get_project_context_node(project_id).await
         }
     }
+
+    /// Deletes a project by id.
+    pub async fn delete_project(&self, project_id: &str) -> anyhow::Result<bool> {
+        let key = project_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(project_id);
+
+        let deleted: Option<surrealdb::types::Value> = self.client.delete(("project", key)).await?;
+        Ok(deleted.is_some())
+    }
 }
 
 #[cfg(test)]
@@ -216,5 +227,25 @@ mod tests {
             .await
             .expect("Query should not error");
         assert!(not_found_case_insensitive.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_delete_project_success() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "DeleteMe".to_string(),
+                description: "test".to_string(),
+            })
+            .await
+            .expect("create");
+        let id = project.id.unwrap();
+
+        let deleted = db.delete_project(&id).await.expect("delete");
+        assert!(deleted);
+
+        let fetched = db.get_project(&id).await.expect("fetch");
+        assert!(fetched.is_none());
     }
 }

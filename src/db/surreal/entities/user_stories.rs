@@ -201,6 +201,17 @@ impl DB {
         )
         .await
     }
+
+    /// Deletes a user story by id.
+    pub async fn delete_user_story(&self, user_story_id: &str) -> anyhow::Result<bool> {
+        let key = user_story_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(user_story_id);
+
+        let deleted: Option<surrealdb::types::Value> = self.client.delete(("user_story", key)).await?;
+        Ok(deleted.is_some())
+    }
 }
 
 #[cfg(test)]
@@ -247,5 +258,21 @@ mod tests {
         let max_title = "a".repeat(255);
         validate_user_story_params(&max_title, "Description")
             .expect("255 char title should be accepted");
+    }
+
+    #[tokio::test]
+    async fn test_delete_user_story_success() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let user_story = db
+            .create_user_story("DeleteStory", "test", "project:1")
+            .await
+            .expect("create");
+        let id = user_story.id.unwrap();
+
+        let deleted = db.delete_user_story(&id).await.expect("delete");
+        assert!(deleted);
+
+        let fetched = db.get_user_story(&id).await.expect("fetch");
+        assert!(fetched.is_none());
     }
 }

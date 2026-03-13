@@ -403,4 +403,145 @@ mod tests {
             validate_task_params("Name", "   ").expect_err("whitespace description should fail");
         assert!(err.to_string().contains("description"));
     }
+
+    #[tokio::test]
+    async fn test_delete_task_success() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "Test Project".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Auth", "Auth module", None, Some(&project_id))
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let task = db
+            .create_task(
+                "Task to Delete",
+                "Will be deleted",
+                Some(&module_id),
+                Some(&project_id),
+            )
+            .await
+            .expect("Failed to create task");
+        let task_id = task.id.expect("task id");
+
+        // Verify task exists
+        let fetched = db.get_task(&task_id).await.expect("Failed to fetch task");
+        assert!(fetched.is_some());
+
+        // Delete the task
+        let deleted = db
+            .delete_task(&task_id)
+            .await
+            .expect("Failed to delete task");
+        assert!(deleted, "delete_task should return true for existing task");
+
+        // Verify task no longer exists
+        let after_delete = db.get_task(&task_id).await.expect("Failed to check task");
+        assert!(after_delete.is_none(), "Task should be deleted");
+    }
+
+    #[tokio::test]
+    async fn test_delete_nonexistent_task() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        // First create a task to ensure the table exists
+        let task = db
+            .create_task("Test Task", "For table creation", None, None)
+            .await
+            .expect("create task");
+        let task_id = task.id.expect("task id");
+
+        // Now try to delete a different task that doesn't exist
+        let deleted = db
+            .delete_task("task:nonexistent12345")
+            .await
+            .expect("Should not error on nonexistent task when table exists");
+
+        assert!(
+            !deleted,
+            "delete_task should return false for nonexistent task"
+        );
+
+        // Cleanup - delete the task we created
+        db.delete_task(&task_id).await.expect("cleanup delete");
+    }
+
+    #[tokio::test]
+    async fn test_delete_task_with_context() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "Test Project".to_string(),
+                description: "Test".to_string(),
+            })
+            .await
+            .expect("Failed to create project");
+        let project_id = project.id.expect("project id");
+
+        let module = db
+            .create_module("Auth", "Auth module", None, Some(&project_id))
+            .await
+            .expect("Failed to create module");
+        let module_id = module.id.expect("module id");
+
+        let task = db
+            .create_task(
+                "Task with Context",
+                "Has linked knowledge",
+                Some(&module_id),
+                Some(&project_id),
+            )
+            .await
+            .expect("Failed to create task");
+        let task_id = task.id.expect("task id");
+
+        // Add context to the task
+        let ctx = db
+            .create_context(&crate::models::Context {
+                id: None,
+                context_type: "mistake".to_string(),
+                content: Some("Context to be deleted".to_string()),
+                description: None,
+                example: None,
+                severity: None,
+                category: None,
+                tags: None,
+            })
+            .await
+            .expect("Failed to create context");
+        let ctx_id = ctx.id.expect("context id");
+
+        db.link_context(&task_id, &ctx_id)
+            .await
+            .expect("Failed to link context");
+
+        // Verify context is linked
+        let contexts_before = db
+            .get_linked_context(&task_id)
+            .await
+            .expect("Failed to get contexts");
+        assert_eq!(contexts_before.len(), 1);
+
+        // Delete the task
+        let deleted = db
+            .delete_task(&task_id)
+            .await
+            .expect("Failed to delete task");
+        assert!(deleted);
+
+        // Verify task is deleted
+        let after_delete = db.get_task(&task_id).await.expect("Failed to check task");
+        assert!(after_delete.is_none());
+    }
 }

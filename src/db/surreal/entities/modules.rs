@@ -261,6 +261,28 @@ impl DB {
             self.get_submodule_context_node(submodule_id).await
         }
     }
+
+    /// Deletes a module by id.
+    pub async fn delete_module(&self, module_id: &str) -> anyhow::Result<bool> {
+        let key = module_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(module_id);
+
+        let deleted: Option<surrealdb::types::Value> = self.client.delete(("module", key)).await?;
+        Ok(deleted.is_some())
+    }
+
+    /// Deletes a submodule by id.
+    pub async fn delete_submodule(&self, submodule_id: &str) -> anyhow::Result<bool> {
+        let key = submodule_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(submodule_id);
+
+        let deleted: Option<surrealdb::types::Value> = self.client.delete(("submodule", key)).await?;
+        Ok(deleted.is_some())
+    }
 }
 
 #[cfg(test)]
@@ -281,5 +303,37 @@ mod tests {
             .expect("list_submodules_by_module accepts module:id");
         let err = ensure_record_id("module", "project:1").expect_err("wrong table rejected");
         assert!(err.to_string().contains("Expected record id"));
+    }
+
+    #[tokio::test]
+    async fn test_delete_module_success() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let module = db
+            .create_module("DeleteModule", "test", None, None)
+            .await
+            .expect("create");
+        let id = module.id.unwrap();
+
+        let deleted = db.delete_module(&id).await.expect("delete");
+        assert!(deleted);
+
+        let fetched = db.get_module(&id).await.expect("fetch");
+        assert!(fetched.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_delete_submodule_success() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let submodule = db
+            .create_submodule("DeleteSubmodule", "test", None, None)
+            .await
+            .expect("create");
+        let id = submodule.id.unwrap();
+
+        let deleted = db.delete_submodule(&id).await.expect("delete");
+        assert!(deleted);
+
+        let fetched = db.get_submodule(&id).await.expect("fetch");
+        assert!(fetched.is_none());
     }
 }

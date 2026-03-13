@@ -204,6 +204,17 @@ impl DB {
             self.get_epic_context_node(epic_id).await
         }
     }
+
+    /// Deletes an epic by id.
+    pub async fn delete_epic(&self, epic_id: &str) -> anyhow::Result<bool> {
+        let key = epic_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(epic_id);
+
+        let deleted: Option<surrealdb::types::Value> = self.client.delete(("epic", key)).await?;
+        Ok(deleted.is_some())
+    }
 }
 
 /// Returns full epic context including epic details and linked knowledge.
@@ -256,5 +267,21 @@ mod tests {
     fn validate_epic_params_accepts_max_length_title() {
         let max_title = "a".repeat(255);
         validate_epic_params(&max_title, "Description").expect("255 char title should be accepted");
+    }
+
+    #[tokio::test]
+    async fn test_delete_epic_success() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let epic = db
+            .create_epic("DeleteEpic", "test", "project:1")
+            .await
+            .expect("create");
+        let id = epic.id.unwrap();
+
+        let deleted = db.delete_epic(&id).await.expect("delete");
+        assert!(deleted);
+
+        let fetched = db.get_epic(&id).await.expect("fetch");
+        assert!(fetched.is_none());
     }
 }

@@ -220,6 +220,17 @@ impl DB {
             self.get_file_context_node(file_id).await
         }
     }
+
+    /// Deletes a file by id.
+    pub async fn delete_file(&self, file_id: &str) -> anyhow::Result<bool> {
+        let key = file_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(file_id);
+
+        let deleted: Option<surrealdb::types::Value> = self.client.delete(("file", key)).await?;
+        Ok(deleted.is_some())
+    }
 }
 
 #[cfg(test)]
@@ -246,6 +257,22 @@ mod tests {
         let err =
             ensure_one_of_record_ids(&["module"], "1").expect_err("should reject missing prefix");
         assert!(err.to_string().contains("Expected record id"));
+    }
+
+    #[tokio::test]
+    async fn test_delete_file_success() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let file = db
+            .create_file("delete_me.rs", "path", None, None, None)
+            .await
+            .expect("create");
+        let id = file.id.unwrap();
+
+        let deleted = db.delete_file(&id).await.expect("delete");
+        assert!(deleted);
+
+        let fetched = db.get_file(&id).await.expect("fetch");
+        assert!(fetched.is_none());
     }
 }
 
