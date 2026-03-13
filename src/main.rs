@@ -214,6 +214,14 @@ async fn handle_project_command(
             let projects = db.list_projects().await?;
             print_json(serde_json::json!(projects), pretty);
         }
+        dunno::args::ProjectCommands::Delete { project_id } => {
+            let deleted = db.delete_project(&project_id).await?;
+            if deleted {
+                println!("Deleted project {}", project_id);
+            } else {
+                println!("Project {} not found", project_id);
+            }
+        }
     }
     Ok(())
 }
@@ -261,6 +269,14 @@ async fn handle_module_command(
                 None => db.list_modules().await?,
             };
             print_json(serde_json::json!(modules), pretty);
+        }
+        dunno::args::ModuleCommands::Delete { module_id } => {
+            let deleted = db.delete_module(&module_id).await?;
+            if deleted {
+                println!("Deleted module {}", module_id);
+            } else {
+                println!("Module {} not found", module_id);
+            }
         }
     }
     Ok(())
@@ -310,6 +326,14 @@ async fn handle_submodule_command(
                 }
             };
             print_json(serde_json::json!(submodules), pretty);
+        }
+        dunno::args::SubmoduleCommands::Delete { submodule_id } => {
+            let deleted = db.delete_submodule(&submodule_id).await?;
+            if deleted {
+                println!("Deleted submodule {}", submodule_id);
+            } else {
+                println!("Submodule {} not found", submodule_id);
+            }
         }
     }
     Ok(())
@@ -366,6 +390,14 @@ async fn handle_file_command(
                 }
             };
             print_json(serde_json::json!(files), pretty);
+        }
+        dunno::args::FileCommands::Delete { file_id } => {
+            let deleted = db.delete_file(&file_id).await?;
+            if deleted {
+                println!("Deleted file {}", file_id);
+            } else {
+                println!("File {} not found", file_id);
+            }
         }
     }
     Ok(())
@@ -587,6 +619,14 @@ async fn handle_user_story_command(
             };
             print_json(serde_json::json!(user_stories), pretty);
         }
+        dunno::args::UserStoryCommands::Delete { user_story_id } => {
+            let deleted = db.delete_user_story(&user_story_id).await?;
+            if deleted {
+                println!("Deleted user story {}", user_story_id);
+            } else {
+                println!("User story {} not found", user_story_id);
+            }
+        }
     }
     Ok(())
 }
@@ -618,6 +658,14 @@ async fn handle_epic_command(
                 None => db.list_epics().await?,
             };
             print_json(serde_json::json!(epics), pretty);
+        }
+        dunno::args::EpicCommands::Delete { epic_id } => {
+            let deleted = db.delete_epic(&epic_id).await?;
+            if deleted {
+                println!("Deleted epic {}", epic_id);
+            } else {
+                println!("Epic {} not found", epic_id);
+            }
         }
     }
     Ok(())

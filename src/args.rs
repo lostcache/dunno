@@ -154,6 +154,8 @@ pub enum ProjectCommands {
     Create { name: String, description: String },
     #[command(name = "ls")]
     List,
+    #[command(name = "rm")]
+    Delete { project_id: String },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -180,6 +182,8 @@ pub enum ModuleCommands {
         #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
         project: Option<String>,
     },
+    #[command(name = "rm")]
+    Delete { module_id: String },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -205,6 +209,8 @@ pub enum SubmoduleCommands {
         #[arg(long)]
         module_id: Option<String>,
     },
+    #[command(name = "rm")]
+    Delete { submodule_id: String },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -235,6 +241,8 @@ pub enum FileCommands {
         #[arg(long, conflicts_with = "module_id")]
         submodule_id: Option<String>,
     },
+    #[command(name = "rm")]
+    Delete { file_id: String },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -312,6 +320,8 @@ pub enum UserStoryCommands {
         #[arg(long, value_name = "EPIC_ID")]
         epic_id: Option<String>,
     },
+    #[command(name = "rm")]
+    Delete { user_story_id: String },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -335,6 +345,8 @@ pub enum EpicCommands {
         #[arg(long, value_name = "PROJECT_NAME", conflicts_with = "project_id")]
         project: Option<String>,
     },
+    #[command(name = "rm")]
+    Delete { epic_id: String },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -1136,6 +1148,96 @@ mod tests {
             }
         } else {
             panic!("expected Task command");
+        }
+    }
+
+    #[test]
+    fn project_delete_command_accepts_project_id() {
+        let args = Args::try_parse_from(["dn", "project", "rm", "project:abc123"]);
+        assert!(args.is_ok(), "should parse project delete command");
+        if let Commands::Project { command } = args.unwrap().command {
+            if let ProjectCommands::Delete { project_id } = command {
+                assert_eq!(project_id, "project:abc123");
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected Project command");
+        }
+    }
+
+    #[test]
+    fn module_delete_command_accepts_module_id() {
+        let args = Args::try_parse_from(["dn", "module", "rm", "module:abc123"]);
+        assert!(args.is_ok(), "should parse module delete command");
+        if let Commands::Module { command } = args.unwrap().command {
+            if let ModuleCommands::Delete { module_id } = command {
+                assert_eq!(module_id, "module:abc123");
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected Module command");
+        }
+    }
+
+    #[test]
+    fn submodule_delete_command_accepts_submodule_id() {
+        let args = Args::try_parse_from(["dn", "submodule", "rm", "submodule:abc123"]);
+        assert!(args.is_ok(), "should parse submodule delete command");
+        if let Commands::Submodule { command } = args.unwrap().command {
+            if let SubmoduleCommands::Delete { submodule_id } = command {
+                assert_eq!(submodule_id, "submodule:abc123");
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected Submodule command");
+        }
+    }
+
+    #[test]
+    fn file_delete_command_accepts_file_id() {
+        let args = Args::try_parse_from(["dn", "file", "rm", "file:abc123"]);
+        assert!(args.is_ok(), "should parse file delete command");
+        if let Commands::File { command } = args.unwrap().command {
+            if let FileCommands::Delete { file_id } = command {
+                assert_eq!(file_id, "file:abc123");
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected File command");
+        }
+    }
+
+    #[test]
+    fn user_story_delete_command_accepts_user_story_id() {
+        let args = Args::try_parse_from(["dn", "user-story", "rm", "user_story:abc123"]);
+        assert!(args.is_ok(), "should parse user-story delete command");
+        if let Commands::UserStory { command } = args.unwrap().command {
+            if let UserStoryCommands::Delete { user_story_id } = command {
+                assert_eq!(user_story_id, "user_story:abc123");
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected UserStory command");
+        }
+    }
+
+    #[test]
+    fn epic_delete_command_accepts_epic_id() {
+        let args = Args::try_parse_from(["dn", "epic", "rm", "epic:abc123"]);
+        assert!(args.is_ok(), "should parse epic delete command");
+        if let Commands::Epic { command } = args.unwrap().command {
+            if let EpicCommands::Delete { epic_id } = command {
+                assert_eq!(epic_id, "epic:abc123");
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected Epic command");
         }
     }
 }
