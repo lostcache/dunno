@@ -1,5 +1,5 @@
-use crate::db::surreal::util::{json_to_surreal, surreal_to_json};
 use crate::db::surreal::DB;
+use crate::db::surreal::util::{json_to_surreal, surreal_to_json};
 
 /// Validates task creation parameters.
 pub(crate) fn validate_task_params(name: &str, description: &str) -> anyhow::Result<()> {
@@ -146,7 +146,7 @@ impl DB {
             .split_once(':')
             .map(|(_, key)| key)
             .unwrap_or(task_id);
-        
+
         let deleted: Option<surrealdb::types::Value> = self.client.delete(("task", key)).await?;
         Ok(deleted.is_some())
     }
@@ -167,7 +167,7 @@ impl DB {
 
         Ok(crate::models::TaskContext {
             task,
-            files: files.into_iter().filter_map(|f| f.id).collect(),
+            files,
             contexts,
             hierarchy,
         })
@@ -392,13 +392,15 @@ mod tests {
     #[test]
     fn validate_task_params_rejects_max_length_name_plus_one() {
         let long_name = "a".repeat(256);
-        let err = validate_task_params(&long_name, "Description").expect_err("256 char name should fail");
+        let err =
+            validate_task_params(&long_name, "Description").expect_err("256 char name should fail");
         assert!(err.to_string().contains("too long"));
     }
 
     #[test]
     fn validate_task_params_rejects_whitespace_only_description() {
-        let err = validate_task_params("Name", "   ").expect_err("whitespace description should fail");
+        let err =
+            validate_task_params("Name", "   ").expect_err("whitespace description should fail");
         assert!(err.to_string().contains("description"));
     }
 }

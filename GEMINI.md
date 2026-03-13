@@ -314,7 +314,7 @@ dunno context --epic-id epic:stu
 
 **Task Context Returns:**
 - **Task** - Full task object with id, name, description, status
-- **Files** - File IDs in the parent module/submodule (files the task may touch)
+- **Files** - File objects (with path and description) in the parent module/submodule (files the task may touch)
 - **Hierarchy** - Project, module, submodule structural info
 - **Contexts** - Only knowledge directly linked to this task via `--link-to task:<id>`
 

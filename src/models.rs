@@ -128,7 +128,7 @@ pub struct TaskHierarchy {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct TaskContext {
     pub task: Task,
-    pub files: Vec<String>,
+    pub files: Vec<File>,
     pub contexts: Vec<Context>,
     pub hierarchy: TaskHierarchy,
 }

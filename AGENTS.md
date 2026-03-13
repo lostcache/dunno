@@ -317,7 +317,7 @@ dn ctx --epic-id epic:stu --full
 
 **Task Context Returns:**
 - **Task** - Full task object with id, name, description, status
-- **Files** - File IDs in the parent module/submodule (files the task may touch)
+- **Files** - File objects (with path and description) in the parent module/submodule (files the task may touch)
 - **Hierarchy** - Project, module, submodule structural info
 - **Contexts** - Directly linked or inherited knowledge (if `--full` is used)
 

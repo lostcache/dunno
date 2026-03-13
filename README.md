@@ -112,7 +112,7 @@ dn ctx --task-id task:ghi --full
 
 Returns:
 - **Task** - The task object with id, name, description, status
-- **Files** - File IDs related to the task (files in the parent module/submodule)
+- **Files** - File objects (with path and description) related to the task (files in the parent module/submodule)
 - **Hierarchy** - Project, module, and optional submodule info
 - **Contexts** - Knowledge linked to the task. If `--full` is used, includes knowledge inherited from the parent hierarchy.
 
