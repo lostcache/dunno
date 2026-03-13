@@ -193,6 +193,8 @@ Knowledge can be attached to any structural node:
 
 ### Core Commands for AI Agents
 
+---
+
 #### 1. Creating the Project Hierarchy
 
 Always start by establishing the hierarchy before adding knowledge.
@@ -202,14 +204,14 @@ Always start by establishing the hierarchy before adding knowledge.
 dn project add "MyProject" "Description of the project"
 
 # Create a module within a project using project ID
-dn module add --project-ids project:abc "Auth" "Authentication system"
+dn module add {--project-ids|--pids} project:abc "Auth" "Authentication system"
 
 # Create a module using project name (alternative)
-dn module add --project "MyProject" "Auth" "Authentication system"
+dn module add {--project|-p} "MyProject" "Auth" "Authentication system"
 # Returns: {"id":"module:def",...}
 
 # Create a submodule (link with --module-ids)
-dn submodule add --module-ids module:def "OAuth" "OAuth2 implementation"
+dn submodule add {--module-ids|--mids} module:def "OAuth" "OAuth2 implementation"
 # Returns: {"id":"submodule:ghi",...}
 
 # Register a file (with optional description)
@@ -220,33 +222,33 @@ dn file add --parent-ids module:def "auth.rs" "src/auth.rs" "Authentication modu
 dn file add --parent-ids module:def "utils.rs" "src/utils.rs"
 
 # Create a task using IDs (requires both --module-ids and --project-ids, or neither for freestanding)
-dn task add --module-ids module:def --project-ids project:abc "Implement JWT" "Add JWT authentication"
+dn task add {--module-ids|--mids} module:def {--project-ids|--pids} project:abc "Implement JWT" "Add JWT authentication"
 # Returns: {"id":"task:mno",...}
 
 # Create a task using project name (alternative)
-dn task add --module-ids module:def --project "MyProject" "Implement JWT" "Add JWT authentication"
+dn task add {--module-ids|--mids} module:def {--project|-p} "MyProject" "Implement JWT" "Add JWT authentication"
 
 # Create a task with case-insensitive project name matching
-dn task add --module-ids module:def --project "myproject" -i "Implement JWT" "Add JWT authentication"
+dn task add {--module-ids|--mids} module:def {--project|-p} "myproject" -i "Implement JWT" "Add JWT authentication"
 
 # List modules in a project
-dn module ls --project-id project:abc
-dn module ls --project "MyProject"
+dn module ls {--project-id|--pid} project:abc
+dn module ls {--project|-p} "MyProject"
 
 # List submodules (by module or by project)
-dn submodule ls --module-id module:def
-dn submodule ls --project-id project:abc
-dn submodule ls --project "MyProject"
+dn submodule ls {--module-id|--mid} module:def
+dn submodule ls {--project-id|--pid} project:abc
+dn submodule ls {--project|-p} "MyProject"
 
 # List files (cascading filter priority: submodule > module > project)
-dn file ls --submodule-id submodule:ghi
-dn file ls --module-id module:def
-dn file ls --project-id project:abc
-dn file ls --project "MyProject"
+dn file ls {--submodule-id|--smid} submodule:ghi
+dn file ls {--module-id|--mid} module:def
+dn file ls {--project-id|--pid} project:abc
+dn file ls {--project|-p} "MyProject"
 
 # List tasks in a project
-dn task ls --project-id project:abc
-dn task ls --project "MyProject"
+dn task ls {--project-id|--pid} project:abc
+dn task ls {--project|-p} "MyProject"
 ```
 
 **AI Agent Pattern**: Capture IDs from JSON output for subsequent commands. When using project names, remember that names are unique and case-sensitive by default (use `-i` for case-insensitive matching).
@@ -255,34 +257,34 @@ dn task ls --project "MyProject"
 
 #### 2. Adding Knowledge (Schemaless)
 
-Knowledge is stored with arbitrary key-value pairs using `--field` for names and `--value` for values.
+Knowledge is stored with arbitrary key-value pairs using `--field` (`-f`) for names and `--value` (`-v`) for values.
 
 ```bash
 # Basic knowledge entry
 # Each --field must be paired with a --value
 dn add \
-  --field type --value mistake \
-  --field content --value "Avoid using unwrap in production code" \
-  --link-to task:mno
+  {--field|-f} type {--value|-v} mistake \
+  {--field|-f} content {--value|-v} "Avoid using unwrap in production code" \
+  {--link-to|--ln} task:mno
 
 # Multiple custom fields
 dn add \
-  --field type --value security \
-  --field content --value "Always validate user inputs" \
-  --field severity --value high \
-  --field category --value "input-validation" \
-  --field cwe --value "CWE-20" \
-  --link-to module:def \
-  --link-to project:abc
+  {--field|-f} type {--value|-v} security \
+  {--field|-f} content {--value|-v} "Always validate user inputs" \
+  {--field|-f} severity {--value|-v} high \
+  {--field|-f} category {--value|-v} "input-validation" \
+  {--field|-f} cwe {--value|-v} "CWE-20" \
+  {--link-to|--ln} module:def \
+  {--link-to|--ln} project:abc
 
 # Link to multiple structural nodes
 dn add \
-  --field type --value style \
-  --field content --value "Use Result types instead of panicking" \
-  --field language --value rust \
-  --link-to project:abc \
-  --link-to module:def \
-  --link-to task:mno
+  {--field|-f} type {--value|-v} style \
+  {--field|-f} content {--value|-v} "Use Result types instead of panicking" \
+  {--field|-f} language {--value|-v} rust \
+  {--link-to|--ln} project:abc \
+  {--link-to|--ln} module:def \
+  {--link-to|--ln} task:mno
 ```
 
 **Common Field Patterns**:
@@ -303,16 +305,16 @@ Query context for a task to get the task details, related files, hierarchy, and 
 
 ```bash
 # Get context only for the specific task node
-dn ctx --task-id task:mno
+dn ctx {--task-id|--tid} task:mno
 
 # Get full inherited context for the task (RECOMMENDED for AI agents)
-dn ctx --task-id task:mno --full
+dn ctx {--task-id|--tid} task:mno --full
 
 # Get context for a file (optionally with parents)
-dn ctx --file-id file:jkl --full
+dn ctx {--file-id|--fid} file:jkl --full
 
 # Get context for an epic (optionally with project rules)
-dn ctx --epic-id epic:stu --full
+dn ctx {--epic-id|--eid} epic:stu --full
 ```
 
 **Task Context Returns:**
@@ -321,7 +323,7 @@ dn ctx --epic-id epic:stu --full
 - **Hierarchy** - Project, module, submodule structural info
 - **Contexts** - Directly linked or inherited knowledge (if `--full` is used)
 
-**AI Agent Rule**: Always run `dn ctx --task-id <id> --full` before implementing to see task-specific and project-wide knowledge.
+**AI Agent Rule**: Always run `dn ctx {--task-id|--tid} <id> --full` before implementing to see task-specific and project-wide knowledge.
 
 ---
 
@@ -329,54 +331,54 @@ dn ctx --epic-id epic:stu --full
 
 ```bash
 # Create a user story using project ID
-dn user-story add --project-id project:abc \
+dn user-story add {--project-id|--pid} project:abc \
   "As a user, I want to login" \
   "User authentication feature"
 
 # Create a user story using project name (alternative)
-dn user-story add --project "MyProject" \
+dn user-story add {--project|-p} "MyProject" \
   "As a user, I want to login" \
   "User authentication feature"
 
 # Create an epic using project ID
-dn epic add --project-id project:abc \
+dn epic add {--project-id|--pid} project:abc \
   "Authentication Epic" \
   "Complete authentication system implementation"
 
 # Create an epic using project name (alternative)
-dn epic add --project "MyProject" \
+dn epic add {--project|-p} "MyProject" \
   "Authentication Epic" \
   "Complete authentication system implementation"
 
 # Create todo items using project ID
-dn todo add --project-ids project:abc \
+dn todo add {--project-ids|--pids} project:abc \
   "Review security requirements"
 
 # Create todo items using project name (alternative)
-dn todo add --project "MyProject" \
+dn todo add {--project|-p} "MyProject" \
   "Review security requirements"
 
 # List items using project ID
-dn user-story ls --project-id project:abc
-dn epic ls --project-id project:abc
-dn todo ls --project-id project:abc
-dn task ls --project-id project:abc
-dn module ls --project-id project:abc
-dn submodule ls --project-id project:abc
-dn file ls --project-id project:abc
+dn user-story ls {--project-id|--pid} project:abc
+dn epic ls {--project-id|--pid} project:abc
+dn todo ls {--project-id|--pid} project:abc
+dn task ls {--project-id|--pid} project:abc
+dn module ls {--project-id|--pid} project:abc
+dn submodule ls {--project-id|--pid} project:abc
+dn file ls {--project-id|--pid} project:abc
 
 # List items using project name (alternative)
-dn user-story ls --project "MyProject"
-dn epic ls --project "MyProject"
-dn todo ls --project "MyProject"
-dn task ls --project "MyProject"
-dn module ls --project "MyProject"
-dn submodule ls --project "MyProject"
-dn file ls --project "MyProject"
+dn user-story ls {--project|-p} "MyProject"
+dn epic ls {--project|-p} "MyProject"
+dn todo ls {--project|-p} "MyProject"
+dn task ls {--project|-p} "MyProject"
+dn module ls {--project|-p} "MyProject"
+dn submodule ls {--project|-p} "MyProject"
+dn file ls {--project|-p} "MyProject"
 
 # List with case-insensitive matching
-dn todo ls --project "myproject" -i
-dn task ls --project "myproject" -i
+dn todo ls {--project|-p} "myproject" -i
+dn task ls {--project|-p} "myproject" -i
 
 # Delete a task when no longer needed
 dn task rm task:mno
@@ -393,8 +395,8 @@ For connecting existing nodes:
 
 ```bash
 # Link any two nodes with a named edge
-dn link --from-id task:mno --edge has_context --to-ids context:xyz
-dn link --from-id project:abc --edge contains --to-ids module:def
+dn link {--from-id|-f} task:mno {--edge|-e} has_context {--to-ids|-t} context:xyz
+dn link {--from-id|-f} project:abc {--edge|-e} contains {--to-ids|-t} module:def
 ```
 
 **Valid Edges**:
@@ -426,17 +428,17 @@ Always add the project structure before adding knowledge:
 PROJECT=$(dn project add "MyApp" "Web application" | jq -r '.id')
 
 # Step 2: Create modules with project link
-MODULE=$(dn module add --project-ids "$PROJECT" "API" "REST API" | jq -r '.id')
+MODULE=$(dn module add {--project-ids|--pids} "$PROJECT" "API" "REST API" | jq -r '.id')
 
 # Step 3: Create tasks with module and project links
-TASK=$(dn task add --module-ids "$MODULE" --project-ids "$PROJECT" \
+TASK=$(dn task add {--module-ids|--mids} "$MODULE" {--project-ids|--pids} "$PROJECT" \
   "Implement auth" "JWT authentication" | jq -r '.id')
 
 # Step 4: Now add knowledge linked to appropriate nodes
 dn add \
-  --field type --value mistake \
-  --field content --value "Don't store secrets in env vars" \
-  --link-to "$TASK"
+  {--field|-f} type {--value|-v} mistake \
+  {--field|-f} content {--value|-v} "Don't store secrets in env vars" \
+  {--link-to|--ln} "$TASK"
 ```
 
 ---
@@ -451,7 +453,7 @@ PROJECT_ID=$(dn project add "App" "Description" | jq -r '.id')
 echo "Created project: $PROJECT_ID"
 
 # Use in subsequent commands
-dn module add --project-ids "$PROJECT_ID" "Core" "Core module"
+dn module add {--project-ids|--pids} "$PROJECT_ID" "Core" "Core module"
 ```
 
 ---
@@ -462,15 +464,15 @@ Always add context-enriching fields:
 
 ```bash
 dn add \
-  --field type --value security \
-  --field content --value "SQL injection vulnerability in user input" \
-  --field severity --value critical \
-  --field cwe --value "CWE-89" \
-  --field owasp --value "A03:2021-Injection" \
-  --field remediation --value "Use parameterized queries" \
-  --field example_bad --value "query = 'SELECT * FROM users WHERE id = ' + userId" \
-  --field example_good --value "query = 'SELECT * FROM users WHERE id = ?'; db.query(query, [userId])" \
-  --link-to task:abc
+  {--field|-f} type {--value|-v} security \
+  {--field|-f} content {--value|-v} "SQL injection vulnerability in user input" \
+  {--field|-f} severity {--value|-v} critical \
+  {--field|-f} cwe {--value|-v} "CWE-89" \
+  {--field|-f} owasp {--value|-v} "A03:2021-Injection" \
+  {--field|-f} remediation {--value|-v} "Use parameterized queries" \
+  {--field|-f} example_bad {--value|-v} "query = 'SELECT * FROM users WHERE id = ' + userId" \
+  {--field|-f} example_good {--value|-v} "query = 'SELECT * FROM users WHERE id = ?'; db.query(query, [userId])" \
+  {--link-to|--ln} task:abc
 ```
 
 ---
@@ -481,10 +483,10 @@ When working on a task, always retrieve relevant context with the `--full` flag:
 
 ```bash
 # Before implementing, get full inherited context for the task
-dn ctx --task-id task:abc --full --pretty'
+dn ctx {--task-id|--tid} task:abc --full {--pretty|--pp}'
 
 # Also check full module-level context
-dn ctx --file-id file:def --full --pretty'
+dn ctx {--file-id|--fid} file:def --full {--pretty|--pp}'
 ```
 # Combine and analyze all relevant knowledge
 ```
@@ -515,15 +517,15 @@ All commands return structured JSON:
 # User reports an issue - capture as knowledge
 MISTAKE_ID=$(dn add \
   --field type --value mistake \
-  --field content --value "Race condition in async handler" \
-  --field language --value rust \
-  --field symptom --value "Intermittent 500 errors under load" \
-  --field root_cause --value "Shared state without proper locking" \
-  --field fix --value "Use Arc<Mutex<T>> for shared state" \
-  --link-to task:abc | jq -r '.id // empty')
+  {--field|-f} content {--value|-v} "Race condition in async handler" \
+  {--field|-f} language {--value|-v} rust \
+  {--field|-f} symptom {--value|-v} "Intermittent 500 errors under load" \
+  {--field|-f} root_cause {--value|-v} "Shared state without proper locking" \
+  {--field|-f} fix {--value|-v} "Use Arc<Mutex<T>> for shared state" \
+  {--link-to|--ln} task:abc | jq -r '.id // empty')
 
 # Later, when working on similar tasks, query context
-dn ctx --task-id task:abc
+dn ctx {--task-id|--tid} task:abc
 ```
 
 ---
@@ -533,13 +535,13 @@ dn ctx --task-id task:abc
 ```bash
 # Store code review feedback as knowledge
 REVIEW_ID=$(dn add \
-  --field type --value code_review \
-  --field content --value "Extract database queries into repository pattern" \
-  --field severity --value medium \
-  --field rationale --value "Improves testability and maintainability" \
-  --field effort --value "2 hours" \
-  --field pr_number --value "#42" \
-  --link-to file:src/main.rs)
+  {--field|-f} type {--value|-v} code_review \
+  {--field|-f} content {--value|-v} "Extract database queries into repository pattern" \
+  {--field|-f} severity {--value|-v} medium \
+  {--field|-f} rationale {--value|-v} "Improves testability and maintainability" \
+  {--field|-f} effort {--value|-v} "2 hours" \
+  {--field|-f} pr_number {--value|-v} "#42" \
+  {--link-to|--ln} file:src/main.rs)
 ```
 
 ---
@@ -549,17 +551,17 @@ REVIEW_ID=$(dn add \
 ```bash
 # Log security findings with rich metadata
 SECURITY_ID=$(dn add \
-  --field type --value security \
-  --field content --value "Hardcoded API key in config file" \
-  --field severity --value critical \
-  --field cwe --value "CWE-798" \
-  --field cve --value "CVE-2023-1234" \
-  --field scan_tool --value "truffleHog" \
-  --field file --value "config/secrets.yml" \
-  --field line --value "15" \
-  --field remediation --value "Move to environment variables or secret manager" \
-  --link-to module:api \
-  --link-to project:main)
+  {--field|-f} type {--value|-v} security \
+  {--field|-f} content {--value|-v} "Hardcoded API key in config file" \
+  {--field|-f} severity {--value|-v} critical \
+  {--field|-f} cwe {--value|-v} "CWE-798" \
+  {--field|-f} cve {--value|-v} "CVE-2023-1234" \
+  {--field|-f} scan_tool {--value|-v} truffleHog \
+  {--field|-f} file {--value|-v} "config/secrets.yml" \
+  {--field|-f} line {--value|-v} "15" \
+  {--field|-f} remediation {--value|-v} "Move to environment variables or secret manager" \
+  {--link-to|--ln} module:api \
+  {--link-to|--ln} project:main)
 ```
 
 ---
@@ -569,15 +571,15 @@ SECURITY_ID=$(dn add \
 ```bash
 # Capture performance insights
 PERF_ID=$(dn add \
-  --field type --value performance \
-  --field content --value "N+1 query problem in user listing" \
-  --field severity --value high \
-  --field metric_before --value "2500ms response time" \
-  --field metric_after --value "120ms response time" \
-  --field solution --value "Use eager loading with JOIN" \
-  --field benchmark --value "ab -n 1000 -c 10" \
-  --field improvement --value "20x faster" \
-  --link-to module:users)
+  {--field|-f} type {--value|-v} performance \
+  {--field|-f} content {--value|-v} "N+1 query problem in user listing" \
+  {--field|-f} severity {--value|-v} high \
+  {--field|-f} metric_before {--value|-v} "2500ms response time" \
+  {--field|-f} metric_after {--value|-v} "120ms response time" \
+  {--field|-f} solution {--value|-v} "Use eager loading with JOIN" \
+  {--field|-f} benchmark {--value|-v} "ab -n 1000 -c 10" \
+  {--field|-f} improvement {--value|-v} "20x faster" \
+  {--link-to|--ln} module:users)
 ```
 
 ---
@@ -595,15 +597,15 @@ Complete workflow for planning and executing tasks with proper context retrieval
 
 # Step 6: Query knowledge base again for relevant patterns before implementation
 # Get full inherited context specific to the task (RECOMMENDED)
-dn ctx --task-id "$TASK_ID" --full | jq '.results[]'
+dn ctx {--task-id|--tid} "$TASK_ID" --full | jq '.results[]'
 
 # Step 7: After completion, capture insights and lessons learned
 dn add \
-  --field type --value insight \
-  --field content --value "JWT tokens should have short expiry with refresh token pattern" \
-  --field related_task --value "$TASK_ID" \
-  --link-to "$TASK_ID" \
-  --link-to module:def
+  {--field|-f} type {--value|-v} insight \
+  {--field|-f} content {--value|-v} "JWT tokens should have short expiry with refresh token pattern" \
+  {--field|-f} related_task {--value|-v} "$TASK_ID" \
+  {--link-to|--ln} "$TASK_ID" \
+  {--link-to|--ln} module:def
 ```
 
 **AI Agent Best Practices for Task Planning**:
@@ -612,43 +614,43 @@ dn add \
 2. **Create todos first**: Track work items before creating detailed tasks
 3. **Link strategically**: Attach tasks to the most specific module/submodule and relevant epics
 4. **Always link to files/modules**: After adding a task, link it to relevant files and modules it touches
-5. **Store plans as knowledge**: Use `--field type --value plan` to document implementation approach
-6. **Query task context before coding**: Always run `dn ctx --task-id <id> --full` before implementation
+5. **Store plans as knowledge**: Use `{--field|-f} type {--value|-v} plan` to document implementation approach
+6. **Query task context before coding**: Always run `dn ctx {--task-id|--tid} <id> --full` before implementation
 7. **Capture learnings**: After task completion, add insights linked to the task and relevant modules
 
 **Example: Full Planning Session**:
 
 ```bash
 # 1. Initial query - understand existing structure
-dn ctx --project-id project:abc | jq '.results[] | {type, content}'
+dn ctx {--project-id|--pid} project:abc | jq '.results[] | {type, content}'
 
 # 2. Create tracking todo
-TODO=$(dn todo add --project-ids project:abc "Add OAuth integration" | jq -r '.id')
+TODO=$(dn todo add {--project-ids|--pids} project:abc "Add OAuth integration" | jq -r '.id')
 
 # 3. Explore specific module context
-dn ctx --module-id module:auth --full | jq '.results[]'
+dn ctx {--module-id|--mid} module:auth --full | jq '.results[]'
 
 # 4. Create and link task
 TASK=$(dn task add \
-  --module-ids module:auth \
-  --project-ids project:abc \
+  {--module-ids|--mids} module:auth \
+  {--project-ids|--pids} project:abc \
   "Implement OAuth2 flow" \
   "Add OAuth2 authentication with Google and GitHub providers" | jq -r '.id')
 
 # 4b. Link task to relevant files
-# dn link --from "$TASK" --edge has_file --to file:auth.rs
+# dn link {--from-id|-f} "$TASK" {--edge|-e} has_file {--to-ids|-t} file:auth.rs
 
 # 5. Document the plan
 dn add \
-  --field type --value plan \
-  --field content --value "OAuth2 implementation strategy" \
-  --field approach --value "Use OAuth2 crate with state parameter for CSRF protection" \
-  --field providers --value "Google, GitHub" \
-  --field callback_url --value "/auth/callback" \
-  --link-to "$TASK"
+  {--field|-f} type {--value|-v} plan \
+  {--field|-f} content {--value|-v} "OAuth2 implementation strategy" \
+  {--field|-f} approach {--value|-v} "Use OAuth2 crate with state parameter for CSRF protection" \
+  {--field|-f} providers {--value|-v} "Google, GitHub" \
+  {--field|-f} callback_url {--value|-v} "/auth/callback" \
+  {--link-to|--ln} "$TASK"
 
 # 6. Verify context is properly linked
-dn ctx --task-id "$TASK" | jq '.results | length'
+dn ctx {--task-id|--tid} "$TASK" | jq '.results | length'
 ```
 
 ---
