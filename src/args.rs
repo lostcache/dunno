@@ -187,7 +187,7 @@ pub enum Commands {
 pub enum ProjectCommands {
     #[command(name = "add")]
     Create { name: String, description: String },
-    #[command(name = "ls")]
+    #[command(name = "list", visible_alias = "ls")]
     List,
     #[command(name = "rm")]
     Delete { project_id: String },
@@ -219,7 +219,7 @@ pub enum ModuleCommands {
         #[arg(long, value_name = "NOTES")]
         notes: Option<String>,
     },
-    #[command(name = "ls")]
+    #[command(name = "list", visible_alias = "ls")]
     List {
         #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
@@ -249,7 +249,7 @@ pub enum SubmoduleCommands {
         #[arg(long, value_name = "NOTES")]
         notes: Option<String>,
     },
-    #[command(name = "ls")]
+    #[command(name = "list", visible_alias = "ls")]
     List {
         #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
@@ -284,7 +284,7 @@ pub enum FileCommands {
         #[arg(long, value_name = "NOTES")]
         notes: Option<String>,
     },
-    #[command(name = "ls")]
+    #[command(name = "list", visible_alias = "ls")]
     List {
         #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
@@ -352,7 +352,7 @@ pub enum TaskCommands {
     },
     #[command(name = "rm")]
     Delete { task_id: String },
-    #[command(name = "ls")]
+    #[command(name = "list", visible_alias = "ls")]
     List {
         #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
@@ -393,7 +393,7 @@ pub enum UserStoryCommands {
         title: String,
         description: String,
     },
-    #[command(name = "ls")]
+    #[command(name = "list", visible_alias = "ls")]
     List {
         #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
@@ -435,7 +435,7 @@ pub enum EpicCommands {
         title: String,
         description: String,
     },
-    #[command(name = "ls")]
+    #[command(name = "list", visible_alias = "ls")]
     List {
         #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
@@ -474,7 +474,7 @@ pub enum TodoCommands {
         project: Option<String>,
         content: String,
     },
-    #[command(name = "ls")]
+    #[command(name = "list", visible_alias = "ls")]
     List {
         #[arg(long, visible_alias = "pid", conflicts_with = "project")]
         project_id: Option<String>,
