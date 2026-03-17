@@ -190,7 +190,10 @@ pub enum ProjectCommands {
     #[command(name = "list", visible_alias = "ls")]
     List,
     #[command(name = "rm")]
-    Delete { project_ids: Vec<String> },
+    Delete {
+        #[arg(required = true)]
+        project_ids: Vec<String>,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -233,7 +236,10 @@ pub enum ModuleCommands {
         project: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { module_ids: Vec<String> },
+    Delete {
+        #[arg(required = true)]
+        module_ids: Vec<String>,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -265,7 +271,10 @@ pub enum SubmoduleCommands {
         module_id: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { submodule_ids: Vec<String> },
+    Delete {
+        #[arg(required = true)]
+        submodule_ids: Vec<String>,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -302,7 +311,10 @@ pub enum FileCommands {
         submodule_id: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { file_ids: Vec<String> },
+    Delete {
+        #[arg(required = true)]
+        file_ids: Vec<String>,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -351,7 +363,10 @@ pub enum TaskCommands {
         status: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { task_ids: Vec<String> },
+    Delete {
+        #[arg(required = true)]
+        task_ids: Vec<String>,
+    },
     #[command(name = "list", visible_alias = "ls")]
     List {
         #[arg(long, visible_alias = "pid", conflicts_with = "project")]
@@ -409,7 +424,10 @@ pub enum UserStoryCommands {
         epic_id: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { user_story_ids: Vec<String> },
+    Delete {
+        #[arg(required = true)]
+        user_story_ids: Vec<String>,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -449,7 +467,10 @@ pub enum EpicCommands {
         project: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { epic_ids: Vec<String> },
+    Delete {
+        #[arg(required = true)]
+        epic_ids: Vec<String>,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -488,7 +509,10 @@ pub enum TodoCommands {
         project: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { todo_ids: Vec<String> },
+    Delete {
+        #[arg(required = true)]
+        todo_ids: Vec<String>,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -1311,6 +1335,15 @@ mod tests {
     }
 
     #[test]
+    fn project_delete_command_requires_project_id() {
+        let args = Args::try_parse_from(["dn", "project", "rm"]);
+        assert!(
+            args.is_err(),
+            "should require project_id for delete command"
+        );
+    }
+
+    #[test]
     fn module_delete_command_accepts_module_id() {
         let args = Args::try_parse_from(["dn", "module", "rm", "module:abc123"]);
         assert!(args.is_ok(), "should parse module delete command");
@@ -1341,6 +1374,12 @@ mod tests {
         } else {
             panic!("expected Module command");
         }
+    }
+
+    #[test]
+    fn module_delete_command_requires_module_id() {
+        let args = Args::try_parse_from(["dn", "module", "rm"]);
+        assert!(args.is_err(), "should require module_id for delete command");
     }
 
     #[test]
@@ -1383,6 +1422,15 @@ mod tests {
     }
 
     #[test]
+    fn submodule_delete_command_requires_submodule_id() {
+        let args = Args::try_parse_from(["dn", "submodule", "rm"]);
+        assert!(
+            args.is_err(),
+            "should require submodule_id for delete command"
+        );
+    }
+
+    #[test]
     fn file_delete_command_accepts_file_id() {
         let args = Args::try_parse_from(["dn", "file", "rm", "file:abc123"]);
         assert!(args.is_ok(), "should parse file delete command");
@@ -1413,6 +1461,12 @@ mod tests {
         } else {
             panic!("expected File command");
         }
+    }
+
+    #[test]
+    fn file_delete_command_requires_file_id() {
+        let args = Args::try_parse_from(["dn", "file", "rm"]);
+        assert!(args.is_err(), "should require file_id for delete command");
     }
 
     #[test]
@@ -1458,6 +1512,15 @@ mod tests {
     }
 
     #[test]
+    fn user_story_delete_command_requires_user_story_id() {
+        let args = Args::try_parse_from(["dn", "user-story", "rm"]);
+        assert!(
+            args.is_err(),
+            "should require user_story_id for delete command"
+        );
+    }
+
+    #[test]
     fn epic_delete_command_accepts_epic_id() {
         let args = Args::try_parse_from(["dn", "epic", "rm", "epic:abc123"]);
         assert!(args.is_ok(), "should parse epic delete command");
@@ -1488,6 +1551,12 @@ mod tests {
         } else {
             panic!("expected Epic command");
         }
+    }
+
+    #[test]
+    fn epic_delete_command_requires_epic_id() {
+        let args = Args::try_parse_from(["dn", "epic", "rm"]);
+        assert!(args.is_err(), "should require epic_id for delete command");
     }
 
     // Short flag tests
