@@ -228,13 +228,22 @@ async fn handle_project_command(
             let projects = db.list_projects().await?;
             print_json(serde_json::json!(projects), pretty);
         }
-        dunno::args::ProjectCommands::Delete { project_id } => {
-            let deleted = db.delete_project(&project_id).await?;
-            if deleted {
-                println!("Deleted project {}", project_id);
-            } else {
-                println!("Project {} not found", project_id);
+        dunno::args::ProjectCommands::Delete { project_ids } => {
+            let mut deleted = Vec::new();
+            let mut not_found = Vec::new();
+            for id in project_ids {
+                if db.delete_project(&id).await? {
+                    deleted.push(id);
+                } else {
+                    not_found.push(id);
+                }
             }
+            let result = serde_json::json!({
+                "status": "ok",
+                "deleted": deleted,
+                "not_found": not_found,
+            });
+            print_json(result, pretty);
         }
     }
     Ok(())
@@ -293,13 +302,22 @@ async fn handle_module_command(
             };
             print_json(serde_json::json!(modules), pretty);
         }
-        dunno::args::ModuleCommands::Delete { module_id } => {
-            let deleted = db.delete_module(&module_id).await?;
-            if deleted {
-                println!("Deleted module {}", module_id);
-            } else {
-                println!("Module {} not found", module_id);
+        dunno::args::ModuleCommands::Delete { module_ids } => {
+            let mut deleted = Vec::new();
+            let mut not_found = Vec::new();
+            for id in module_ids {
+                if db.delete_module(&id).await? {
+                    deleted.push(id);
+                } else {
+                    not_found.push(id);
+                }
             }
+            let result = serde_json::json!({
+                "status": "ok",
+                "deleted": deleted,
+                "not_found": not_found,
+            });
+            print_json(result, pretty);
         }
     }
     Ok(())
@@ -360,13 +378,22 @@ async fn handle_submodule_command(
             };
             print_json(serde_json::json!(submodules), pretty);
         }
-        dunno::args::SubmoduleCommands::Delete { submodule_id } => {
-            let deleted = db.delete_submodule(&submodule_id).await?;
-            if deleted {
-                println!("Deleted submodule {}", submodule_id);
-            } else {
-                println!("Submodule {} not found", submodule_id);
+        dunno::args::SubmoduleCommands::Delete { submodule_ids } => {
+            let mut deleted = Vec::new();
+            let mut not_found = Vec::new();
+            for id in submodule_ids {
+                if db.delete_submodule(&id).await? {
+                    deleted.push(id);
+                } else {
+                    not_found.push(id);
+                }
             }
+            let result = serde_json::json!({
+                "status": "ok",
+                "deleted": deleted,
+                "not_found": not_found,
+            });
+            print_json(result, pretty);
         }
     }
     Ok(())
@@ -431,13 +458,22 @@ async fn handle_file_command(
             };
             print_json(serde_json::json!(files), pretty);
         }
-        dunno::args::FileCommands::Delete { file_id } => {
-            let deleted = db.delete_file(&file_id).await?;
-            if deleted {
-                println!("Deleted file {}", file_id);
-            } else {
-                println!("File {} not found", file_id);
+        dunno::args::FileCommands::Delete { file_ids } => {
+            let mut deleted = Vec::new();
+            let mut not_found = Vec::new();
+            for id in file_ids {
+                if db.delete_file(&id).await? {
+                    deleted.push(id);
+                } else {
+                    not_found.push(id);
+                }
             }
+            let result = serde_json::json!({
+                "status": "ok",
+                "deleted": deleted,
+                "not_found": not_found,
+            });
+            print_json(result, pretty);
         }
     }
     Ok(())
@@ -511,16 +547,22 @@ async fn handle_task_command(
             };
             print_json(serde_json::json!(tasks), pretty);
         }
-        dunno::args::TaskCommands::Delete { task_id } => {
-            let deleted = db.delete_task(&task_id).await?;
-            if deleted {
-                print_json(
-                    serde_json::json!({ "status": "ok", "deleted": task_id }),
-                    pretty,
-                );
-            } else {
-                return Err(anyhow::anyhow!("Task not found: {}", task_id));
+        dunno::args::TaskCommands::Delete { task_ids } => {
+            let mut deleted = Vec::new();
+            let mut not_found = Vec::new();
+            for id in task_ids {
+                if db.delete_task(&id).await? {
+                    deleted.push(id);
+                } else {
+                    not_found.push(id);
+                }
             }
+            let result = serde_json::json!({
+                "status": "ok",
+                "deleted": deleted,
+                "not_found": not_found,
+            });
+            print_json(result, pretty);
         }
     }
     Ok(())
@@ -607,16 +649,22 @@ async fn handle_todo_command(
             let todos = db.list_todos_by_project(&pid).await?;
             print_json(serde_json::json!(todos), pretty);
         }
-        dunno::args::TodoCommands::Delete { todo_id } => {
-            let deleted = db.delete_todo(&todo_id).await?;
-            if deleted {
-                print_json(
-                    serde_json::json!({ "status": "ok", "deleted": todo_id }),
-                    pretty,
-                );
-            } else {
-                return Err(anyhow::anyhow!("Todo not found: {}", todo_id));
+        dunno::args::TodoCommands::Delete { todo_ids } => {
+            let mut deleted = Vec::new();
+            let mut not_found = Vec::new();
+            for id in todo_ids {
+                if db.delete_todo(&id).await? {
+                    deleted.push(id);
+                } else {
+                    not_found.push(id);
+                }
             }
+            let result = serde_json::json!({
+                "status": "ok",
+                "deleted": deleted,
+                "not_found": not_found,
+            });
+            print_json(result, pretty);
         }
     }
     Ok(())
@@ -665,13 +713,22 @@ async fn handle_user_story_command(
             };
             print_json(serde_json::json!(user_stories), pretty);
         }
-        dunno::args::UserStoryCommands::Delete { user_story_id } => {
-            let deleted = db.delete_user_story(&user_story_id).await?;
-            if deleted {
-                println!("Deleted user story {}", user_story_id);
-            } else {
-                println!("User story {} not found", user_story_id);
+        dunno::args::UserStoryCommands::Delete { user_story_ids } => {
+            let mut deleted = Vec::new();
+            let mut not_found = Vec::new();
+            for id in user_story_ids {
+                if db.delete_user_story(&id).await? {
+                    deleted.push(id);
+                } else {
+                    not_found.push(id);
+                }
             }
+            let result = serde_json::json!({
+                "status": "ok",
+                "deleted": deleted,
+                "not_found": not_found,
+            });
+            print_json(result, pretty);
         }
     }
     Ok(())
@@ -710,13 +767,22 @@ async fn handle_epic_command(
             };
             print_json(serde_json::json!(epics), pretty);
         }
-        dunno::args::EpicCommands::Delete { epic_id } => {
-            let deleted = db.delete_epic(&epic_id).await?;
-            if deleted {
-                println!("Deleted epic {}", epic_id);
-            } else {
-                println!("Epic {} not found", epic_id);
+        dunno::args::EpicCommands::Delete { epic_ids } => {
+            let mut deleted = Vec::new();
+            let mut not_found = Vec::new();
+            for id in epic_ids {
+                if db.delete_epic(&id).await? {
+                    deleted.push(id);
+                } else {
+                    not_found.push(id);
+                }
             }
+            let result = serde_json::json!({
+                "status": "ok",
+                "deleted": deleted,
+                "not_found": not_found,
+            });
+            print_json(result, pretty);
         }
     }
     Ok(())

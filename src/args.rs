@@ -190,7 +190,7 @@ pub enum ProjectCommands {
     #[command(name = "list", visible_alias = "ls")]
     List,
     #[command(name = "rm")]
-    Delete { project_id: String },
+    Delete { project_ids: Vec<String> },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -233,7 +233,7 @@ pub enum ModuleCommands {
         project: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { module_id: String },
+    Delete { module_ids: Vec<String> },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -265,7 +265,7 @@ pub enum SubmoduleCommands {
         module_id: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { submodule_id: String },
+    Delete { submodule_ids: Vec<String> },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -302,7 +302,7 @@ pub enum FileCommands {
         submodule_id: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { file_id: String },
+    Delete { file_ids: Vec<String> },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -351,7 +351,7 @@ pub enum TaskCommands {
         status: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { task_id: String },
+    Delete { task_ids: Vec<String> },
     #[command(name = "list", visible_alias = "ls")]
     List {
         #[arg(long, visible_alias = "pid", conflicts_with = "project")]
@@ -409,7 +409,7 @@ pub enum UserStoryCommands {
         epic_id: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { user_story_id: String },
+    Delete { user_story_ids: Vec<String> },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -449,7 +449,7 @@ pub enum EpicCommands {
         project: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { epic_id: String },
+    Delete { epic_ids: Vec<String> },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -488,7 +488,7 @@ pub enum TodoCommands {
         project: Option<String>,
     },
     #[command(name = "rm")]
-    Delete { todo_id: String },
+    Delete { todo_ids: Vec<String> },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -650,8 +650,26 @@ mod tests {
         let args = Args::try_parse_from(["dn", "task", "rm", "task:abc123"]);
         assert!(args.is_ok(), "should parse task delete command");
         if let Commands::Task { command } = args.unwrap().command {
-            if let TaskCommands::Delete { task_id } = command {
-                assert_eq!(task_id, "task:abc123");
+            if let TaskCommands::Delete { task_ids } = command {
+                assert_eq!(task_ids, vec!["task:abc123"]);
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected Task command");
+        }
+    }
+
+    #[test]
+    fn task_delete_command_accepts_multiple_ids() {
+        let args = Args::try_parse_from(["dn", "task", "rm", "task:abc123", "task:def456"]);
+        assert!(
+            args.is_ok(),
+            "should parse task delete command with multiple ids"
+        );
+        if let Commands::Task { command } = args.unwrap().command {
+            if let TaskCommands::Delete { task_ids } = command {
+                assert_eq!(task_ids, vec!["task:abc123", "task:def456"]);
             } else {
                 panic!("expected Delete command");
             }
@@ -671,8 +689,27 @@ mod tests {
         let args = Args::try_parse_from(["dn", "todo", "rm", "todo_item:abc123"]);
         assert!(args.is_ok(), "should parse todo delete command");
         if let Commands::Todo { command } = args.unwrap().command {
-            if let TodoCommands::Delete { todo_id } = command {
-                assert_eq!(todo_id, "todo_item:abc123");
+            if let TodoCommands::Delete { todo_ids } = command {
+                assert_eq!(todo_ids, vec!["todo_item:abc123"]);
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected Todo command");
+        }
+    }
+
+    #[test]
+    fn todo_delete_command_accepts_multiple_ids() {
+        let args =
+            Args::try_parse_from(["dn", "todo", "rm", "todo_item:abc123", "todo_item:def456"]);
+        assert!(
+            args.is_ok(),
+            "should parse todo delete command with multiple ids"
+        );
+        if let Commands::Todo { command } = args.unwrap().command {
+            if let TodoCommands::Delete { todo_ids } = command {
+                assert_eq!(todo_ids, vec!["todo_item:abc123", "todo_item:def456"]);
             } else {
                 panic!("expected Delete command");
             }
@@ -1244,8 +1281,27 @@ mod tests {
         let args = Args::try_parse_from(["dn", "project", "rm", "project:abc123"]);
         assert!(args.is_ok(), "should parse project delete command");
         if let Commands::Project { command } = args.unwrap().command {
-            if let ProjectCommands::Delete { project_id } = command {
-                assert_eq!(project_id, "project:abc123");
+            if let ProjectCommands::Delete { project_ids } = command {
+                assert_eq!(project_ids, vec!["project:abc123"]);
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected Project command");
+        }
+    }
+
+    #[test]
+    fn project_delete_command_accepts_multiple_ids() {
+        let args =
+            Args::try_parse_from(["dn", "project", "rm", "project:abc123", "project:def456"]);
+        assert!(
+            args.is_ok(),
+            "should parse project delete command with multiple ids"
+        );
+        if let Commands::Project { command } = args.unwrap().command {
+            if let ProjectCommands::Delete { project_ids } = command {
+                assert_eq!(project_ids, vec!["project:abc123", "project:def456"]);
             } else {
                 panic!("expected Delete command");
             }
@@ -1259,8 +1315,26 @@ mod tests {
         let args = Args::try_parse_from(["dn", "module", "rm", "module:abc123"]);
         assert!(args.is_ok(), "should parse module delete command");
         if let Commands::Module { command } = args.unwrap().command {
-            if let ModuleCommands::Delete { module_id } = command {
-                assert_eq!(module_id, "module:abc123");
+            if let ModuleCommands::Delete { module_ids } = command {
+                assert_eq!(module_ids, vec!["module:abc123"]);
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected Module command");
+        }
+    }
+
+    #[test]
+    fn module_delete_command_accepts_multiple_ids() {
+        let args = Args::try_parse_from(["dn", "module", "rm", "module:abc123", "module:def456"]);
+        assert!(
+            args.is_ok(),
+            "should parse module delete command with multiple ids"
+        );
+        if let Commands::Module { command } = args.unwrap().command {
+            if let ModuleCommands::Delete { module_ids } = command {
+                assert_eq!(module_ids, vec!["module:abc123", "module:def456"]);
             } else {
                 panic!("expected Delete command");
             }
@@ -1274,8 +1348,32 @@ mod tests {
         let args = Args::try_parse_from(["dn", "submodule", "rm", "submodule:abc123"]);
         assert!(args.is_ok(), "should parse submodule delete command");
         if let Commands::Submodule { command } = args.unwrap().command {
-            if let SubmoduleCommands::Delete { submodule_id } = command {
-                assert_eq!(submodule_id, "submodule:abc123");
+            if let SubmoduleCommands::Delete { submodule_ids } = command {
+                assert_eq!(submodule_ids, vec!["submodule:abc123"]);
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected Submodule command");
+        }
+    }
+
+    #[test]
+    fn submodule_delete_command_accepts_multiple_ids() {
+        let args = Args::try_parse_from([
+            "dn",
+            "submodule",
+            "rm",
+            "submodule:abc123",
+            "submodule:def456",
+        ]);
+        assert!(
+            args.is_ok(),
+            "should parse submodule delete command with multiple ids"
+        );
+        if let Commands::Submodule { command } = args.unwrap().command {
+            if let SubmoduleCommands::Delete { submodule_ids } = command {
+                assert_eq!(submodule_ids, vec!["submodule:abc123", "submodule:def456"]);
             } else {
                 panic!("expected Delete command");
             }
@@ -1289,8 +1387,26 @@ mod tests {
         let args = Args::try_parse_from(["dn", "file", "rm", "file:abc123"]);
         assert!(args.is_ok(), "should parse file delete command");
         if let Commands::File { command } = args.unwrap().command {
-            if let FileCommands::Delete { file_id } = command {
-                assert_eq!(file_id, "file:abc123");
+            if let FileCommands::Delete { file_ids } = command {
+                assert_eq!(file_ids, vec!["file:abc123"]);
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected File command");
+        }
+    }
+
+    #[test]
+    fn file_delete_command_accepts_multiple_ids() {
+        let args = Args::try_parse_from(["dn", "file", "rm", "file:abc123", "file:def456"]);
+        assert!(
+            args.is_ok(),
+            "should parse file delete command with multiple ids"
+        );
+        if let Commands::File { command } = args.unwrap().command {
+            if let FileCommands::Delete { file_ids } = command {
+                assert_eq!(file_ids, vec!["file:abc123", "file:def456"]);
             } else {
                 panic!("expected Delete command");
             }
@@ -1304,8 +1420,35 @@ mod tests {
         let args = Args::try_parse_from(["dn", "user-story", "rm", "user_story:abc123"]);
         assert!(args.is_ok(), "should parse user-story delete command");
         if let Commands::UserStory { command } = args.unwrap().command {
-            if let UserStoryCommands::Delete { user_story_id } = command {
-                assert_eq!(user_story_id, "user_story:abc123");
+            if let UserStoryCommands::Delete { user_story_ids } = command {
+                assert_eq!(user_story_ids, vec!["user_story:abc123"]);
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected UserStory command");
+        }
+    }
+
+    #[test]
+    fn user_story_delete_command_accepts_multiple_ids() {
+        let args = Args::try_parse_from([
+            "dn",
+            "user-story",
+            "rm",
+            "user_story:abc123",
+            "user_story:def456",
+        ]);
+        assert!(
+            args.is_ok(),
+            "should parse user-story delete command with multiple ids"
+        );
+        if let Commands::UserStory { command } = args.unwrap().command {
+            if let UserStoryCommands::Delete { user_story_ids } = command {
+                assert_eq!(
+                    user_story_ids,
+                    vec!["user_story:abc123", "user_story:def456"]
+                );
             } else {
                 panic!("expected Delete command");
             }
@@ -1319,8 +1462,26 @@ mod tests {
         let args = Args::try_parse_from(["dn", "epic", "rm", "epic:abc123"]);
         assert!(args.is_ok(), "should parse epic delete command");
         if let Commands::Epic { command } = args.unwrap().command {
-            if let EpicCommands::Delete { epic_id } = command {
-                assert_eq!(epic_id, "epic:abc123");
+            if let EpicCommands::Delete { epic_ids } = command {
+                assert_eq!(epic_ids, vec!["epic:abc123"]);
+            } else {
+                panic!("expected Delete command");
+            }
+        } else {
+            panic!("expected Epic command");
+        }
+    }
+
+    #[test]
+    fn epic_delete_command_accepts_multiple_ids() {
+        let args = Args::try_parse_from(["dn", "epic", "rm", "epic:abc123", "epic:def456"]);
+        assert!(
+            args.is_ok(),
+            "should parse epic delete command with multiple ids"
+        );
+        if let Commands::Epic { command } = args.unwrap().command {
+            if let EpicCommands::Delete { epic_ids } = command {
+                assert_eq!(epic_ids, vec!["epic:abc123", "epic:def456"]);
             } else {
                 panic!("expected Delete command");
             }
