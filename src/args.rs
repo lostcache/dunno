@@ -200,7 +200,7 @@ pub enum ProjectCommands {
 pub enum ModuleCommands {
     #[command(name = "add")]
     Create {
-        /// Project ID(s) to link this module to. Repeat for multiple. Omit for freestanding.
+        /// Project ID(s) to link this module to (required). Repeat for multiple.
         #[arg(
             long,
             visible_alias = "pids",

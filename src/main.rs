@@ -264,16 +264,18 @@ async fn handle_module_command(
             description,
             notes,
         } => {
-            // Resolve project name to ID if provided
             let resolved_project_id =
                 resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
+            let project_id = resolved_project_id.ok_or_else(|| {
+                anyhow::anyhow!("Either --project-ids/--pids or --project/-p must be provided")
+            })?;
 
             let created = db
                 .create_module(
                     &name,
                     &description,
                     notes.as_deref(),
-                    resolved_project_id.as_deref(),
+                    &project_id,
                 )
                 .await?;
             let module_id = match &created.id {

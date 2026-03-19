@@ -192,7 +192,7 @@ mod tests {
                 &"Auth".to_string(),
                 &"Auth module".to_string(),
                 None,
-                Some(&project_id),
+                &project_id,
             )
             .await
             .expect("create module");

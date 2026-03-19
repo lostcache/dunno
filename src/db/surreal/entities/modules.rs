@@ -16,13 +16,13 @@ impl DB {
         Ok(result)
     }
 
-    /// Creates a module and optionally RELATEs it to its parent project.
+    /// Creates a module and RELATEs it to its parent project.
     pub async fn create_module(
         &self,
         name: &str,
         description: &str,
         notes: Option<&str>,
-        project_id: Option<&str>,
+        project_id: &str,
     ) -> anyhow::Result<crate::models::Module> {
         let module = crate::models::Module {
             id: None,
@@ -31,11 +31,10 @@ impl DB {
             notes: notes.map(|s| s.to_string()),
         };
         let result = self.create_module_record(&module).await?;
-        if let (Some(pid), Some(mid)) = (project_id, result.id.as_ref()) {
-            ensure_record_id("project", pid)?;
-            self.link(pid, "contains", mid).await?;
-            // Add bidirectional edge: module -> belongs_to_project -> project
-            self.link(mid, "belongs_to_project", pid).await?;
+        if let Some(mid) = result.id.as_ref() {
+            ensure_record_id("project", project_id)?;
+            self.link(project_id, "contains", mid).await?;
+            self.link(mid, "belongs_to_project", project_id).await?;
         }
         Ok(result)
     }
@@ -292,8 +291,17 @@ mod tests {
     #[tokio::test]
     async fn test_delete_module_success() {
         let db = DB::new("mem://").await.expect("Failed to init DB");
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "P".to_string(),
+                description: "d".to_string(),
+            })
+            .await
+            .expect("create project");
+        let project_id = project.id.unwrap();
         let module = db
-            .create_module("DeleteModule", "test", None, None)
+            .create_module("DeleteModule", "test", None, &project_id)
             .await
             .expect("create");
         let id = module.id.unwrap();
@@ -318,7 +326,7 @@ mod tests {
             .expect("create project");
         let project_id = project.id.unwrap();
         let module = db
-            .create_module("M", "d", None, Some(&project_id))
+            .create_module("M", "d", None, &project_id)
             .await
             .expect("create module");
         let module_id = module.id.unwrap();

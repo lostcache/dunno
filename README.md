@@ -240,10 +240,10 @@ dn project ls                              # List all projects
 
 #### Module Management
 ```bash
-# Using project ID
+# Using project ID (required)
 dn module add {--project-ids|--pids} <id> "<name>" "<description>" [--notes <notes>]
 
-# Using project name (alternative)
+# Using project name (alternative, required)
 dn module add {--project|-p} "<project_name>" "<name>" "<description>" [--notes <notes>]
 
 # List modules (all or filtered by project)

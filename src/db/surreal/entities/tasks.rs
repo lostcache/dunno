@@ -418,7 +418,7 @@ mod tests {
         let project_id = project.id.expect("project id");
 
         let module = db
-            .create_module("Auth", "Auth module", None, Some(&project_id))
+            .create_module("Auth", "Auth module", None, &project_id)
             .await
             .expect("Failed to create module");
         let module_id = module.id.expect("module id");
@@ -490,7 +490,7 @@ mod tests {
         let project_id = project.id.expect("project id");
 
         let module = db
-            .create_module("Auth", "Auth module", None, Some(&project_id))
+            .create_module("Auth", "Auth module", None, &project_id)
             .await
             .expect("Failed to create module");
         let module_id = module.id.expect("module id");
