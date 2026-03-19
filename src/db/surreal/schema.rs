@@ -14,6 +14,8 @@ pub(crate) const TABLES: &[&str] = &[
     "context",
     "user_story",
     "epic",
+    "persona",
+    "workflow",
 ];
 
 /// Defines relation table schemas so Surrealist can visualize graph edges.
@@ -27,7 +29,7 @@ pub(crate) async fn define_schema(client: &Surreal<Any>) -> anyhow::Result<()> {
             DEFINE TABLE IF NOT EXISTS has_task TYPE RELATION \
                 IN project|user_story|epic OUT task;
             DEFINE TABLE IF NOT EXISTS belongs_to_project TYPE RELATION \
-                IN task|context|user_story|epic|file|module|submodule OUT project;
+                IN task|context|user_story|epic|file|module|submodule|persona|workflow OUT project;
             DEFINE TABLE IF NOT EXISTS belongs_to_module TYPE RELATION \
                 IN task|context|file|submodule OUT module;
             DEFINE TABLE IF NOT EXISTS belongs_to_submodule TYPE RELATION \
@@ -50,6 +52,10 @@ pub(crate) async fn define_schema(client: &Surreal<Any>) -> anyhow::Result<()> {
                 IN project OUT epic;
             DEFINE TABLE IF NOT EXISTS belongs_to_epic TYPE RELATION \
                 IN user_story|task OUT epic;
+            DEFINE TABLE IF NOT EXISTS has_persona TYPE RELATION \
+                IN project OUT persona;
+            DEFINE TABLE IF NOT EXISTS has_workflow TYPE RELATION \
+                IN project OUT workflow;
             DEFINE INDEX IF NOT EXISTS project_name_idx ON project COLUMNS name UNIQUE;
             ",
         )

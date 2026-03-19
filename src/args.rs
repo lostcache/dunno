@@ -113,6 +113,18 @@ pub enum Commands {
         command: EpicCommands,
     },
 
+    #[command(about = "Manage personas.", visible_alias = "per")]
+    Persona {
+        #[command(subcommand)]
+        command: PersonaCommands,
+    },
+
+    #[command(about = "Manage workflows.", visible_alias = "wf")]
+    Workflow {
+        #[command(subcommand)]
+        command: WorkflowCommands,
+    },
+
     #[command(
         about = "Manage todo items.",
         visible_alias = "td",
@@ -492,6 +504,82 @@ pub enum EpicCommands {
     Delete {
         #[arg(required = true)]
         epic_ids: Vec<String>,
+    },
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum PersonaCommands {
+    #[command(name = "add")]
+    Create {
+        /// Project ID(s) to link this persona to. Repeat for multiple.
+        #[arg(long, visible_alias = "pids", value_name = "PROJECT_ID")]
+        project_ids: Vec<String>,
+        /// Project name to link this persona to (alternative to --project-ids).
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_ids"
+        )]
+        project: Option<String>,
+        name: String,
+        content: String,
+    },
+    #[command(name = "list", visible_alias = "ls")]
+    List {
+        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
+        project_id: Option<String>,
+        /// Project name to filter by (alternative to --project-id).
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
+        project: Option<String>,
+    },
+    #[command(name = "rm")]
+    Delete {
+        #[arg(required = true)]
+        persona_ids: Vec<String>,
+    },
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum WorkflowCommands {
+    #[command(name = "add")]
+    Create {
+        /// Project ID(s) to link this workflow to. Repeat for multiple.
+        #[arg(long, visible_alias = "pids", value_name = "PROJECT_ID")]
+        project_ids: Vec<String>,
+        /// Project name to link this workflow to (alternative to --project-ids).
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_ids"
+        )]
+        project: Option<String>,
+        name: String,
+        content: String,
+    },
+    #[command(name = "list", visible_alias = "ls")]
+    List {
+        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
+        project_id: Option<String>,
+        /// Project name to filter by (alternative to --project-id).
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
+        project: Option<String>,
+    },
+    #[command(name = "rm")]
+    Delete {
+        #[arg(required = true)]
+        workflow_ids: Vec<String>,
     },
 }
 

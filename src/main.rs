@@ -82,6 +82,12 @@ async fn dispatch_command(
         dunno::args::Commands::Epic { command } => {
             handle_epic_command(command, db, pretty, ignore_case).await
         }
+        dunno::args::Commands::Persona { command } => {
+            handle_persona_command(command, db, pretty, ignore_case).await
+        }
+        dunno::args::Commands::Workflow { command } => {
+            handle_workflow_command(command, db, pretty, ignore_case).await
+        }
         dunno::args::Commands::Context {
             task_id,
             file_id,
@@ -797,6 +803,114 @@ async fn handle_epic_command(
             let mut not_found = Vec::new();
             for id in epic_ids {
                 if db.delete_epic(&id).await? {
+                    deleted.push(id);
+                } else {
+                    not_found.push(id);
+                }
+            }
+            let result = serde_json::json!({
+                "status": "ok",
+                "deleted": deleted,
+                "not_found": not_found,
+            });
+            print_json(result, pretty);
+        }
+    }
+    Ok(())
+}
+
+/// Persona management for project-level user personas.
+async fn handle_persona_command(
+    command: dunno::args::PersonaCommands,
+    db: &dunno::db::DB,
+    pretty: bool,
+    ignore_case: bool,
+) -> anyhow::Result<()> {
+    match command {
+        dunno::args::PersonaCommands::Create {
+            project_ids,
+            project,
+            name,
+            content,
+        } => {
+            let resolved_id =
+                resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
+            let pid = resolved_id.ok_or_else(|| {
+                anyhow::anyhow!("Either --project-ids/--pids or --project/-p must be provided")
+            })?;
+            let created = db.create_persona(&name, &content, &pid).await?;
+            print_json(serde_json::json!(created), pretty);
+        }
+        dunno::args::PersonaCommands::List {
+            project_id,
+            project,
+        } => {
+            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
+            let personas = match resolved_id {
+                Some(pid) => db.list_personas_by_project(&pid).await?,
+                None => db.list_personas().await?,
+            };
+            print_json(serde_json::json!(personas), pretty);
+        }
+        dunno::args::PersonaCommands::Delete { persona_ids } => {
+            let mut deleted = Vec::new();
+            let mut not_found = Vec::new();
+            for id in persona_ids {
+                if db.delete_persona(&id).await? {
+                    deleted.push(id);
+                } else {
+                    not_found.push(id);
+                }
+            }
+            let result = serde_json::json!({
+                "status": "ok",
+                "deleted": deleted,
+                "not_found": not_found,
+            });
+            print_json(result, pretty);
+        }
+    }
+    Ok(())
+}
+
+/// Workflow management for project-level process definitions.
+async fn handle_workflow_command(
+    command: dunno::args::WorkflowCommands,
+    db: &dunno::db::DB,
+    pretty: bool,
+    ignore_case: bool,
+) -> anyhow::Result<()> {
+    match command {
+        dunno::args::WorkflowCommands::Create {
+            project_ids,
+            project,
+            name,
+            content,
+        } => {
+            let resolved_id =
+                resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
+            let pid = resolved_id.ok_or_else(|| {
+                anyhow::anyhow!("Either --project-ids/--pids or --project/-p must be provided")
+            })?;
+            let created = db.create_workflow(&name, &content, &pid).await?;
+            print_json(serde_json::json!(created), pretty);
+        }
+        dunno::args::WorkflowCommands::List {
+            project_id,
+            project,
+        } => {
+            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
+            let workflows = match resolved_id {
+                Some(pid) => db.list_workflows_by_project(&pid).await?,
+                None => db.list_workflows().await?,
+            };
+            print_json(serde_json::json!(workflows), pretty);
+        }
+        dunno::args::WorkflowCommands::Delete { workflow_ids } => {
+            let mut deleted = Vec::new();
+            let mut not_found = Vec::new();
+            for id in workflow_ids {
+                if db.delete_workflow(&id).await? {
                     deleted.push(id);
                 } else {
                     not_found.push(id);
