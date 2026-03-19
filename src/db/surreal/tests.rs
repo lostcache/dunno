@@ -58,7 +58,7 @@ async fn test_link_context_all_levels() {
     let task_id = task.id.expect("id");
 
     let submodule = db
-        .create_submodule("SM", "d", None, Some(&module_id))
+        .create_submodule("SM", "d", None, &module_id, &project_id)
         .await
         .expect("create submodule");
     let submodule_id = submodule.id.expect("id");
@@ -605,7 +605,7 @@ async fn test_get_task_context_under_submodule() {
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
     let _submodule = db
-        .create_submodule("JWT", "JWT submodule", None, Some(&module_id))
+        .create_submodule("JWT", "JWT submodule", None, &module_id, &project_id)
         .await
         .expect("Failed to create submodule");
     let task = db
@@ -729,7 +729,7 @@ async fn test_submodule_operations() {
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
     let submodule = db
-        .create_submodule("JWT", "JWT submodule", None, Some(&module_id))
+        .create_submodule("JWT", "JWT submodule", None, &module_id, &project_id)
         .await
         .expect("Failed to create submodule");
     let submodule_id = submodule.id.expect("submodule id");
@@ -975,47 +975,6 @@ async fn test_freestanding_module() {
     );
 }
 
-#[tokio::test]
-async fn test_freestanding_submodule() {
-    let db = DB::new("mem://").await.expect("Failed to init DB");
-    let project = db
-        .create_project(&crate::models::Project {
-            id: None,
-            name: "P".to_string(),
-            description: "d".to_string(),
-        })
-        .await
-        .expect("create project");
-    let project_id = project.id.expect("project id");
-    let module = db
-        .create_module("M", "d", None, Some(&project_id))
-        .await
-        .expect("create module");
-    let module_id = module.id.expect("module id");
-
-    let sub = db
-        .create_submodule("Freestanding", "no module", None, None)
-        .await
-        .expect("create freestanding submodule");
-    let sub_id = sub.id.expect("submodule id");
-
-    assert!(
-        db.get_submodule(&sub_id)
-            .await
-            .expect("get_submodule")
-            .is_some()
-    );
-    let by_module = db
-        .list_submodules_by_module(&module_id)
-        .await
-        .expect("list_submodules_by_module");
-    assert!(
-        !by_module
-            .iter()
-            .any(|s| s.id.as_deref() == Some(sub_id.as_str())),
-        "freestanding submodule must not appear under module"
-    );
-}
 
 #[tokio::test]
 async fn test_freestanding_file() {
@@ -1658,7 +1617,7 @@ async fn test_list_files_by_submodule() {
     let module_id = module.id.expect("module id");
 
     let submodule = db
-        .create_submodule("OAuth", "OAuth submodule", None, Some(&module_id))
+        .create_submodule("OAuth", "OAuth submodule", None, &module_id, &project_id)
         .await
         .expect("Failed to create submodule");
     let submodule_id = submodule.id.expect("submodule id");
@@ -2064,7 +2023,7 @@ async fn test_user_story_module_linking() {
     let module_id = module.id.expect("id");
 
     let submodule = db
-        .create_submodule("Utils", "Utils submodule", None, Some(&module_id))
+        .create_submodule("Utils", "Utils submodule", None, &module_id, &project_id)
         .await
         .expect("create submodule");
     let submodule_id = submodule.id.expect("id");
@@ -2506,7 +2465,7 @@ async fn test_list_submodules_by_project() {
 
     // Create submodule linked to module
     let submodule = db
-        .create_submodule("S", "d", None, Some(&module_id))
+        .create_submodule("S", "d", None, &module_id, &project_id)
         .await
         .expect("create submodule");
     let submodule_id = submodule.id.expect("id");
@@ -2556,7 +2515,7 @@ async fn test_list_files_by_project() {
 
     // Create submodule linked to module
     let submodule = db
-        .create_submodule("S", "d", None, Some(&module_id))
+        .create_submodule("S", "d", None, &module_id, &project_id)
         .await
         .expect("create submodule");
     let submodule_id = submodule.id.expect("id");
@@ -2667,7 +2626,7 @@ async fn test_submodule_belongs_to_edges() {
 
     // Create submodule linked to module
     let submodule = db
-        .create_submodule("S", "d", None, Some(&module_id))
+        .create_submodule("S", "d", None, &module_id, &project_id)
         .await
         .expect("create submodule");
     let submodule_id = submodule.id.expect("id");
@@ -2795,7 +2754,7 @@ async fn test_file_belongs_to_edges_with_submodule() {
 
     // Create submodule linked to module
     let submodule = db
-        .create_submodule("S", "d", None, Some(&module_id))
+        .create_submodule("S", "d", None, &module_id, &project_id)
         .await
         .expect("create submodule");
     let submodule_id = submodule.id.expect("id");
@@ -2964,7 +2923,7 @@ async fn test_context_inheritance_submodule() {
     let m = db.create_module("m", "d", None, Some(&pid)).await.unwrap();
     let mid = m.id.unwrap();
     let s = db
-        .create_submodule("s", "d", None, Some(&mid))
+        .create_submodule("s", "d", None, &mid, &pid)
         .await
         .unwrap();
     let sid = s.id.unwrap();
@@ -3032,7 +2991,7 @@ async fn test_context_inheritance_task() {
     let m = db.create_module("m", "d", None, Some(&pid)).await.unwrap();
     let mid = m.id.unwrap();
     let s = db
-        .create_submodule("s", "d", None, Some(&mid))
+        .create_submodule("s", "d", None, &mid, &pid)
         .await
         .unwrap();
     let sid = s.id.unwrap();

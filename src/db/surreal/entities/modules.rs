@@ -79,13 +79,14 @@ impl DB {
         Ok(result)
     }
 
-    /// Creates a submodule and optionally RELATEs it to its parent module.
+    /// Creates a submodule and RELATEs it to its parent module and project.
     pub async fn create_submodule(
         &self,
         name: &str,
         description: &str,
         notes: Option<&str>,
-        module_id: Option<&str>,
+        module_id: &str,
+        project_id: &str,
     ) -> anyhow::Result<crate::models::Submodule> {
         let submodule = crate::models::Submodule {
             id: None,
@@ -94,31 +95,11 @@ impl DB {
             notes: notes.map(|s| s.to_string()),
         };
         let result = self.create_submodule_record(&submodule).await?;
-        if let (Some(mid), Some(sub_id)) = (module_id, result.id.as_ref()) {
-            ensure_record_id("module", mid)?;
-            self.link(mid, "contains", sub_id).await?;
-            // Add bidirectional edge: submodule -> belongs_to_module -> module
-            self.link(sub_id, "belongs_to_module", mid).await?;
-            // Get module's project and link submodule to project
-            let mut response = self
-                .client
-                .query(
-                    "SELECT ->belongs_to_project->project.id AS pid FROM ONLY type::record($mid)",
-                )
-                .bind(("mid", mid.to_string()))
-                .await?;
-            let project_record: Option<surrealdb::types::Value> = response.take(0)?;
-            if let Some(record) = project_record {
-                let json = surreal_to_json(record);
-                if let Some(project_id) = json
-                    .get("pid")
-                    .and_then(|p| p.as_array())
-                    .and_then(|arr| arr.first())
-                    .and_then(|v| v.as_str())
-                {
-                    self.link(sub_id, "belongs_to_project", project_id).await?;
-                }
-            }
+        if let Some(sub_id) = result.id.as_ref() {
+            ensure_record_id("module", module_id)?;
+            self.link(module_id, "contains", sub_id).await?;
+            self.link(sub_id, "belongs_to_module", module_id).await?;
+            self.link(sub_id, "belongs_to_project", project_id).await?;
         }
         Ok(result)
     }
@@ -327,8 +308,22 @@ mod tests {
     #[tokio::test]
     async fn test_delete_submodule_success() {
         let db = DB::new("mem://").await.expect("Failed to init DB");
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "P".to_string(),
+                description: "d".to_string(),
+            })
+            .await
+            .expect("create project");
+        let project_id = project.id.unwrap();
+        let module = db
+            .create_module("M", "d", None, Some(&project_id))
+            .await
+            .expect("create module");
+        let module_id = module.id.unwrap();
         let submodule = db
-            .create_submodule("DeleteSubmodule", "test", None, None)
+            .create_submodule("DeleteSubmodule", "test", None, &module_id, &project_id)
             .await
             .expect("create");
         let id = submodule.id.unwrap();

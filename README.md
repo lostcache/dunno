@@ -78,6 +78,9 @@ dn module add {--project-ids|--pids} project:abc "Auth" "Authentication system"
 # Create a module using project name (alternative)
 dn module add {--project|-p} "My App" "Auth" "Authentication system"
 
+# Create a submodule — both project and module are required
+dn submodule add {--project-ids|--pids} project:abc {--module-ids|--mids} module:def "JWT" "JWT handling"
+
 # Create a task using project name with case-insensitive matching
 dn task add {--module-ids|--mids} module:def {--project|-p} "my app" -i "Implement login" "Add JWT authentication"
 # Returns: {"id":"task:ghi", ...}
@@ -251,8 +254,11 @@ dn module ls {--project|-p} "<project_name>"
 
 #### Submodule Management
 ```bash
-# Create submodule linked to module
-dn submodule add {--module-ids|--mids} <id> "<name>" "<description>" [--notes <notes>]
+# Create submodule — both project and module are required
+dn submodule add {--project-ids|--pids} <project_id> {--module-ids|--mids} <module_id> "<name>" "<description>" [--notes <notes>]
+
+# Using project name instead of project ID
+dn submodule add {--project|-p} "<project_name>" {--module-ids|--mids} <module_id> "<name>" "<description>"
 
 # List submodules (all, by module, or by project)
 dn submodule ls

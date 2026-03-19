@@ -246,7 +246,23 @@ pub enum ModuleCommands {
 pub enum SubmoduleCommands {
     #[command(name = "add")]
     Create {
-        /// Module ID(s) to link this submodule to. Repeat for multiple. Omit for freestanding.
+        /// Project ID(s) to link this submodule to (required). Repeat for multiple.
+        #[arg(
+            long,
+            visible_alias = "pids",
+            value_name = "PROJECT_ID",
+            conflicts_with = "project"
+        )]
+        project_ids: Vec<String>,
+        /// Project name to link this submodule to (alternative to --project-ids).
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_ids"
+        )]
+        project: Option<String>,
+        /// Module ID(s) to link this submodule to (required). Repeat for multiple.
         #[arg(long, visible_alias = "mids", value_name = "MODULE_ID")]
         module_ids: Vec<String>,
         name: String,
@@ -1786,21 +1802,76 @@ mod tests {
             "module:abc",
             "--mids",
             "module:def",
+            "--pids",
+            "project:xyz",
             "OAuth",
             "OAuth submodule",
         ]);
-        assert!(args.is_ok(), "should parse --mids alias");
+        assert!(args.is_ok(), "should parse --mids and --pids aliases");
         if let Commands::Submodule { command } = args.unwrap().command {
-            if let SubmoduleCommands::Create { module_ids, .. } = command {
+            if let SubmoduleCommands::Create {
+                module_ids,
+                project_ids,
+                ..
+            } = command
+            {
                 assert_eq!(module_ids.len(), 2);
                 assert_eq!(module_ids[0], "module:abc");
                 assert_eq!(module_ids[1], "module:def");
+                assert_eq!(project_ids.len(), 1);
+                assert_eq!(project_ids[0], "project:xyz");
             } else {
                 panic!("expected Create command");
             }
         } else {
             panic!("expected Submodule command");
         }
+
+        // Test submodule add with -p (project name) and --mids
+        let args = Args::try_parse_from([
+            "dn",
+            "submodule",
+            "add",
+            "-p",
+            "MyProject",
+            "--mids",
+            "module:abc",
+            "JWT",
+            "JWT submodule",
+        ]);
+        assert!(args.is_ok(), "should parse -p and --mids for submodule add");
+        if let Commands::Submodule { command } = args.unwrap().command {
+            if let SubmoduleCommands::Create {
+                project,
+                module_ids,
+                ..
+            } = command
+            {
+                assert_eq!(project, Some("MyProject".to_string()));
+                assert_eq!(module_ids.len(), 1);
+                assert_eq!(module_ids[0], "module:abc");
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Submodule command");
+        }
+
+        // Test that --pids and -p conflict
+        let args = Args::try_parse_from([
+            "dn",
+            "submodule",
+            "add",
+            "--pids",
+            "project:abc",
+            "-p",
+            "MyProject",
+            "--mids",
+            "module:abc",
+            "JWT",
+            "JWT submodule",
+        ]);
+        assert!(args.is_err(), "--pids and -p should conflict");
     }
 
     #[test]

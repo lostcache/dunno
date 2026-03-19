@@ -67,7 +67,7 @@ Knowledge can be attached to any structural node:
    - `dn project create "ProjectName" "Description"`
 2. Read the codebase for all the modules and submodules, create them and link to the respective project and module.
    - `dn module create --project-ids <project_id> "ModuleName" "Description"`
-   - `dn submodule create --module-ids <module_id> "SubmoduleName" "Description"`
+   - `dn submodule add --project-ids <project_id> --module-ids <module_id> "SubmoduleName" "Description"`
 3. Create the file nodes with description and link to the respective project (required) and module/submodule (optional).
    - `dn file add --project-ids <project_id> --parent-ids <module_or_submodule_id> "FileName" "Path" "Description"`
    - `dn file add --project-ids <project_id> "FileName" "Path" "Description"` (no module/submodule)

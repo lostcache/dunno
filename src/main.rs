@@ -332,17 +332,29 @@ async fn handle_submodule_command(
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::SubmoduleCommands::Create {
+            project_ids,
+            project,
             module_ids,
             name,
             description,
             notes,
         } => {
+            if module_ids.is_empty() {
+                anyhow::bail!("--module-ids/--mids must be provided");
+            }
+            let resolved_project_id =
+                resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
+            let project_id = resolved_project_id.ok_or_else(|| {
+                anyhow::anyhow!("Either --project-ids/--pids or --project/-p must be provided")
+            })?;
+
             let created = db
                 .create_submodule(
                     &name,
                     &description,
                     notes.as_deref(),
-                    module_ids.first().map(String::as_str),
+                    module_ids.first().map(String::as_str).unwrap(),
+                    &project_id,
                 )
                 .await?;
 
@@ -356,6 +368,9 @@ async fn handle_submodule_command(
 
             for mid in module_ids.iter().skip(1) {
                 db.link(mid, "contains", sub_id).await?;
+            }
+            for pid in project_ids.iter().skip(1) {
+                db.link(sub_id, "belongs_to_project", pid).await?;
             }
 
             print_json(serde_json::json!(created), pretty);
