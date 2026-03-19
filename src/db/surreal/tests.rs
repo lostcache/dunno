@@ -64,7 +64,7 @@ async fn test_link_context_all_levels() {
     let submodule_id = submodule.id.expect("id");
 
     let file = db
-        .create_file("f.rs", "src/f.rs", None, None, Some(&submodule_id))
+        .create_file("f.rs", "src/f.rs", None, None, &project_id, Some(&submodule_id))
         .await
         .expect("create file");
     let file_id = file.id.expect("id");
@@ -766,7 +766,7 @@ async fn test_file_operations() {
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
     let file = db
-        .create_file("main.rs", "src/main.rs", None, None, Some(&module_id))
+        .create_file("main.rs", "src/main.rs", None, None, &project_id, Some(&module_id))
         .await
         .expect("Failed to create file");
     let file_id = file.id.expect("file id");
@@ -1036,7 +1036,7 @@ async fn test_freestanding_file() {
     let module_id = module.id.expect("module id");
 
     let file = db
-        .create_file("orphan.rs", "src/orphan.rs", None, None, None)
+        .create_file("orphan.rs", "src/orphan.rs", None, None, &project_id, None)
         .await
         .expect("create freestanding file");
     let file_id = file.id.expect("file id");
@@ -1669,6 +1669,7 @@ async fn test_list_files_by_submodule() {
             "src/auth/oauth.rs",
             None,
             None,
+            &project_id,
             Some(&submodule_id),
         )
         .await
@@ -1676,7 +1677,7 @@ async fn test_list_files_by_submodule() {
     let file1_id = file1.id.expect("file id");
 
     let file2 = db
-        .create_file("jwt.rs", "src/auth/jwt.rs", None, None, Some(&submodule_id))
+        .create_file("jwt.rs", "src/auth/jwt.rs", None, None, &project_id, Some(&submodule_id))
         .await
         .expect("Failed to create file 2");
     let _file2_id = file2.id.expect("file id");
@@ -2371,6 +2372,7 @@ async fn test_get_task_context_with_files_and_linked_context() {
             "src/auth.rs",
             Some("Auth implementation"),
             None,
+            &project_id,
             Some(&module_id),
         )
         .await
@@ -2561,14 +2563,14 @@ async fn test_list_files_by_project() {
 
     // Create file linked to module
     let file1 = db
-        .create_file("f1.rs", "src/f1.rs", Some("d"), None, Some(&module_id))
+        .create_file("f1.rs", "src/f1.rs", Some("d"), None, &project_id, Some(&module_id))
         .await
         .expect("create file 1");
     let file1_id = file1.id.expect("id");
 
     // Create file linked to submodule
     let file2 = db
-        .create_file("f2.rs", "src/f2.rs", Some("d"), None, Some(&submodule_id))
+        .create_file("f2.rs", "src/f2.rs", Some("d"), None, &project_id, Some(&submodule_id))
         .await
         .expect("create file 2");
     let file2_id = file2.id.expect("id");
@@ -2729,7 +2731,7 @@ async fn test_file_belongs_to_edges() {
 
     // Create file linked to module
     let file = db
-        .create_file("test.rs", "src/test.rs", Some("d"), None, Some(&module_id))
+        .create_file("test.rs", "src/test.rs", Some("d"), None, &project_id, Some(&module_id))
         .await
         .expect("create file");
     let file_id = file.id.expect("id");
@@ -2805,6 +2807,7 @@ async fn test_file_belongs_to_edges_with_submodule() {
             "src/test.rs",
             Some("d"),
             None,
+            &project_id,
             Some(&submodule_id),
         )
         .await
@@ -3133,7 +3136,7 @@ async fn test_context_inheritance_file() {
     let m = db.create_module("m", "d", None, Some(&pid)).await.unwrap();
     let mid = m.id.unwrap();
     let f = db
-        .create_file("f", "src/f.rs", None, None, Some(&mid))
+        .create_file("f", "src/f.rs", None, None, &pid, Some(&mid))
         .await
         .unwrap();
     let fid = f.id.unwrap();

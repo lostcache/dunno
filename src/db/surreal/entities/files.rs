@@ -29,15 +29,17 @@ impl DB {
         Ok(result)
     }
 
-    /// Creates a file and optionally RELATEs it to a parent (module or submodule).
+    /// Creates a file, links it to a project (required), and optionally RELATEs it to a parent (module or submodule).
     pub async fn create_file(
         &self,
         name: &str,
         path: &str,
         description: Option<&str>,
         notes: Option<&str>,
+        project_id: &str,
         parent_id: Option<&str>,
     ) -> anyhow::Result<crate::models::File> {
+        ensure_one_of_record_ids(&["project"], project_id)?;
         let file = crate::models::File {
             id: None,
             name: name.to_string(),
@@ -46,44 +48,24 @@ impl DB {
             notes: notes.map(|s| s.to_string()),
         };
         let result = self.create_file_record(&file).await?;
-        if let (Some(pid), Some(fid)) = (parent_id, result.id.as_ref()) {
+        let fid = result.id.as_ref().ok_or_else(|| anyhow::anyhow!("File created without ID"))?;
+        self.link(fid, "belongs_to_project", project_id).await?;
+        if let Some(pid) = parent_id {
             let table = ensure_one_of_record_ids(&["module", "submodule"], pid)?;
             self.link(pid, "contains", fid).await?;
-            // Add bidirectional edges based on parent type
             if table == "module" {
-                // File -> belongs_to_module -> module
                 self.link(fid, "belongs_to_module", pid).await?;
-                // Get module's project and link file to project
-                let mut response = self
-                    .client
-                    .query("SELECT ->belongs_to_project->project.id AS pid FROM ONLY type::record($mid)")
-                    .bind(("mid", pid.to_string()))
-                    .await?;
-                let project_record: Option<surrealdb::types::Value> = response.take(0)?;
-                if let Some(record) = project_record {
-                    let json = surreal_to_json(record);
-                    if let Some(project_id) = json
-                        .get("pid")
-                        .and_then(|p| p.as_array())
-                        .and_then(|arr| arr.first())
-                        .and_then(|v| v.as_str())
-                    {
-                        self.link(fid, "belongs_to_project", project_id).await?;
-                    }
-                }
             } else if table == "submodule" {
-                // File -> belongs_to_submodule -> submodule
                 self.link(fid, "belongs_to_submodule", pid).await?;
-                // Get submodule's module and project
+                // Derive and link to the submodule's module (if any)
                 let mut response = self
                     .client
-                    .query("SELECT ->belongs_to_module->module.id AS mid, ->belongs_to_project->project.id AS pid FROM ONLY type::record($sid)")
+                    .query("SELECT ->belongs_to_module->module.id AS mid FROM ONLY type::record($sid)")
                     .bind(("sid", pid.to_string()))
                     .await?;
                 let submodule_record: Option<surrealdb::types::Value> = response.take(0)?;
                 if let Some(record) = submodule_record {
                     let json = surreal_to_json(record);
-                    // Link to module
                     if let Some(module_id) = json
                         .get("mid")
                         .and_then(|m| m.as_array())
@@ -91,15 +73,6 @@ impl DB {
                         .and_then(|v| v.as_str())
                     {
                         self.link(fid, "belongs_to_module", module_id).await?;
-                    }
-                    // Link to project
-                    if let Some(project_id) = json
-                        .get("pid")
-                        .and_then(|p| p.as_array())
-                        .and_then(|arr| arr.first())
-                        .and_then(|v| v.as_str())
-                    {
-                        self.link(fid, "belongs_to_project", project_id).await?;
                     }
                 }
             }
@@ -262,8 +235,17 @@ mod tests {
     #[tokio::test]
     async fn test_delete_file_success() {
         let db = DB::new("mem://").await.expect("Failed to init DB");
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "test project".to_string(),
+                description: "desc".to_string(),
+            })
+            .await
+            .expect("create project");
+        let project_id = project.id.unwrap();
         let file = db
-            .create_file("delete_me.rs", "path", None, None, None)
+            .create_file("delete_me.rs", "path", None, None, &project_id, None)
             .await
             .expect("create");
         let id = file.id.unwrap();

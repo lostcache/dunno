@@ -408,18 +408,26 @@ async fn handle_file_command(
 ) -> anyhow::Result<()> {
     match command {
         dunno::args::FileCommands::Create {
+            project_ids,
+            project,
             parent_ids,
             name,
             path,
             description,
             notes,
         } => {
+            let resolved_project_id =
+                resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
+            let project_id = resolved_project_id.ok_or_else(|| {
+                anyhow::anyhow!("Either --project-ids/--pids or --project/-p must be provided")
+            })?;
             let created = db
                 .create_file(
                     &name,
                     &path,
                     description.as_deref(),
                     notes.as_deref(),
+                    &project_id,
                     parent_ids.first().map(String::as_str),
                 )
                 .await?;

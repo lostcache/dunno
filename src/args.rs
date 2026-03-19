@@ -281,7 +281,13 @@ pub enum SubmoduleCommands {
 pub enum FileCommands {
     #[command(name = "add")]
     Create {
-        /// Parent ID(s) (module or submodule). Repeat for multiple. Omit for freestanding.
+        /// Project ID to link this file to (required).
+        #[arg(long, visible_alias = "pids", value_name = "PROJECT_ID", conflicts_with = "project")]
+        project_ids: Vec<String>,
+        /// Project name to link this file to (alternative to --project-ids).
+        #[arg(short = 'p', long, value_name = "PROJECT_NAME", conflicts_with = "project_ids")]
+        project: Option<String>,
+        /// Parent ID(s) (module or submodule). Optional. Repeat for multiple.
         #[arg(long, value_name = "PARENT_ID")]
         parent_ids: Vec<String>,
         name: String,

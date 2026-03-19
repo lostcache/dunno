@@ -280,9 +280,13 @@ dn task rm <id>   # Delete a task by ID
 
 #### File Management
 ```bash
-# Create file linked to module or submodule
-dn file add --parent-ids <module_id> "<name>" "<path>" ["<description>"] [--notes <notes>]
-dn file add --parent-ids <submodule_id> "<name>" "<path>" ["<description>"] [--notes <notes>]
+# Create file linked to a project (required) and optionally to a module or submodule
+dn file add {--project-ids|--pids} <project_id> "<name>" "<path>" ["<description>"] [--notes <notes>]
+dn file add {--project|-p} "<project_name>" "<name>" "<path>" ["<description>"] [--notes <notes>]
+
+# With optional module/submodule parent
+dn file add {--project-ids|--pids} <project_id> --parent-ids <module_id> "<name>" "<path>"
+dn file add {--project-ids|--pids} <project_id> --parent-ids <submodule_id> "<name>" "<path>"
 
 # List files (cascading filter priority: submodule > module > project)
 dn file ls
