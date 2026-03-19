@@ -166,6 +166,8 @@ impl DB {
         let contexts = self.get_linked_context(task_id).await?;
 
         Ok(crate::models::TaskContext {
+            persona: vec![],
+            workflow: vec![],
             task,
             files,
             contexts,
@@ -197,6 +199,13 @@ impl DB {
                 true
             }
         });
+
+        ctx.persona = self
+            .list_personas_by_project(&ctx.hierarchy.project_id)
+            .await?;
+        ctx.workflow = self
+            .list_workflows_by_project(&ctx.hierarchy.project_id)
+            .await?;
 
         Ok(ctx)
     }

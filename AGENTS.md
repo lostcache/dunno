@@ -1,405 +1,36 @@
-# AI Agent & Developer Complete Guide
+# Dunno Knowledge System
 
-Complete reference for AI agents and developers working with dn knowledge management and agent behavior standards.
-
----
-
-### Core Principles
-
-- **ALWAYS USE PARALLEL TOOLS** when applicable
-- **Prefer automation**: execute actions without confirmation unless blocked by missing info or safety/irreversibility
-- **Ask clarifying questions**: If blocked by missing information or when action is safety-critical/irreversible
-- **No AI-generated walls of text**: Write short, focused descriptions. If you can't explain it briefly, your response might be too large
-- **Understand your changes**: You must understand why your changes work. If you don't understand, say so explicitly
-- **Be specific**: Avoid generic messages like "improved agent experience" - explain exactly what changed from a user perspective
-
----
-
-### Coding Standards
-
-#### General Principles
-
-- Keep things in one function unless composable or reusable
-- Prefer single word variable names where possible
-- Rely on type inference; avoid explicit type annotations unless necessary for exports or clarity
-
-#### Naming Conventions
-
-**Mandatory for agent-written code:**
-
-- Use single word names by default for locals, params, and helper functions
-- Multi-word names only when single word would be unclear
-- Do not introduce camelCase compounds when short single-word alternatives are clear
-- Review touched lines before finishing; shorten newly introduced identifiers
-
-Good names to prefer: `pid`, `cfg`, `err`, `opts`, `dir`, `root`, `child`, `state`, `timeout`
-
-Avoid unless necessary: `inputPID`, `existingClient`, `connectTimeout`, `workerPath`
-
-#### Code Quality (Anti-Slop)
-
-Remove AI-generated slop:
-
-- Extra comments a human wouldn't add
-- Style inconsistent with the file
-- Unnecessary emoji usage
-
----
-
-### Testing
-
-- Avoid mocks as much as possible
-- Test actual implementation; do not duplicate logic into tests
-- Run tests from package directories, not repo root
-
----
-
-### Git & Version Control
-
-#### Commit Messages
-
-**Always use a prefix:**
-
-- `docs:` - documentation changes
-- `ignore:` - ignore file changes
-- `wip:` - work in progress
-- `{package/module/submodule}` - respective package/module/submodule
-
-**Message content:**
-
-- Explain **WHY** something was done from an end user perspective, not **WHAT** was done
-- Be specific about user-facing changes
-- If there are conflicts, DO NOT FIX THEM - notify the user instead
-
-#### Pull Requests
-
-**Requirements:**
-
-- All PRs must reference an existing issue use `Ref #123` if wip and `Closes #123` if ready to close the issue.
-- Keep PRs small and focused
-- Explain the issue and why your change fixes it
-- Before adding functionality, ensure it doesn't already exist elsewhere
-- **Do not include AI-generated walls of text** - they will be ignored or closed
-
-**Verification:**
-
-For non-UI changes, explain:
-- What did you test?
-- How can a reviewer reproduce/confirm the fix?
-
-**PR Title Format:**
-
-Follow conventional commits:
-- `feat:` - new feature or functionality
-- `fix:` - bug fix
-- `docs:` - documentation changes
-- `chore:` - maintenance, dependencies
-- `refactor:` - code refactoring without behavior change
-- `test:` - adding or updating tests
-
-Include scope when helpful: `feat({package/module/submodule}):`, `fix({package/module/submodule}):`, `chore({package/module/submodule}):`
-
----
-
-### Documentation Style
-
-- Expert technical writer tone
-- Not verbose; relaxed and friendly
-- Title: word or 2-3 word phrase
-- Description: one short line (5-10 words), should not start with "The", avoid repeating title
-- Text chunks: max 2 sentences
-- Sections: separated by `---`
-- Section titles: short, only first letter capitalized, imperative mood
-
----
-
-### Learning Extraction
-
-When discovering non-obvious and non-recorded information, add it to dn with appropriate type and link it to appropriate `package/module/submodule` node.
-
-**What counts as a learning:**
-- Hidden relationships between files/modules
-- Execution paths that differ from appearance
-- Non-obvious configuration, env vars, or flags
-- Debugging breakthroughs when errors were misleading
-- API/tool quirks and workarounds
-- Build/test commands not in README
-- Architectural decisions and constraints
-- Files that must change together
-
-**What NOT to include:**
-- Obvious facts from documentation
-- Standard language/framework behavior
-- Things already documented
-- Verbose explanations
-- Session-specific details
-
-**Keep entries to 1-3 lines per insight.**
-
-Use dn to capture:
-```bash
-dn add \
-  --field type --value insight \
-  --field mistake|insight|some_other_field_name --value "Your learning here" \
-  --field discovered_while --value "task:abc" \
-  --link-to module:def
-```
-
----
-
-### Repository Conventions
-
-- Default branch is `main`
-
----
-
-## Part 2: Dunno Knowledge System
-
-### Overview
+## Overview
 
 `dn` is a Rust CLI tool that captures coding knowledge (mistakes, style guides, security details, custom fields) in a graph database and retrieves deterministic context for AI agents. Unlike traditional natural language search, dn uses a strict graph hierarchy where context is linked to nodes and inherited down the tree.
 
-**Key Philosophy**: Store knowledge once, retrieve it contextually based on where you are in the project hierarchy.
-
-**AI Agent Rule**: Always query dn context before implementing. Always capture learnings after completing work.
-
 ---
 
-### Core Hierarchy
+## Core Hierarchy
 
 dn organizes knowledge in a graph with two parallel structural paths:
 
-#### Code Structure Path
+### Code Structure Path
+
 ```
 Project -> Module -> Submodule (optional) -> File/s (path)
 ```
 
-#### Work Tracking Path
-```
-Project -> Module -> Task
-```
+### Entities
 
-#### Knowledge Entities
 Knowledge can be attached to any structural node:
+
 - **Project**: High-level knowledge applicable to entire codebase
-- **Module**: Knowledge specific to a functional area
-- **Submodule**: Knowledge for sub-components
+- **Module**: Knowledge specific to a functional area (e.g., auth, api, utils)
+- **Submodule**: Knowledge for nested components (e.g., auth/jwt, auth/session)
 - **File**: Knowledge tied to specific files
 - **Task**: Knowledge related to specific work items
+- **User Story**: Knowledge related to specific user stories
+- **Epic**: Knowledge related to specific epics
+- **Todo**: Knowledge related to specific todo items
 
-**Note**: Context retrieval is direct-only (not inherited). Query the specific node you need context for.
+### Edges
 
----
-
-### Core Commands for AI Agents
-
----
-
-#### 1. Creating the Project Hierarchy
-
-Always start by establishing the hierarchy before adding knowledge.
-
-```bash
-# Create a project (returns JSON with id like "project:abc")
-dn project add "MyProject" "Description of the project"
-
-# Create a module within a project using project ID
-dn module add {--project-ids|--pids} project:abc "Auth" "Authentication system"
-
-# Create a module using project name (alternative)
-dn module add {--project|-p} "MyProject" "Auth" "Authentication system"
-# Returns: {"id":"module:def",...}
-
-# Create a submodule (link with --module-ids)
-dn submodule add {--module-ids|--mids} module:def "OAuth" "OAuth2 implementation"
-# Returns: {"id":"submodule:ghi",...}
-
-# Register a file (with optional description)
-dn file add --parent-ids module:def "auth.rs" "src/auth.rs" "Authentication module entry point"
-# Returns: {"id":"file:jkl",...}
-
-# Register a file without description
-dn file add --parent-ids module:def "utils.rs" "src/utils.rs"
-
-# Create a task using IDs (requires both --module-ids and --project-ids, or neither for freestanding)
-dn task add {--module-ids|--mids} module:def {--project-ids|--pids} project:abc "Implement JWT" "Add JWT authentication"
-# Returns: {"id":"task:mno",...}
-
-# Create a task using project name (alternative)
-dn task add {--module-ids|--mids} module:def {--project|-p} "MyProject" "Implement JWT" "Add JWT authentication"
-
-# Create a task with case-insensitive project name matching
-dn task add {--module-ids|--mids} module:def {--project|-p} "myproject" -i "Implement JWT" "Add JWT authentication"
-
-# List modules in a project
-dn module ls {--project-id|--pid} project:abc
-dn module ls {--project|-p} "MyProject"
-
-# List submodules (by module or by project)
-dn submodule ls {--module-id|--mid} module:def
-dn submodule ls {--project-id|--pid} project:abc
-dn submodule ls {--project|-p} "MyProject"
-
-# List files (cascading filter priority: submodule > module > project)
-dn file ls {--submodule-id|--smid} submodule:ghi
-dn file ls {--module-id|--mid} module:def
-dn file ls {--project-id|--pid} project:abc
-dn file ls {--project|-p} "MyProject"
-
-# List tasks in a project
-dn task ls {--project-id|--pid} project:abc
-dn task ls {--project|-p} "MyProject"
-```
-
-**AI Agent Pattern**: Capture IDs from JSON output for subsequent commands. When using project names, remember that names are unique and case-sensitive by default (use `-i` for case-insensitive matching).
-
----
-
-#### 2. Adding Knowledge (Schemaless)
-
-Knowledge is stored with arbitrary key-value pairs using `--field` (`-f`) for names and `--value` (`-v`) for values.
-
-```bash
-# Basic knowledge entry
-# Each --field must be paired with a --value
-dn add \
-  {--field|-f} type {--value|-v} mistake \
-  {--field|-f} content {--value|-v} "Avoid using unwrap in production code" \
-  {--link-to|--ln} task:mno
-
-# Multiple custom fields
-dn add \
-  {--field|-f} type {--value|-v} security \
-  {--field|-f} content {--value|-v} "Always validate user inputs" \
-  {--field|-f} severity {--value|-v} high \
-  {--field|-f} category {--value|-v} "input-validation" \
-  {--field|-f} cwe {--value|-v} "CWE-20" \
-  {--link-to|--ln} module:def \
-  {--link-to|--ln} project:abc
-
-# Link to multiple structural nodes
-dn add \
-  {--field|-f} type {--value|-v} style \
-  {--field|-f} content {--value|-v} "Use Result types instead of panicking" \
-  {--field|-f} language {--value|-v} rust \
-  {--link-to|--ln} project:abc \
-  {--link-to|--ln} module:def \
-  {--link-to|--ln} task:mno
-```
-
-**Common Field Patterns**:
-- `type`: mistake, security, style, performance, deployment, code_review, etc.
-- `content`: The actual knowledge/tip/rule (follow naming conventions - use single words where possible)
-- `severity`: low, medium, high, critical
-- `category`: Organization tag
-- `language`: Programming language context
-- `framework`: Framework-specific context
-- `priority`: P0, P1, P2, etc.
-- `tags`: Comma-separated or array of tags
-
----
-
-#### 3. Retrieving Context
-
-Query context for a task to get the task details, related files, hierarchy, and directly linked knowledge. Use the `--full` flag to aggregate knowledge from the entire hierarchy (Project -> Module -> Submodule -> Node):
-
-```bash
-# Get context only for the specific task node
-dn ctx {--task-id|--tid} task:mno
-
-# Get full inherited context for the task (RECOMMENDED for AI agents)
-dn ctx {--task-id|--tid} task:mno --full
-
-# Get context for a file (optionally with parents)
-dn ctx {--file-id|--fid} file:jkl --full
-
-# Get context for an epic (optionally with project rules)
-dn ctx {--epic-id|--eid} epic:stu --full
-```
-
-**Task Context Returns:**
-- **Task** - Full task object with id, name, description, status
-- **Files** - File objects (with path and description) in the parent module/submodule (files the task may touch)
-- **Hierarchy** - Project, module, submodule structural info
-- **Contexts** - Directly linked or inherited knowledge (if `--full` is used)
-
-**AI Agent Rule**: Always run `dn ctx {--task-id|--tid} <id> --full` before implementing to see task-specific and project-wide knowledge.
-
----
-
-#### 4. Work Tracking
-
-```bash
-# Create a user story using project ID
-dn user-story add {--project-id|--pid} project:abc \
-  "As a user, I want to login" \
-  "User authentication feature"
-
-# Create a user story using project name (alternative)
-dn user-story add {--project|-p} "MyProject" \
-  "As a user, I want to login" \
-  "User authentication feature"
-
-# Create an epic using project ID
-dn epic add {--project-id|--pid} project:abc \
-  "Authentication Epic" \
-  "Complete authentication system implementation"
-
-# Create an epic using project name (alternative)
-dn epic add {--project|-p} "MyProject" \
-  "Authentication Epic" \
-  "Complete authentication system implementation"
-
-# Create todo items using project ID
-dn todo add {--project-ids|--pids} project:abc \
-  "Review security requirements"
-
-# Create todo items using project name (alternative)
-dn todo add {--project|-p} "MyProject" \
-  "Review security requirements"
-
-# List items using project ID
-dn user-story ls {--project-id|--pid} project:abc
-dn epic ls {--project-id|--pid} project:abc
-dn todo ls {--project-id|--pid} project:abc
-dn task ls {--project-id|--pid} project:abc
-dn module ls {--project-id|--pid} project:abc
-dn submodule ls {--project-id|--pid} project:abc
-dn file ls {--project-id|--pid} project:abc
-
-# List items using project name (alternative)
-dn user-story ls {--project|-p} "MyProject"
-dn epic ls {--project|-p} "MyProject"
-dn todo ls {--project|-p} "MyProject"
-dn task ls {--project|-p} "MyProject"
-dn module ls {--project|-p} "MyProject"
-dn submodule ls {--project|-p} "MyProject"
-dn file ls {--project|-p} "MyProject"
-
-# List with case-insensitive matching
-dn todo ls {--project|-p} "myproject" -i
-dn task ls {--project|-p} "myproject" -i
-
-# Delete a task when no longer needed
-dn task rm task:mno
-
-# Delete a todo item
-dn todo rm todo_item:xyz
-```
-
----
-
-#### 5. Generic Linking
-
-For connecting existing nodes:
-
-```bash
-# Link any two nodes with a named edge
-dn link {--from-id|-f} task:mno {--edge|-e} has_context {--to-ids|-t} context:xyz
-dn link {--from-id|-f} project:abc {--edge|-e} contains {--to-ids|-t} module:def
-```
-
-**Valid Edges**:
 - `contains` - Parent contains child (project->module, module->submodule, module->file, submodule->file)
 - `has_task` - Parent has task (project->task, user_story->task, epic->task)
 - `has_context` - Node has knowledge (project, module, submodule, task, epic, file -> context)
@@ -417,446 +48,64 @@ dn link {--from-id|-f} project:abc {--edge|-e} contains {--to-ids|-t} module:def
 
 ---
 
-### Best Practices for AI Agents
+## Initializing the project
 
-#### 1. Establish Hierarchy First
+### Initializing for new project
 
-Always add the project structure before adding knowledge:
+1. Create a new project
+   - `dn project create "ProjectName" "Description"`
+2. Set up initial modules and directories as needed
+   - `dn module create --project-ids <project_id> "ModuleName" "Description"`
 
-```bash
-# Step 1: Create project and capture ID
-PROJECT=$(dn project add "MyApp" "Web application" | jq -r '.id')
+### Initializing for existing project
 
-# Step 2: Create modules with project link
-MODULE=$(dn module add {--project-ids|--pids} "$PROJECT" "API" "REST API" | jq -r '.id')
+1. Create a new project
+   - `dn project create "ProjectName" "Description"`
+2. Read the codebase for all the modules and submodules, create them and link to the respective project and module.
+   - `dn module create --project-ids <project_id> "ModuleName" "Description"`
+   - `dn submodule create --module-ids <module_id> "SubmoduleName" "Description"`
+3. Create the file nodes with description and link to the respective module/submodule and project.
+   - `dn file create --parent-ids <module_or_submodule_id> "FileName" "Path" "Description"`
 
-# Step 3: Create tasks with module and project links
-TASK=$(dn task add {--module-ids|--mids} "$MODULE" {--project-ids|--pids} "$PROJECT" \
-  "Implement auth" "JWT authentication" | jq -r '.id')
+## Creating a task
 
-# Step 4: Now add knowledge linked to appropriate nodes
-dn add \
-  {--field|-f} type {--value|-v} mistake \
-  {--field|-f} content {--value|-v} "Don't store secrets in env vars" \
-  {--link-to|--ln} "$TASK"
-```
+1. Fetch an item from the todo list or user-story to work on.
+   - `dn todo list --project-id <project_id>`
+   - `dn user-story list --project-id <project_id>`
+2. Enter planning mode even if currently in agent mode.
+3. Do complete research of the task and consult the user.
+4. After approval, create a task node and link to the relevant project, module/submodule and files.
+   - `dn task create --project-ids <project_id> --module-ids <module_id> "Task Name" "Description"`
 
----
+## Working on a task
 
-#### 2. Capture and Reuse IDs
+1. Before working on a task, query the context with `dn ctx --task-id <id> --full` to see the inherited context.
+2. Mark the task as in progress.
 
-Always parse JSON responses to capture IDs for subsequent operations:
+## Context/Knowledge capture during working on a task
 
-```bash
-# Capture IDs for reuse
-PROJECT_ID=$(dn project add "App" "Description" | jq -r '.id')
-echo "Created project: $PROJECT_ID"
+1. while working on a task capture the knowledge/context and link to the relevant and appropriate node task, module/submodule, project or file.
+   - `dn add --field type --value <type> --field content --value "<content>" --link-to <node_id>`
 
-# Use in subsequent commands
-dn module add {--project-ids|--pids} "$PROJECT_ID" "Core" "Core module"
-```
+### Learning Extraction
 
----
+When discovering non-obvious and non-recorded information, add it to dn with appropriate type and link it to appropriate `package/module/submodule` node.
 
-#### 4. Rich Field Usage
+**What counts as a learning:**
 
-Always add context-enriching fields:
+- Hidden relationships between files/modules
+- Execution paths that differ from appearance
+- Non-obvious configuration, env vars, or flags
+- Debugging breakthroughs when errors were misleading
+- API/tool quirks and workarounds
+- Build/test commands not in README
+- Architectural decisions and constraints
+- Files that must change together
 
-```bash
-dn add \
-  {--field|-f} type {--value|-v} security \
-  {--field|-f} content {--value|-v} "SQL injection vulnerability in user input" \
-  {--field|-f} severity {--value|-v} critical \
-  {--field|-f} cwe {--value|-v} "CWE-89" \
-  {--field|-f} owasp {--value|-v} "A03:2021-Injection" \
-  {--field|-f} remediation {--value|-v} "Use parameterized queries" \
-  {--field|-f} example_bad {--value|-v} "query = 'SELECT * FROM users WHERE id = ' + userId" \
-  {--field|-f} example_good {--value|-v} "query = 'SELECT * FROM users WHERE id = ?'; db.query(query, [userId])" \
-  {--link-to|--ln} task:abc
-```
-
----
-
-#### 5. Context Retrieval Workflow
-
-When working on a task, always retrieve relevant context with the `--full` flag:
-
-```bash
-# Before implementing, get full inherited context for the task
-dn ctx {--task-id|--tid} task:abc --full {--pretty|--pp}'
-
-# Also check full module-level context
-dn ctx {--file-id|--fid} file:def --full {--pretty|--pp}'
-```
-# Combine and analyze all relevant knowledge
-```
-
----
-
-#### 6. Error Handling
-
-All commands return structured JSON:
-
-**Success**:
-```json
-{"status":"ok"}
-```
-
-**Error**:
-```json
-{"status":"error","kind":"runtime_error","error":"Task not found: task:123"}
-```
-
----
-
-### Common AI Agent Workflows
-
-#### Workflow 1: Learning from Mistakes
-
-```bash
-# User reports an issue - capture as knowledge
-MISTAKE_ID=$(dn add \
-  --field type --value mistake \
-  {--field|-f} content {--value|-v} "Race condition in async handler" \
-  {--field|-f} language {--value|-v} rust \
-  {--field|-f} symptom {--value|-v} "Intermittent 500 errors under load" \
-  {--field|-f} root_cause {--value|-v} "Shared state without proper locking" \
-  {--field|-f} fix {--value|-v} "Use Arc<Mutex<T>> for shared state" \
-  {--link-to|--ln} task:abc | jq -r '.id // empty')
-
-# Later, when working on similar tasks, query context
-dn ctx {--task-id|--tid} task:abc
-```
-
----
-
-#### Workflow 2: Code Review Knowledge
-
-```bash
-# Store code review feedback as knowledge
-REVIEW_ID=$(dn add \
-  {--field|-f} type {--value|-v} code_review \
-  {--field|-f} content {--value|-v} "Extract database queries into repository pattern" \
-  {--field|-f} severity {--value|-v} medium \
-  {--field|-f} rationale {--value|-v} "Improves testability and maintainability" \
-  {--field|-f} effort {--value|-v} "2 hours" \
-  {--field|-f} pr_number {--value|-v} "#42" \
-  {--link-to|--ln} file:src/main.rs)
-```
-
----
-
-#### Workflow 3: Security Knowledge Management
-
-```bash
-# Log security findings with rich metadata
-SECURITY_ID=$(dn add \
-  {--field|-f} type {--value|-v} security \
-  {--field|-f} content {--value|-v} "Hardcoded API key in config file" \
-  {--field|-f} severity {--value|-v} critical \
-  {--field|-f} cwe {--value|-v} "CWE-798" \
-  {--field|-f} cve {--value|-v} "CVE-2023-1234" \
-  {--field|-f} scan_tool {--value|-v} truffleHog \
-  {--field|-f} file {--value|-v} "config/secrets.yml" \
-  {--field|-f} line {--value|-v} "15" \
-  {--field|-f} remediation {--value|-v} "Move to environment variables or secret manager" \
-  {--link-to|--ln} module:api \
-  {--link-to|--ln} project:main)
-```
-
----
-
-#### Workflow 4: Performance Optimization Knowledge
-
-```bash
-# Capture performance insights
-PERF_ID=$(dn add \
-  {--field|-f} type {--value|-v} performance \
-  {--field|-f} content {--value|-v} "N+1 query problem in user listing" \
-  {--field|-f} severity {--value|-v} high \
-  {--field|-f} metric_before {--value|-v} "2500ms response time" \
-  {--field|-f} metric_after {--value|-v} "120ms response time" \
-  {--field|-f} solution {--value|-v} "Use eager loading with JOIN" \
-  {--field|-f} benchmark {--value|-v} "ab -n 1000 -c 10" \
-  {--field|-f} improvement {--value|-v} "20x faster" \
-  {--link-to|--ln} module:users)
-```
-
----
-
-#### Workflow 5: AI Agent Task Planning and Execution
-
-Complete workflow for planning and executing tasks with proper context retrieval:
-
-```bash
-# Step 1: Create a todo to track the work item
-# Step 2: Query the task to check if already exists and whether to add as a subtask.
-# Step 3: Query the knowledge base for code structure and existing context
-# Step 4: Create a task linked to the appropriate module/submodule/epic
-# Step 5: Update task with a detailed plan as knowledge
-
-# Step 6: Query knowledge base again for relevant patterns before implementation
-# Get full inherited context specific to the task (RECOMMENDED)
-dn ctx {--task-id|--tid} "$TASK_ID" --full | jq '.results[]'
-
-# Step 7: After completion, capture insights and lessons learned
-dn add \
-  {--field|-f} type {--value|-v} insight \
-  {--field|-f} content {--value|-v} "JWT tokens should have short expiry with refresh token pattern" \
-  {--field|-f} related_task {--value|-v} "$TASK_ID" \
-  {--link-to|--ln} "$TASK_ID" \
-  {--link-to|--ln} module:def
-```
-
-**AI Agent Best Practices for Task Planning**:
-
-1. **Always query before planning**: Retrieve existing context from project, module, and relevant files using `--full`
-2. **Create todos first**: Track work items before creating detailed tasks
-3. **Link strategically**: Attach tasks to the most specific module/submodule and relevant epics
-4. **Always link to files/modules**: After adding a task, link it to relevant files and modules it touches
-5. **Store plans as knowledge**: Use `{--field|-f} type {--value|-v} plan` to document implementation approach
-6. **Query task context before coding**: Always run `dn ctx {--task-id|--tid} <id> --full` before implementation
-7. **Capture learnings**: After task completion, add insights linked to the task and relevant modules
-
-**Example: Full Planning Session**:
-
-```bash
-# 1. Initial query - understand existing structure
-dn ctx {--project-id|--pid} project:abc | jq '.results[] | {type, content}'
-
-# 2. Create tracking todo
-TODO=$(dn todo add {--project-ids|--pids} project:abc "Add OAuth integration" | jq -r '.id')
-
-# 3. Explore specific module context
-dn ctx {--module-id|--mid} module:auth --full | jq '.results[]'
-
-# 4. Create and link task
-TASK=$(dn task add \
-  {--module-ids|--mids} module:auth \
-  {--project-ids|--pids} project:abc \
-  "Implement OAuth2 flow" \
-  "Add OAuth2 authentication with Google and GitHub providers" | jq -r '.id')
-
-# 4b. Link task to relevant files
-# dn link {--from-id|-f} "$TASK" {--edge|-e} has_file {--to-ids|-t} file:auth.rs
-
-# 5. Document the plan
-dn add \
-  {--field|-f} type {--value|-v} plan \
-  {--field|-f} content {--value|-v} "OAuth2 implementation strategy" \
-  {--field|-f} approach {--value|-v} "Use OAuth2 crate with state parameter for CSRF protection" \
-  {--field|-f} providers {--value|-v} "Google, GitHub" \
-  {--field|-f} callback_url {--value|-v} "/auth/callback" \
-  {--link-to|--ln} "$TASK"
-
-# 6. Verify context is properly linked
-dn ctx {--task-id|--tid} "$TASK" | jq '.results | length'
-```
-
----
-
-### Integration with AI Workflows
-
-#### Context Injection
-
-Before generating code, retrieve and inject relevant context:
-
-```python
-import subprocess
-import json
-
-def get_task_context(task_id):
-    result = subprocess.run(
-        ["dn", "ctx", "--task-id", task_id],
-        capture_output=True,
-        text=True
-    )
-    return json.loads(result.stdout)
-
-# Use in prompt
-task_id = "task:abc"
-context = get_task_context(task_id)
-knowledge = "\n".join([
-    f"- {c['type']}: {c['content']}"
-    for c in context.get("results", [])
-])
-
-prompt = f"""
-You are working on task {task_id}.
-
-Relevant knowledge:
-{knowledge}
-
-Now generate the implementation...
-"""
-```
-
----
-
-#### Automated Knowledge Capture
-
-After completing a task, automatically capture insights:
-
-```python
-def capture_knowledge(task_id, content, knowledge_type="insight", **fields):
-    cmd = ["dn", "add", "--field", "type", "--value", knowledge_type]
-    cmd.extend(["--field", "content", "--value", content])
-    cmd.extend(["--field", "source_task", "--value", task_id])
-    
-    for key, value in fields.items():
-        cmd.extend(["--field", key, "--value", str(value)])
-    cmd.extend(["--link-to", task_id])
-    
-    subprocess.run(cmd, capture_output=True)
-
-# Usage
-capture_knowledge(
-    task_id="task:abc",
-    content="Found that caching TTL should be 5 minutes for this endpoint",
-    knowledge_type="discovery",
-    category="caching",
-    endpoint="/api/users"
-)
-```
-
----
-
-## Part 3: Troubleshooting & Reference
-
-### Troubleshooting Dunno
-
-#### Common Issues
-
-1. **"Number of --field flags must match --value flags"**
-   - Ensure every `--field` has a corresponding `--value`
-   - Count must be exactly equal
-
-2. **"Task not found" / "Module not found"**
-   - Verify IDs are correct format (e.g., `task:abc`, `module:def`)
-   - Check that the node exists with `dn task ls` or similar
-
-3. **"At least one --field key=value pair is required"**
-   - The `add` command requires at least one pair of `--field` and `--value`
-
-4. **Database connection errors**
-   - For local: Check write permissions to `~/.local/share/dn/`
-   - For cloud: Verify credentials and network connectivity
-
----
-
-#### Configuration Debugging
-
-```bash
-# Check resolved configuration
-dn config show
-
-# Test with explicit backend
-dn --backend local add --field type --value test --field content --value "test"
-```
-
----
-
-#### Purging Data (Development Only)
-
-```bash
-# ⚠️ DANGER: Delete all data (irreversible)
-dn purge
-```
-
----
-
-### Tips for Maximum Effectiveness
-
-1. **Be specific in content**: "Use Result types" is better than "Handle errors"
-2. **Add context**: Always include why something is important
-3. **Link strategically**: Attach knowledge to the most specific relevant node
-4. **Use consistent vocabulary**: Standardize type names (mistake, security, style)
-5. **Keep it actionable**: Content should guide future decisions
-6. **Version your knowledge**: Add `date`, `version`, or `commit` fields for temporal context
-7. **Cross-reference**: Use `--link-to` to connect knowledge to multiple relevant nodes
-8. **Query before acting**: Always check `dn ctx` before implementing
-
----
-
-### Advanced Patterns
-
-#### Knowledge Templates
-
-Create reusable knowledge structures:
-
-```bash
-# Security vulnerability template
-dn add \
-  --field type --value security \
-  --field content --value "[VULNERABILITY NAME]" \
-  --field severity --value "[critical|high|medium|low]" \
-  --field cwe --value "[CWE-ID]" \
-  --field owasp_top10 --value "[Category]" \
-  --field affected_versions --value "[Version range]" \
-  --field remediation --value "[Fix description]" \
-  --field references --value "[CVE, advisory links]" \
-  --field discovered_date --value "[ISO date]" \
-  --field fixed_date --value "[ISO date or pending]" \
-  --link-to [NODE_ID]
-```
-
----
-
-#### Knowledge Queries
-
-Use jq for sophisticated filtering:
-
-```bash
-# Find all high-security knowledge
-dn ctx --task-id task:abc | jq '.results[] | select(.severity == "high" and .type == "security")'
-
-# Find mistakes in specific language
-dn ctx --module-id module:def | jq '.results[] | select(.type == "mistake" and .language == "rust")'
-
-# Find unreviewed knowledge (no pr_number field)
-dn ctx --project-id project:abc | jq '.results[] | select(has("pr_number") | not)'
-```
-
----
-
-#### Batch Operations
-
-Process multiple knowledge entries:
-
-```bash
-# Create a file with knowledge entries
-while read -r line; do
-  IFS='|' read -r type content module <<< "$line"
-  dn add \
-    --field type --value "$type" \
-    --field content --value "$content" \
-    --link-to "$module"
-done < knowledge_list.txt
-```
-
----
-
-## Summary for AI Agents
-
-**Before Starting Work:**
-1. Query dn context for your task with inheritance: `dn ctx --task-id <id> --full`
-2. Review captured learnings and pitfalls at all levels (Project, Module, Task)
-3. Follow naming conventions (single words)
-
-**During Work:**
-1. Use parallel tools when possible
-2. Keep responses concise (1-3 sentences)
-3. Understand why your changes work
-4. No AI-generated walls of text
-
-**After Completing Work:**
-1. Capture learnings: `dn add --field type --value insight`
-2. Link to task and relevant modules
-3. Keep entries to 1-3 lines
-4. Use specific, actionable content
-
-**Remember**: The power of dn lies in its deterministic, hierarchical context retrieval. Always structure your knowledge to match your project hierarchy, and query context before making decisions.
-
----
-
-**Note**: This codebase is documented in dn under project ID `project:nx7h5j92o078xa4pmo1y` with modules for CLI, Config, Database, Context, Ingest, and Models.
+**What NOT to include:**
+
+- Obvious facts from documentation
+- Standard language/framework behavior
+- Things already documented
+- Verbose explanations
+- Session-specific details

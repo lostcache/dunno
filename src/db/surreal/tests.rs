@@ -3215,3 +3215,117 @@ async fn test_context_inheritance_epic() {
     assert!(contents.contains(&"p".into()));
     assert!(contents.contains(&"e".into()));
 }
+
+#[tokio::test]
+async fn test_task_ctx_full_includes_persona_workflow() {
+    let db = DB::new("mem://").await.expect("init db");
+
+    let p = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "proj".into(),
+            description: "d".into(),
+        })
+        .await
+        .unwrap();
+    let pid = p.id.unwrap();
+    let m = db.create_module("mod", "d", None, &pid).await.unwrap();
+    let mid = m.id.unwrap();
+    let t = db.create_task("task", "d", Some(&mid), Some(&pid)).await.unwrap();
+    let tid = t.id.unwrap();
+
+    db.create_persona("P1", "persona content", &pid).await.unwrap();
+    db.create_workflow("W1", "workflow content", &pid).await.unwrap();
+
+    // Node mode: persona and workflow should be empty
+    let node_ctx = db.get_task_context(&tid, false).await.expect("node ctx");
+    assert!(node_ctx.persona.is_empty());
+    assert!(node_ctx.workflow.is_empty());
+
+    // Full mode: persona and workflow should be populated
+    let full_ctx = db.get_task_context(&tid, true).await.expect("full ctx");
+    assert_eq!(full_ctx.persona.len(), 1);
+    assert_eq!(full_ctx.persona[0].name, "P1");
+    assert_eq!(full_ctx.workflow.len(), 1);
+    assert_eq!(full_ctx.workflow[0].name, "W1");
+
+    // Isolation: another project's persona must not appear
+    let p2 = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "other".into(),
+            description: "d".into(),
+        })
+        .await
+        .unwrap();
+    db.create_persona("P2", "other persona", &p2.id.unwrap()).await.unwrap();
+    let full_ctx2 = db.get_task_context(&tid, true).await.expect("full ctx2");
+    assert_eq!(full_ctx2.persona.len(), 1);
+}
+
+#[tokio::test]
+async fn test_file_ctx_full_includes_persona_workflow() {
+    let db = DB::new("mem://").await.expect("init db");
+
+    let p = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "proj".into(),
+            description: "d".into(),
+        })
+        .await
+        .unwrap();
+    let pid = p.id.unwrap();
+    let f = db
+        .create_file("f", "src/f.rs", None, None, &pid, None)
+        .await
+        .unwrap();
+    let fid = f.id.unwrap();
+
+    db.create_persona("P1", "persona content", &pid).await.unwrap();
+    db.create_workflow("W1", "workflow content", &pid).await.unwrap();
+
+    // Node mode: persona and workflow should be empty
+    let node_ctx = db.get_file_context(&fid, false).await.expect("node ctx");
+    assert!(node_ctx.persona.is_empty());
+    assert!(node_ctx.workflow.is_empty());
+
+    // Full mode: persona and workflow should be populated
+    let full_ctx = db.get_file_context(&fid, true).await.expect("full ctx");
+    assert_eq!(full_ctx.persona.len(), 1);
+    assert_eq!(full_ctx.persona[0].name, "P1");
+    assert_eq!(full_ctx.workflow.len(), 1);
+    assert_eq!(full_ctx.workflow[0].name, "W1");
+}
+
+#[tokio::test]
+async fn test_epic_ctx_full_includes_persona_workflow() {
+    let db = DB::new("mem://").await.expect("init db");
+
+    let p = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "proj".into(),
+            description: "d".into(),
+        })
+        .await
+        .unwrap();
+    let pid = p.id.unwrap();
+    let e = db.create_epic("epic", "d", &pid).await.unwrap();
+    let eid = e.id.unwrap();
+
+    db.create_persona("P1", "persona content", &pid).await.unwrap();
+    db.create_workflow("W1", "workflow content", &pid).await.unwrap();
+
+    // Node mode: persona and workflow should be empty
+    let node_ctx = db.get_epic_context(&eid, false).await.expect("node ctx");
+    assert!(node_ctx.persona.is_empty());
+    assert!(node_ctx.workflow.is_empty());
+
+    // Full mode: persona and workflow should be populated
+    let full_ctx = db.get_epic_context(&eid, true).await.expect("full ctx");
+    assert_eq!(full_ctx.persona.len(), 1);
+    assert_eq!(full_ctx.persona[0].name, "P1");
+    assert_eq!(full_ctx.workflow.len(), 1);
+    assert_eq!(full_ctx.workflow[0].name, "W1");
+}

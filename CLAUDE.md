@@ -32,13 +32,15 @@ Knowledge can be attached to any structural node:
 - **User Story**: Knowledge related to specific user stories
 - **Epic**: Knowledge related to specific epics
 - **Todo**: Knowledge related to specific todo items
+- **Persona**: AI agent persona definitions linked to a project
+- **Workflow**: Workflow definitions linked to a project
 
 ### Edges
 
 - `contains` - Parent contains child (project->module, module->submodule, module->file, submodule->file)
 - `has_task` - Parent has task (project->task, user_story->task, epic->task)
 - `has_context` - Node has knowledge (project, module, submodule, task, epic, file -> context)
-- `belongs_to_project` - Child belongs to project (task, context, user_story, epic, file -> project)
+- `belongs_to_project` - Child belongs to project (task, context, user_story, epic, file, persona, workflow -> project)
 - `belongs_to_module` - Child belongs to module (task, context, file -> module)
 - `belongs_to_submodule` - Child belongs to submodule (context, file -> submodule)
 - `belongs_to_story` - Child belongs to user story (task -> user_story)
@@ -47,6 +49,8 @@ Knowledge can be attached to any structural node:
 - `has_user_story` - Parent has user story (project, epic -> user_story)
 - `has_epic` - Parent has epic (project -> epic)
 - `has_todo` - Parent has todo (project -> todo_item)
+- `has_persona` - Parent has persona (project -> persona)
+- `has_workflow` - Parent has workflow (project -> workflow)
 - `has_module` - Parent has module (user_story -> module)
 - `has_submodule` - Parent has submodule (user_story -> submodule)
 
@@ -103,7 +107,7 @@ Knowledge can be attached to any structural node:
 
 When discovering non-obvious and non-recorded information, add it to dn with appropriate type and link it to appropriate `package/module/submodule` node.
 
-**What counts as a learning:**
+#### **What counts as a learning:**
 
 - Hidden relationships between files/modules
 - Execution paths that differ from appearance
@@ -114,7 +118,7 @@ When discovering non-obvious and non-recorded information, add it to dn with app
 - Architectural decisions and constraints
 - Files that must change together
 
-**What NOT to include:**
+#### **What NOT to include:**
 
 - Obvious facts from documentation
 - Standard language/framework behavior

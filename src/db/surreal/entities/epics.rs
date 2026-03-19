@@ -162,7 +162,12 @@ impl DB {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Epic not found: {}", epic_id))?;
         let contexts = self.get_linked_context(epic_id).await?;
-        Ok(crate::models::EpicContext { epic, contexts })
+        Ok(crate::models::EpicContext {
+            persona: vec![],
+            workflow: vec![],
+            epic,
+            contexts,
+        })
     }
 
     /// Gets full inherited context for an epic (Project -> Epic).
@@ -175,8 +180,8 @@ impl DB {
         // Resolve ancestry for this epic
         let ancestry = self.resolve_structural_ancestry(epic_id).await?;
 
-        for pid in ancestry.project_ids {
-            ctx.contexts.extend(self.get_linked_context(&pid).await?);
+        for pid in &ancestry.project_ids {
+            ctx.contexts.extend(self.get_linked_context(pid).await?);
         }
 
         // Deduplicate contexts by ID
@@ -188,6 +193,12 @@ impl DB {
                 true
             }
         });
+
+        for pid in &ancestry.project_ids {
+            ctx.persona.extend(self.list_personas_by_project(pid).await?);
+            ctx.workflow
+                .extend(self.list_workflows_by_project(pid).await?);
+        }
 
         Ok(ctx)
     }

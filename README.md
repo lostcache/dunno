@@ -6,7 +6,7 @@ Currently it just supports SurrealDB as a backend, but the architecture is desig
 
 ---
 
-## 📖 User Guide
+## User Guide
 
 ### Installation
 
@@ -114,6 +114,7 @@ dn ctx --task-id task:ghi --full
 ```
 
 Returns:
+
 - **Task** - The task object with id, name, description, status
 - **Files** - File objects (with path and description) related to the task (files in the parent module/submodule)
 - **Hierarchy** - Project, module, and optional submodule info
@@ -159,6 +160,7 @@ dn module add {--project|-p} "my project" -i "Auth" "Auth module"
 #### Example Configuration
 
 **Global config** (`~/.config/dn/dn.toml`):
+
 ```toml
 backend = "cloud"
 
@@ -172,6 +174,7 @@ auth_type = "root"
 ```
 
 **Local config** (`./dn.toml`):
+
 ```toml
 # Override only the database path for this project
 [local]
@@ -198,18 +201,23 @@ All config fields can be set via environment:
 dn organizes work into two parallel paths:
 
 **Code Structure:**
+
 ```
 Project → Module → Submodule (optional) → File
 ```
 
 **Work Tracking:**
+
 ```
 Project → Module → Task
 ```
 
 **Optional Layers:**
+
 - **Epics** - Large feature groups
 - **User Stories** - User-centric feature descriptions
+- **Personas** - AI agent persona definitions
+- **Workflows** - Workflow definitions
 
 #### Knowledge Types
 
@@ -223,6 +231,7 @@ Link knowledge to any structural node:
 ### CLI Reference
 
 #### Global Flags
+
 ```bash
 dn [GLOBAL FLAGS] <COMMAND>
 
@@ -233,12 +242,14 @@ Global Flags:
 ```
 
 #### Project Management
+
 ```bash
 dn project add "<name>" "<description>"  # Create project
 dn project ls                              # List all projects
 ```
 
 #### Module Management
+
 ```bash
 # Using project ID (required)
 dn module add {--project-ids|--pids} <id> "<name>" "<description>" [--notes <notes>]
@@ -253,6 +264,7 @@ dn module ls {--project|-p} "<project_name>"
 ```
 
 #### Submodule Management
+
 ```bash
 # Create submodule — both project and module are required
 dn submodule add {--project-ids|--pids} <project_id> {--module-ids|--mids} <module_id> "<name>" "<description>" [--notes <notes>]
@@ -268,6 +280,7 @@ dn submodule ls {--project|-p} "<project_name>"
 ```
 
 #### Task Management
+
 ```bash
 # Using IDs
 dn task add {--module-ids|--mids} <id> {--project-ids|--pids} <id> "<name>" "<description>"
@@ -285,6 +298,7 @@ dn task rm <id>   # Delete a task by ID
 ```
 
 #### File Management
+
 ```bash
 # Create file linked to a project (required) and optionally to a module or submodule
 dn file add {--project-ids|--pids} <project_id> "<name>" "<path>" ["<description>"] [--notes <notes>]
@@ -303,6 +317,7 @@ dn file ls {--project|-p} "<project_name>"
 ```
 
 #### User Story Management
+
 ```bash
 # Using project ID
 dn user-story add {--project-id|--pid} <id> [--eids <epic_id>] "<title>" "<description>"
@@ -317,6 +332,7 @@ dn user-story ls {--project-id|--pid} <id> {--epic-id|--eid} <epic_id>
 ```
 
 #### Epic Management
+
 ```bash
 # Using project ID
 dn epic add {--project-id|--pid} <id> "<title>" "<description>"
@@ -327,7 +343,44 @@ dn epic add {--project|-p} "<project_name>" "<title>" "<description>"
 dn epic ls {--project|-p} "<project_name>"
 ```
 
+#### Persona Management
+
+```bash
+# Using project ID
+dn persona add {--project-ids|--pids} <project_id> "<name>" "<content>"
+
+# Using project name (alternative)
+dn persona add {--project|-p} "<project_name>" "<name>" "<content>"
+
+# List personas (all or filtered by project)
+dn persona ls
+dn persona ls {--project-id|--pid} <id>
+dn persona ls {--project|-p} "<project_name>"
+
+# Delete a persona
+dn persona rm <id>
+```
+
+#### Workflow Management
+
+```bash
+# Using project ID
+dn workflow add {--project-ids|--pids} <project_id> "<name>" "<content>"
+
+# Using project name (alternative)
+dn workflow add {--project|-p} "<project_name>" "<name>" "<content>"
+
+# List workflows (all or filtered by project)
+dn workflow ls
+dn workflow ls {--project-id|--pid} <id>
+dn workflow ls {--project|-p} "<project_name>"
+
+# Delete a workflow
+dn workflow rm <id>
+```
+
 #### Todo Management
+
 ```bash
 # Using project ID
 dn todo add {--project-ids|--pids} <id> "<content>"
@@ -342,6 +395,7 @@ dn todo rm <id>
 ```
 
 #### Knowledge Management
+
 ```bash
 # Add knowledge with arbitrary fields
 dn add {--field|-f} <key> {--value|-v} <val> [{--link-to|--ln} <id> ...]
@@ -352,6 +406,7 @@ dn add {--field|-f} type {--value|-v} style {--field|-f} language {--value|-v} r
 ```
 
 #### Context Retrieval
+
 ```bash
 dn ctx {--task-id|--tid} <id>
 dn ctx {--file-id|--fid} <id>
@@ -359,6 +414,7 @@ dn ctx {--epic-id|--eid} <id>
 ```
 
 #### Linking
+
 ```bash
 dn link {--from-id|-f} <id> {--edge|-e} <type> {--to-ids|-t} <id> [<id> ...]
 
@@ -371,48 +427,51 @@ dn link {--from-id|-f} project:abc {--edge|-e} has_todo {--to-ids|-t} todo_item:
 
 **Flag Shortcuts:**
 
-| Long | Short |
-|------|-------|
-| `--backend` | `--b` |
-| `--pretty` | `--pp` |
-| `--ignore-case` | `-i` |
-| `--field` | `-f` |
-| `--value` | `-v` |
-| `--link-to` | `--ln` |
-| `--project` | `-p` |
-| `--project-id` | `--pid` |
-| `--project-ids` | `--pids` |
-| `--module-id` | `--mid` |
-| `--module-ids` | `--mids` |
-| `--submodule-id` | `--smid` |
-| `--task-id` | `--tid` |
-| `--file-id` | `--fid` |
-| `--epic-id` | `--eid` |
-| `--epic-ids` | `--eids` |
+| Long               | Short     |
+| ------------------ | --------- |
+| `--backend`        | `--b`     |
+| `--pretty`         | `--pp`    |
+| `--ignore-case`    | `-i`      |
+| `--field`          | `-f`      |
+| `--value`          | `-v`      |
+| `--link-to`        | `--ln`    |
+| `--project`        | `-p`      |
+| `--project-id`     | `--pid`   |
+| `--project-ids`    | `--pids`  |
+| `--module-id`      | `--mid`   |
+| `--module-ids`     | `--mids`  |
+| `--submodule-id`   | `--smid`  |
+| `--task-id`        | `--tid`   |
+| `--file-id`        | `--fid`   |
+| `--epic-id`        | `--eid`   |
+| `--epic-ids`       | `--eids`  |
 | `--user-story-ids` | `--usids` |
-| `--from-id` | `-f` |
-| `--edge` | `-e` |
-| `--to-ids` | `-t` |
+| `--from-id`        | `-f`      |
+| `--edge`           | `-e`      |
+| `--to-ids`         | `-t`      |
 
 **Command Aliases:**
 
-| Command | Aliases |
-|---------|---------|
-| `project` | `proj`, `prj` |
-| `module` | `mod`, `mdl` |
-| `submodule` | `submod`, `sub` |
-| `file` | `f`, `fi` |
-| `task` | `t`, `tk` |
-| `user-story` | `us`, `story` |
-| `epic` | `ep`, `e` |
-| `todo` | `td`, `to` |
-| `config` | `cfg`, `conf` |
-| `link` | `ln` |
-| `context` | `ctx` |
+| Command      | Aliases         |
+| ------------ | --------------- |
+| `project`    | `proj`, `prj`   |
+| `module`     | `mod`, `mdl`    |
+| `submodule`  | `submod`, `sub` |
+| `file`       | `f`, `fi`       |
+| `task`       | `t`, `tk`       |
+| `user-story` | `us`, `story`   |
+| `epic`       | `ep`, `e`       |
+| `todo`       | `td`, `to`      |
+| `persona`    | `per`           |
+| `workflow`   | `wf`            |
+| `config`     | `cfg`, `conf`   |
+| `link`       | `ln`            |
+| `context`    | `ctx`           |
 
 ### Common Workflows
 
 **1. Starting a New Feature:**
+
 ```bash
 # Create epic for the feature (using project name)
 dn epic add {--project|-p} "My App" "User Authentication" "Complete auth system"
@@ -425,6 +484,7 @@ dn task add {--module-ids|--mids} module:def {--project|-p} "My App" {--epic-ids
 ```
 
 **2. Recording Mistakes:**
+
 ```bash
 # After fixing a bug, record it for future reference
 dn add {--field|-f} type {--value|-v} mistake \
@@ -435,12 +495,14 @@ dn add {--field|-f} type {--value|-v} mistake \
 ```
 
 **3. Code Review Context:**
+
 ```bash
 # Before reviewing, get all context for a task
 dn ctx {--task-id|--tid} task:ghi | jq '.[] | select(.fields.type == "mistake")'
 ```
 
 **4. Cleaning Up:**
+
 ```bash
 # List all tasks
 dn task ls
@@ -454,7 +516,7 @@ dn task ls
 
 ---
 
-## 🔧 Developer Guide
+## Developer Guide
 
 ### Architecture Overview
 
@@ -501,34 +563,38 @@ src/
 
 #### Entities (Nodes)
 
-| Entity | Record ID Pattern | Description |
-|--------|-------------------|-------------|
-| Project | `project:<id>` | Top-level container |
-| Module | `module:<id>` | Code organization unit |
-| Submodule | `submodule:<id>` | Nested code unit |
-| File | `file:<id>` | Source file reference |
-| Task | `task:<id>` | Work item |
-| Epic | `epic:<id>` | Large feature group |
-| UserStory | `user_story:<id>` | User-centric feature |
-| Context | `context:<id>` | Knowledge entry |
-| Todo | `todo_item:<id>` | Work queue item |
+| Entity    | Record ID Pattern | Description                 |
+| --------- | ----------------- | --------------------------- |
+| Project   | `project:<id>`    | Top-level container         |
+| Module    | `module:<id>`     | Code organization unit      |
+| Submodule | `submodule:<id>`  | Nested code unit            |
+| File      | `file:<id>`       | Source file reference       |
+| Task      | `task:<id>`       | Work item                   |
+| Epic      | `epic:<id>`       | Large feature group         |
+| UserStory | `user_story:<id>` | User-centric feature        |
+| Context   | `context:<id>`    | Knowledge entry             |
+| Todo      | `todo_item:<id>`  | Work queue item             |
+| Persona   | `persona:<id>`    | AI agent persona definition |
+| Workflow  | `workflow:<id>`   | Workflow definition         |
 
 #### Graph Relations (Edges)
 
-| Edge | From | To | Purpose |
-|------|------|-----|---------|
-| `contains` | project, module, submodule | module, submodule, file | Structural containment |
-| `has_task` | project, epic, user_story | task | Task assignment |
-| `has_context` | project, task, module, submodule, epic, file | context | Knowledge linking |
-| `has_user_story` | project, epic | user_story | Story grouping |
-| `has_epic` | project | epic | Epic grouping |
-| `has_todo` | project | todo_item | Todo tracking |
-| `belongs_to_project` | task, context, user_story, epic, file | project | Reverse link |
-| `belongs_to_module` | task, context, file | module | Reverse link |
-| `belongs_to_submodule` | context, file | submodule | Reverse link |
-| `belongs_to_story` | task | user_story | Reverse link |
-| `belongs_to_user_story` | module, submodule | user_story | Reverse link |
-| `belongs_to_epic` | user_story, task | epic | Reverse link |
+| Edge                    | From                                                     | To                      | Purpose                |
+| ----------------------- | -------------------------------------------------------- | ----------------------- | ---------------------- |
+| `contains`              | project, module, submodule                               | module, submodule, file | Structural containment |
+| `has_task`              | project, epic, user_story                                | task                    | Task assignment        |
+| `has_context`           | project, task, module, submodule, epic, file             | context                 | Knowledge linking      |
+| `has_user_story`        | project, epic                                            | user_story              | Story grouping         |
+| `has_epic`              | project                                                  | epic                    | Epic grouping          |
+| `has_todo`              | project                                                  | todo_item               | Todo tracking          |
+| `has_persona`           | project                                                  | persona                 | Persona grouping       |
+| `has_workflow`          | project                                                  | workflow                | Workflow grouping      |
+| `belongs_to_project`    | task, context, user_story, epic, file, persona, workflow | project                 | Reverse link           |
+| `belongs_to_module`     | task, context, file                                      | module                  | Reverse link           |
+| `belongs_to_submodule`  | context, file                                            | submodule               | Reverse link           |
+| `belongs_to_story`      | task                                                     | user_story              | Reverse link           |
+| `belongs_to_user_story` | module, submodule                                        | user_story              | Reverse link           |
+| `belongs_to_epic`       | user_story, task                                         | epic                    | Reverse link           |
 
 ### Development Setup
 
@@ -599,6 +665,7 @@ Context queries are implemented in `src/context.rs` using SurrealQL:
 ```
 
 Results are:
+
 1. Flattened from nested graph structure
 2. Tagged with `node_type` for identification
 3. Deduplicated by record ID
@@ -641,18 +708,21 @@ dn add --field my_custom_field --value "anything" --link-to task:abc
 ### Troubleshooting
 
 **Test failures due to environment:**
+
 ```bash
 # Run single-threaded to avoid race conditions
 cargo test -- --test-threads=1
 ```
 
 **Database locked:**
+
 ```bash
 # Kill any hanging dn processes
 pkill -f dn
 ```
 
 **Reset local database:**
+
 ```bash
 rm -rf ~/.local/share/dn/
 # or for project-specific:

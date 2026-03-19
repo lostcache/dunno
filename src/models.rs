@@ -143,6 +143,8 @@ pub struct TaskHierarchy {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct TaskContext {
+    pub persona: Vec<Persona>,
+    pub workflow: Vec<Workflow>,
     pub task: Task,
     pub files: Vec<File>,
     pub contexts: Vec<Context>,
@@ -151,6 +153,8 @@ pub struct TaskContext {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct EpicContext {
+    pub persona: Vec<Persona>,
+    pub workflow: Vec<Workflow>,
     pub epic: Epic,
     pub contexts: Vec<Context>,
 }
@@ -175,6 +179,8 @@ pub struct SubmoduleContext {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct FileContext {
+    pub persona: Vec<Persona>,
+    pub workflow: Vec<Workflow>,
     pub file: File,
     pub contexts: Vec<Context>,
 }
@@ -311,5 +317,112 @@ mod tests {
         let json = to_string(&epic).expect("Failed to serialize Epic");
         assert!(json.contains("Authentication Epic"));
         assert!(json.contains("Implement complete authentication system"));
+    }
+
+    #[test]
+    fn test_persona_model() {
+        let persona = Persona {
+            id: None,
+            name: "Senior Rust Developer".to_string(),
+            content: "You are a senior Rust developer who prefers functional patterns.".to_string(),
+        };
+        let json = to_string(&persona).expect("Failed to serialize Persona");
+        assert!(json.contains("Senior Rust Developer"));
+        assert!(json.contains("functional patterns"));
+    }
+
+    #[test]
+    fn test_workflow_model() {
+        let workflow = Workflow {
+            id: None,
+            name: "TDD Workflow".to_string(),
+            content: "Write tests first, then implementation, then docs.".to_string(),
+        };
+        let json = to_string(&workflow).expect("Failed to serialize Workflow");
+        assert!(json.contains("TDD Workflow"));
+        assert!(json.contains("Write tests first"));
+    }
+
+    #[test]
+    fn test_task_context_persona_workflow_serialized_first() {
+        let task_ctx = TaskContext {
+            persona: vec![Persona {
+                id: None,
+                name: "Dev".to_string(),
+                content: "persona content".to_string(),
+            }],
+            workflow: vec![Workflow {
+                id: None,
+                name: "Flow".to_string(),
+                content: "workflow content".to_string(),
+            }],
+            task: Task {
+                id: None,
+                name: "t".to_string(),
+                description: "d".to_string(),
+                status: TaskStatus::NotStarted,
+            },
+            files: vec![],
+            contexts: vec![],
+            hierarchy: TaskHierarchy {
+                project_id: "project:1".to_string(),
+                project_name: "proj".to_string(),
+                module_id: "module:1".to_string(),
+                module_name: "mod".to_string(),
+                submodule: None,
+            },
+        };
+        let json = to_string(&task_ctx).expect("serialize");
+        let persona_pos = json.find("\"persona\"").expect("persona key present");
+        let workflow_pos = json.find("\"workflow\"").expect("workflow key present");
+        let task_pos = json.find("\"task\"").expect("task key present");
+        assert!(persona_pos < task_pos, "persona must appear before task");
+        assert!(workflow_pos < task_pos, "workflow must appear before task");
+    }
+
+    #[test]
+    fn test_epic_context_persona_workflow_serialized_first() {
+        let epic_ctx = EpicContext {
+            persona: vec![Persona {
+                id: None,
+                name: "Dev".to_string(),
+                content: "persona content".to_string(),
+            }],
+            workflow: vec![],
+            epic: Epic {
+                id: None,
+                title: "Auth".to_string(),
+                description: "d".to_string(),
+            },
+            contexts: vec![],
+        };
+        let json = to_string(&epic_ctx).expect("serialize");
+        let persona_pos = json.find("\"persona\"").expect("persona key present");
+        let epic_pos = json.find("\"epic\"").expect("epic key present");
+        assert!(persona_pos < epic_pos, "persona must appear before epic");
+    }
+
+    #[test]
+    fn test_file_context_persona_workflow_serialized_first() {
+        let file_ctx = FileContext {
+            persona: vec![],
+            workflow: vec![Workflow {
+                id: None,
+                name: "Flow".to_string(),
+                content: "workflow content".to_string(),
+            }],
+            file: File {
+                id: None,
+                name: "main.rs".to_string(),
+                path: "src/main.rs".to_string(),
+                description: None,
+                notes: None,
+            },
+            contexts: vec![],
+        };
+        let json = to_string(&file_ctx).expect("serialize");
+        let workflow_pos = json.find("\"workflow\"").expect("workflow key present");
+        let file_pos = json.find("\"file\"").expect("file key present");
+        assert!(workflow_pos < file_pos, "workflow must appear before file");
     }
 }

@@ -145,7 +145,12 @@ impl DB {
             .await?
             .ok_or_else(|| anyhow::anyhow!("File not found: {}", file_id))?;
         let contexts = self.get_linked_context(file_id).await?;
-        Ok(crate::models::FileContext { file, contexts })
+        Ok(crate::models::FileContext {
+            persona: vec![],
+            workflow: vec![],
+            file,
+            contexts,
+        })
     }
 
     /// Gets full inherited context for a file (Project -> Module -> Submodule -> File).
@@ -164,8 +169,8 @@ impl DB {
         for mid in ancestry.module_ids {
             ctx.contexts.extend(self.get_linked_context(&mid).await?);
         }
-        for pid in ancestry.project_ids {
-            ctx.contexts.extend(self.get_linked_context(&pid).await?);
+        for pid in &ancestry.project_ids {
+            ctx.contexts.extend(self.get_linked_context(pid).await?);
         }
 
         // Deduplicate contexts by ID
@@ -177,6 +182,12 @@ impl DB {
                 true
             }
         });
+
+        for pid in &ancestry.project_ids {
+            ctx.persona.extend(self.list_personas_by_project(pid).await?);
+            ctx.workflow
+                .extend(self.list_workflows_by_project(pid).await?);
+        }
 
         Ok(ctx)
     }
