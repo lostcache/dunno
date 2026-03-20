@@ -41,6 +41,12 @@
   #node-detail { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px 16px; background: #14172a; border-top: 1px solid #2d3148; max-height: 160px; overflow-y: auto; font-size: 12px; display: none; z-index: 10; }
   #node-detail h3 { color: #a78bfa; margin-bottom: 6px; }
   #node-detail pre { white-space: pre-wrap; word-break: break-all; color: #94a3b8; }
+  #multi-select-panel { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px 16px; background: #14172a; border-top: 1px solid #2d3148; max-height: 200px; overflow-y: auto; font-size: 12px; display: none; z-index: 10; }
+  #multi-select-panel h3 { color: #a78bfa; }
+  #msp-pairs { margin-top: 8px; }
+  #msp-pairs .pair-row { padding: 4px 0; border-bottom: 1px solid #2d3148; color: #94a3b8; font-size: 11px; }
+  #msp-pairs .pair-row:last-child { border-bottom: none; }
+  #msp-pairs .pair-row.no-pair { color: #475569; }
 
   /* Context view */
   #ctx-view { flex: 1; padding: 20px; display: none; flex-direction: column; gap: 12px; }
@@ -100,9 +106,19 @@
       <div id="node-detail">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
           <h3 id="nd-title"></h3>
-          <button onclick="App.openEdit()" style="padding:3px 10px;background:#5b45d6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Edit</button>
+          <div style="display:flex;gap:6px;">
+            <button onclick="App.openAddLink()" style="padding:3px 10px;background:#16a34a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Add &amp; Link</button>
+            <button onclick="App.openEdit()" style="padding:3px 10px;background:#5b45d6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Edit</button>
+          </div>
         </div>
         <pre id="nd-body"></pre>
+      </div>
+      <div id="multi-select-panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <h3 id="msp-title"></h3>
+          <button onclick="App.linkSelected()" style="padding:3px 10px;background:#16a34a;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Link</button>
+        </div>
+        <div id="msp-pairs"></div>
       </div>
     </div>
 
@@ -273,6 +289,53 @@ const EDIT_ENDPOINTS = {
   context: '/api/contexts',
 };
 
+const EDGE_PAIRS = [
+  { a:'project',    b:'module',     a_to_b:'contains',         b_to_a:'belongs_to_project' },
+  { a:'project',    b:'submodule',  a_to_b:'contains',         b_to_a:'belongs_to_project' },
+  { a:'project',    b:'file',       a_to_b:'contains',         b_to_a:'belongs_to_project' },
+  { a:'project',    b:'task',       a_to_b:'has_task',         b_to_a:'belongs_to_project' },
+  { a:'project',    b:'user_story', a_to_b:'has_user_story',   b_to_a:'belongs_to_project' },
+  { a:'project',    b:'epic',       a_to_b:'has_epic',         b_to_a:'belongs_to_project' },
+  { a:'project',    b:'todo_item',  a_to_b:'has_todo',         b_to_a:'belongs_to_project' },
+  { a:'project',    b:'persona',    a_to_b:'has_persona',      b_to_a:'belongs_to_project' },
+  { a:'project',    b:'workflow',   a_to_b:'has_workflow',     b_to_a:'belongs_to_project' },
+  { a:'module',     b:'submodule',  a_to_b:'contains',         b_to_a:'belongs_to_module'  },
+  { a:'module',     b:'file',       a_to_b:'contains',         b_to_a:'belongs_to_module'  },
+  { a:'module',     b:'task',       a_to_b:'has_task',         b_to_a:'belongs_to_module'  },
+  { a:'submodule',  b:'file',       a_to_b:'contains',         b_to_a:'belongs_to_submodule' },
+  { a:'epic',       b:'user_story', a_to_b:'has_user_story',   b_to_a:'belongs_to_epic'    },
+  { a:'epic',       b:'task',       a_to_b:'has_task',         b_to_a:'belongs_to_epic'    },
+  { a:'user_story', b:'task',       a_to_b:'has_task',         b_to_a:'belongs_to_story'   },
+];
+
+function findEdgePair(typeA, typeB) {
+  return EDGE_PAIRS.find(p =>
+    (p.a === typeA && p.b === typeB) || (p.a === typeB && p.b === typeA)
+  );
+}
+
+const ALL_EDGE_TYPES = [
+  'contains','has_task','has_context','belongs_to_project','belongs_to_module',
+  'belongs_to_submodule','belongs_to_task','belongs_to_story','has_todo',
+  'has_user_story','belongs_to_user_story','belongs_to_epic','has_epic',
+  'has_persona','has_workflow','has_module','has_submodule',
+];
+
+const CREATE_ENDPOINTS = {
+  projects:'/api/projects', modules:'/api/modules', submodules:'/api/submodules',
+  files:'/api/files', tasks:'/api/tasks', todos:'/api/todos',
+  'user-stories':'/api/user-stories', epics:'/api/epics',
+  personas:'/api/personas', workflows:'/api/workflows', contexts:'/api/contexts',
+};
+
+// Maps CREATE_ENDPOINTS key → node_type used in EDGE_PAIRS
+const TYPE_MAP = {
+  projects:'project', modules:'module', submodules:'submodule',
+  files:'file', tasks:'task', todos:'todo_item',
+  'user-stories':'user_story', epics:'epic',
+  personas:'persona', workflows:'workflow', contexts:'context',
+};
+
 // Node colors by type
 const NODE_COLORS = {
   project:     { bg:'#3b82f6', fg:'#fff' },
@@ -391,21 +454,23 @@ const App = {
       ],
       layout: { name: 'cose' },
       wheelSensitivity: 0.3,
+      boxSelectionEnabled: true,
     });
 
-    this.cy.on('tap', 'node', evt => {
-      const node = evt.target;
-      const data = node.data();
-      const detail = document.getElementById('node-detail');
-      document.getElementById('nd-title').textContent = `${data.node_type}: ${data.label}`;
-      document.getElementById('nd-body').textContent = JSON.stringify(data, null, 2);
-      detail.style.display = 'block';
-      this.editingNode = data;
+    this.cy.on('tap', 'node', () => {
+      // Defer to select/unselect events which fire after tap updates selection
+      setTimeout(() => this.onSelectionChange(), 0);
     });
     this.cy.on('tap', evt => {
       if (evt.target === this.cy) {
+        this.cy.$('node:selected').unselect();
         document.getElementById('node-detail').style.display = 'none';
+        document.getElementById('multi-select-panel').style.display = 'none';
+        this.editingNode = null;
       }
+    });
+    this.cy.on('select unselect', 'node', () => {
+      setTimeout(() => this.onSelectionChange(), 0);
     });
   },
 
@@ -569,6 +634,202 @@ const App = {
       this.refresh();
     } catch(e) {
       status('Save failed: ' + e.message, 'err');
+    }
+  },
+
+  onSelectionChange() {
+    const selected = this.cy.$('node:selected');
+    const detail = document.getElementById('node-detail');
+    const multiPanel = document.getElementById('multi-select-panel');
+    if (selected.length >= 2) {
+      detail.style.display = 'none';
+      this.editingNode = null;
+      this._showMultiPanel(selected.map(n => n.data()));
+    } else if (selected.length === 1) {
+      multiPanel.style.display = 'none';
+      const data = selected[0].data();
+      this.editingNode = data;
+      this._showDetailPanel(data);
+    } else {
+      detail.style.display = 'none';
+      multiPanel.style.display = 'none';
+      this.editingNode = null;
+    }
+  },
+
+  _showDetailPanel(data) {
+    document.getElementById('nd-title').textContent = `${data.node_type}: ${data.label}`;
+    document.getElementById('nd-body').textContent = JSON.stringify(data, null, 2);
+    document.getElementById('node-detail').style.display = 'block';
+  },
+
+  _showMultiPanel(nodes) {
+    document.getElementById('msp-title').textContent = `${nodes.length} nodes selected`;
+    const rows = [];
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i], b = nodes[j];
+        const pair = findEdgePair(a.node_type, b.node_type);
+        if (pair) {
+          const [src, dst] = pair.a === a.node_type ? [a, b] : [b, a];
+          rows.push(`<div class="pair-row">
+            <span>${src.label} → <em>${pair.a_to_b}</em> → ${dst.label}</span><br>
+            <span>${dst.label} → <em>${pair.b_to_a}</em> → ${src.label}</span>
+          </div>`);
+        } else if (a.node_type === 'context' || b.node_type === 'context') {
+          const [nonCtx, ctx] = a.node_type === 'context' ? [b, a] : [a, b];
+          rows.push(`<div class="pair-row">${nonCtx.label} → <em>has_context</em> → ${ctx.label}</div>`);
+        } else {
+          rows.push(`<div class="pair-row no-pair">${a.label} ↔ ${b.label}: no known edge pair</div>`);
+        }
+      }
+    }
+    document.getElementById('msp-pairs').innerHTML = rows.join('');
+    document.getElementById('multi-select-panel').style.display = 'block';
+  },
+
+  async linkSelected() {
+    const selected = this.cy.$('node:selected').map(n => n.data());
+    let linked = 0;
+    const errors = [];
+    for (let i = 0; i < selected.length; i++) {
+      for (let j = i + 1; j < selected.length; j++) {
+        const a = selected[i], b = selected[j];
+        const pair = findEdgePair(a.node_type, b.node_type);
+        if (pair) {
+          const [srcId, dstId] = pair.a === a.node_type ? [a.id, b.id] : [b.id, a.id];
+          try {
+            await apiPost('/api/link', { from_id: srcId, edge: pair.a_to_b, to_id: dstId });
+            await apiPost('/api/link', { from_id: dstId, edge: pair.b_to_a, to_id: srcId });
+            linked++;
+          } catch(e) { errors.push(e.message); }
+        } else if (a.node_type === 'context' || b.node_type === 'context') {
+          const [nonCtx, ctx] = a.node_type === 'context' ? [b, a] : [a, b];
+          try {
+            await apiPost('/api/link', { from_id: nonCtx.id, edge: 'has_context', to_id: ctx.id });
+            linked++;
+          } catch(e) { errors.push(e.message); }
+        }
+      }
+    }
+    if (errors.length) {
+      status(`Linked ${linked} pair(s), ${errors.length} error(s): ${errors[0]}`, 'err');
+    } else if (linked > 0) {
+      status(`Linked ${linked} pair(s)`, 'ok');
+      this.refresh();
+    } else {
+      status('No linkable pairs found', 'err');
+    }
+  },
+
+  openAddLink() {
+    const data = this.editingNode;
+    if (!data) { status('No node selected', 'err'); return; }
+    document.getElementById('modal-title').textContent = `Add & Link to: ${data.label}`;
+    const typeOptions = Object.keys(CREATE_ENDPOINTS)
+      .map(t => `<option value="${t}">${t}</option>`).join('');
+    const form = document.getElementById('modal-form');
+    form.innerHTML = `
+      <label><span>Node Type *</span>
+        <select name="new_node_type" onchange="App._updateAddLinkFields(this.value)">${typeOptions}</select>
+      </label>
+      <div id="add-link-fields"></div>
+    `;
+    const btn = document.querySelector('#modal .modal-btns .submit');
+    btn.textContent = 'Create & Link';
+    btn.onclick = () => App.submitAddLink();
+    document.getElementById('modal').style.display = 'flex';
+    this._updateAddLinkFields(Object.keys(CREATE_ENDPOINTS)[0]);
+  },
+
+  _updateAddLinkFields(type) {
+    const data = this.editingNode;
+    const container = document.getElementById('add-link-fields');
+    if (!container || !data) return;
+    const schema = SCHEMAS[type];
+    if (!schema) { container.innerHTML = ''; return; }
+
+    if (type === 'contexts') {
+      const ctxFields = schema.filter(f => f.name !== 'link_to');
+      let html = ctxFields.map(f => {
+        const inp = f.type === 'textarea'
+          ? `<textarea name="field_${f.name}" ${f.required?'required':''}></textarea>`
+          : `<input type="text" name="field_${f.name}" ${f.required?'required':''}>`;
+        return `<label><span>${f.label}${f.required?' *':''}</span>${inp}</label>`;
+      }).join('');
+      html += `<input type="hidden" name="field_link_to" value="${data.id}">`;
+      container.innerHTML = html;
+    } else {
+      let html = schema.map(f => {
+        const val = f.fill === 'projectId' ? (this.projectId || '') : '';
+        const inp = f.type === 'textarea'
+          ? `<textarea name="field_${f.name}" ${f.required?'required':''}>${val}</textarea>`
+          : `<input type="text" name="field_${f.name}" value="${val}" ${f.required?'required':''}>`;
+        return `<label><span>${f.label}${f.required?' *':''}</span>${inp}</label>`;
+      }).join('');
+      const newNodeType = TYPE_MAP[type] || type;
+      const pair = findEdgePair(data.node_type, newNodeType);
+      if (pair) {
+        const [fwd, rev] = pair.a === data.node_type
+          ? [pair.a_to_b, pair.b_to_a] : [pair.b_to_a, pair.a_to_b];
+        html += `<div style="margin-top:8px;padding:6px;background:#0f1117;border-radius:4px;font-size:11px;color:#94a3b8;">
+          Edges: this → <em>${fwd}</em> → new &nbsp;|&nbsp; new → <em>${rev}</em> → this
+        </div>`;
+        html += `<input type="hidden" name="edge_fwd" value="${fwd}">`;
+        html += `<input type="hidden" name="edge_rev" value="${rev}">`;
+      } else {
+        const opts = ALL_EDGE_TYPES.map(e => `<option value="${e}">${e}</option>`).join('');
+        html += `<label><span>Edge (this → new)</span><select name="edge_fwd">${opts}</select></label>`;
+        html += `<input type="hidden" name="edge_rev" value="">`;
+      }
+      container.innerHTML = html;
+    }
+  },
+
+  async submitAddLink() {
+    const data = this.editingNode;
+    if (!data) return;
+    const form = document.getElementById('modal-form');
+    const formData = new FormData(form);
+    const type = formData.get('new_node_type');
+    const endpoint = CREATE_ENDPOINTS[type];
+    if (!endpoint) { status('Unknown type: ' + type, 'err'); return; }
+
+    const fields = {};
+    for (const [key, val] of formData.entries()) {
+      if (key.startsWith('field_')) fields[key.slice(6)] = val;
+    }
+
+    try {
+      let body;
+      if (type === 'contexts') {
+        const cf = {};
+        if (fields.fields_type) cf.type = fields.fields_type;
+        if (fields.fields_content) cf.content = fields.fields_content;
+        if (fields.fields_description) cf.description = fields.fields_description;
+        body = { fields: cf, link_to: fields.link_to || data.id };
+      } else {
+        body = fields;
+      }
+
+      const newNode = await apiPost(endpoint, body);
+
+      if (type !== 'contexts') {
+        const edgeFwd = formData.get('edge_fwd');
+        const edgeRev = formData.get('edge_rev');
+        if (edgeFwd) {
+          await apiPost('/api/link', { from_id: data.id, edge: edgeFwd, to_id: newNode.id });
+        }
+        if (edgeRev) {
+          await apiPost('/api/link', { from_id: newNode.id, edge: edgeRev, to_id: data.id });
+        }
+      }
+
+      this.closeModal();
+      status('Created & linked', 'ok');
+      this.refresh();
+    } catch(e) {
+      status('Create & link failed: ' + e.message, 'err');
     }
   },
 
