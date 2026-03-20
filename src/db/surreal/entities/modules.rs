@@ -244,6 +244,90 @@ impl DB {
         }
     }
 
+    /// Updates a module's name, description, or notes.
+    pub async fn update_module(
+        &self,
+        module_id: &str,
+        name: Option<String>,
+        description: Option<String>,
+        notes: Option<String>,
+    ) -> anyhow::Result<Option<crate::models::Module>> {
+        let key = module_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(module_id);
+
+        let mut patch = serde_json::Map::new();
+        if let Some(name) = name {
+            patch.insert("name".to_string(), serde_json::Value::String(name));
+        }
+        if let Some(description) = description {
+            patch.insert("description".to_string(), serde_json::Value::String(description));
+        }
+        if let Some(notes) = notes {
+            patch.insert("notes".to_string(), serde_json::Value::String(notes));
+        }
+
+        if patch.is_empty() {
+            return self.get_module(module_id).await;
+        }
+
+        let updated: Option<surrealdb::types::Value> = self
+            .client
+            .update(("module", key))
+            .merge(json_to_surreal(serde_json::Value::Object(patch)))
+            .await?;
+
+        if let Some(val) = updated {
+            let json = surreal_to_json(val);
+            Ok(Some(serde_json::from_value(json)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Updates a submodule's name, description, or notes.
+    pub async fn update_submodule(
+        &self,
+        submodule_id: &str,
+        name: Option<String>,
+        description: Option<String>,
+        notes: Option<String>,
+    ) -> anyhow::Result<Option<crate::models::Submodule>> {
+        let key = submodule_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(submodule_id);
+
+        let mut patch = serde_json::Map::new();
+        if let Some(name) = name {
+            patch.insert("name".to_string(), serde_json::Value::String(name));
+        }
+        if let Some(description) = description {
+            patch.insert("description".to_string(), serde_json::Value::String(description));
+        }
+        if let Some(notes) = notes {
+            patch.insert("notes".to_string(), serde_json::Value::String(notes));
+        }
+
+        if patch.is_empty() {
+            return self.get_submodule(submodule_id).await;
+        }
+
+        let updated: Option<surrealdb::types::Value> = self
+            .client
+            .update(("submodule", key))
+            .merge(json_to_surreal(serde_json::Value::Object(patch)))
+            .await?;
+
+        if let Some(val) = updated {
+            let json = surreal_to_json(val);
+            Ok(Some(serde_json::from_value(json)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Deletes a module by id.
     pub async fn delete_module(&self, module_id: &str) -> anyhow::Result<bool> {
         let key = module_id

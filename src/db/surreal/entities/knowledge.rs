@@ -62,6 +62,32 @@ impl DB {
             .collect())
     }
 
+    /// Updates a context record with arbitrary fields (schemaless merge).
+    pub async fn update_context(
+        &self,
+        context_id: &str,
+        fields: serde_json::Map<String, serde_json::Value>,
+    ) -> anyhow::Result<serde_json::Value> {
+        let key = context_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(context_id);
+
+        if fields.is_empty() {
+            let val: Option<surrealdb::types::Value> =
+                self.client.select(("context", key)).await?;
+            return Ok(val.map(surreal_to_json).unwrap_or(serde_json::Value::Null));
+        }
+
+        let updated: Option<surrealdb::types::Value> = self
+            .client
+            .update(("context", key))
+            .merge(json_to_surreal(serde_json::Value::Object(fields)))
+            .await?;
+
+        Ok(updated.map(surreal_to_json).unwrap_or(serde_json::Value::Null))
+    }
+
     /// Links a structural node to a context record via has_context and creates reverse belongs_to_* edges.
     pub async fn link_context(&self, from_id: &str, to_context_id: &str) -> anyhow::Result<()> {
         ensure_context_record_id(to_context_id)?;

@@ -78,6 +78,44 @@ impl DB {
         .await
     }
 
+    /// Updates a workflow's name or content.
+    pub async fn update_workflow(
+        &self,
+        workflow_id: &str,
+        name: Option<String>,
+        content: Option<String>,
+    ) -> anyhow::Result<Option<crate::models::Workflow>> {
+        let key = workflow_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(workflow_id);
+
+        let mut patch = serde_json::Map::new();
+        if let Some(name) = name {
+            patch.insert("name".to_string(), serde_json::Value::String(name));
+        }
+        if let Some(content) = content {
+            patch.insert("content".to_string(), serde_json::Value::String(content));
+        }
+
+        if patch.is_empty() {
+            return self.get_workflow(workflow_id).await;
+        }
+
+        let updated: Option<surrealdb::types::Value> = self
+            .client
+            .update(("workflow", key))
+            .merge(json_to_surreal(serde_json::Value::Object(patch)))
+            .await?;
+
+        if let Some(val) = updated {
+            let json = surreal_to_json(val);
+            Ok(Some(serde_json::from_value(json)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Deletes a workflow by id.
     pub async fn delete_workflow(&self, workflow_id: &str) -> anyhow::Result<bool> {
         let key = workflow_id

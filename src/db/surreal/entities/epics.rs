@@ -216,6 +216,44 @@ impl DB {
         }
     }
 
+    /// Updates an epic's title or description.
+    pub async fn update_epic(
+        &self,
+        epic_id: &str,
+        title: Option<String>,
+        description: Option<String>,
+    ) -> anyhow::Result<Option<crate::models::Epic>> {
+        let key = epic_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(epic_id);
+
+        let mut patch = serde_json::Map::new();
+        if let Some(title) = title {
+            patch.insert("title".to_string(), serde_json::Value::String(title));
+        }
+        if let Some(description) = description {
+            patch.insert("description".to_string(), serde_json::Value::String(description));
+        }
+
+        if patch.is_empty() {
+            return self.get_epic(epic_id).await;
+        }
+
+        let updated: Option<surrealdb::types::Value> = self
+            .client
+            .update(("epic", key))
+            .merge(json_to_surreal(serde_json::Value::Object(patch)))
+            .await?;
+
+        if let Some(val) = updated {
+            let json = surreal_to_json(val);
+            Ok(Some(serde_json::from_value(json)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Deletes an epic by id.
     pub async fn delete_epic(&self, epic_id: &str) -> anyhow::Result<bool> {
         let key = epic_id

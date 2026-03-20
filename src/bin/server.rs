@@ -3,7 +3,7 @@ use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::{Html, IntoResponse},
-    routing::{delete, get, patch, post},
+    routing::{get, patch, post},
 };
 use axum::Json;
 use clap::Parser;
@@ -148,6 +148,68 @@ struct CreateContextBody {
 }
 
 #[derive(Deserialize)]
+struct UpdateProjectBody {
+    name: Option<String>,
+    description: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct UpdateModuleBody {
+    name: Option<String>,
+    description: Option<String>,
+    notes: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct UpdateSubmoduleBody {
+    name: Option<String>,
+    description: Option<String>,
+    notes: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct UpdateFileBody {
+    name: Option<String>,
+    path: Option<String>,
+    description: Option<String>,
+    notes: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct UpdateUserStoryBody {
+    title: Option<String>,
+    description: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct UpdateEpicBody {
+    title: Option<String>,
+    description: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct UpdateTodoBody {
+    content: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct UpdatePersonaBody {
+    name: Option<String>,
+    content: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct UpdateWorkflowBody {
+    name: Option<String>,
+    content: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct UpdateContextBody {
+    fields: serde_json::Map<String, serde_json::Value>,
+}
+
+#[derive(Deserialize)]
 struct LinkBody {
     from_id: String,
     edge: String,
@@ -191,6 +253,15 @@ async fn delete_project(
     } else {
         Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
     }
+}
+
+async fn update_project(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<UpdateProjectBody>,
+) -> ApiResult<serde_json::Value> {
+    let updated = state.db.update_project(&id, body.name, body.description).await?;
+    Ok(Json(serde_json::to_value(updated)?))
 }
 
 // Modules
@@ -237,6 +308,15 @@ async fn delete_module(
     }
 }
 
+async fn update_module(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<UpdateModuleBody>,
+) -> ApiResult<serde_json::Value> {
+    let updated = state.db.update_module(&id, body.name, body.description, body.notes).await?;
+    Ok(Json(serde_json::to_value(updated)?))
+}
+
 // Submodules
 async fn list_submodules_by_module(
     Path(mid): Path<String>,
@@ -273,6 +353,15 @@ async fn delete_submodule(
     } else {
         Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
     }
+}
+
+async fn update_submodule(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<UpdateSubmoduleBody>,
+) -> ApiResult<serde_json::Value> {
+    let updated = state.db.update_submodule(&id, body.name, body.description, body.notes).await?;
+    Ok(Json(serde_json::to_value(updated)?))
 }
 
 // Files
@@ -320,6 +409,15 @@ async fn delete_file(
     } else {
         Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
     }
+}
+
+async fn update_file(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<UpdateFileBody>,
+) -> ApiResult<serde_json::Value> {
+    let updated = state.db.update_file(&id, body.name, body.path, body.description, body.notes).await?;
+    Ok(Json(serde_json::to_value(updated)?))
 }
 
 // Tasks
@@ -407,6 +505,15 @@ async fn delete_todo(
     }
 }
 
+async fn update_todo(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<UpdateTodoBody>,
+) -> ApiResult<serde_json::Value> {
+    let updated = state.db.update_todo(&id, body.content).await?;
+    Ok(Json(serde_json::to_value(updated)?))
+}
+
 // User stories
 async fn list_user_stories_by_project(
     Path(pid): Path<String>,
@@ -437,6 +544,15 @@ async fn delete_user_story(
     } else {
         Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
     }
+}
+
+async fn update_user_story(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<UpdateUserStoryBody>,
+) -> ApiResult<serde_json::Value> {
+    let updated = state.db.update_user_story(&id, body.title, body.description).await?;
+    Ok(Json(serde_json::to_value(updated)?))
 }
 
 // Epics
@@ -471,6 +587,15 @@ async fn delete_epic(
     }
 }
 
+async fn update_epic(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<UpdateEpicBody>,
+) -> ApiResult<serde_json::Value> {
+    let updated = state.db.update_epic(&id, body.title, body.description).await?;
+    Ok(Json(serde_json::to_value(updated)?))
+}
+
 // Personas
 async fn list_personas_by_project(
     Path(pid): Path<String>,
@@ -501,6 +626,15 @@ async fn delete_persona(
     } else {
         Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
     }
+}
+
+async fn update_persona(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<UpdatePersonaBody>,
+) -> ApiResult<serde_json::Value> {
+    let updated = state.db.update_persona(&id, body.name, body.content).await?;
+    Ok(Json(serde_json::to_value(updated)?))
 }
 
 // Workflows
@@ -535,6 +669,15 @@ async fn delete_workflow(
     }
 }
 
+async fn update_workflow(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<UpdateWorkflowBody>,
+) -> ApiResult<serde_json::Value> {
+    let updated = state.db.update_workflow(&id, body.name, body.content).await?;
+    Ok(Json(serde_json::to_value(updated)?))
+}
+
 // Contexts
 async fn create_context(
     State(state): State<Arc<AppState>>,
@@ -548,6 +691,15 @@ async fn create_context(
         .to_string();
     state.db.link_context(&body.link_to, &ctx_id).await?;
     Ok(Json(created))
+}
+
+async fn update_context(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<UpdateContextBody>,
+) -> ApiResult<serde_json::Value> {
+    let updated = state.db.update_context(&id, body.fields).await?;
+    Ok(Json(updated))
 }
 
 // Context queries
@@ -606,7 +758,7 @@ fn build_router(state: Arc<AppState>) -> Router {
     Router::new()
         // Projects
         .route("/api/projects", get(list_projects).post(create_project))
-        .route("/api/projects/:id", delete(delete_project))
+        .route("/api/projects/:id", patch(update_project).delete(delete_project))
         .route("/api/projects/:pid/modules", get(list_modules_by_project))
         .route("/api/projects/:pid/files", get(list_files_by_project))
         .route("/api/projects/:pid/tasks", get(list_tasks_by_project))
@@ -617,35 +769,36 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/projects/:pid/workflows", get(list_workflows_by_project))
         // Modules
         .route("/api/modules", get(list_modules).post(create_module))
-        .route("/api/modules/:id", delete(delete_module))
+        .route("/api/modules/:id", patch(update_module).delete(delete_module))
         .route("/api/modules/:mid/submodules", get(list_submodules_by_module))
         .route("/api/modules/:mid/files", get(list_files_by_module))
         // Submodules
         .route("/api/submodules", post(create_submodule))
-        .route("/api/submodules/:id", delete(delete_submodule))
+        .route("/api/submodules/:id", patch(update_submodule).delete(delete_submodule))
         // Files
         .route("/api/files", post(create_file))
-        .route("/api/files/:id", delete(delete_file))
+        .route("/api/files/:id", patch(update_file).delete(delete_file))
         // Tasks
         .route("/api/tasks", post(create_task))
         .route("/api/tasks/:id", patch(update_task).delete(delete_task))
         // Todos
         .route("/api/todos", post(create_todo))
-        .route("/api/todos/:id", delete(delete_todo))
+        .route("/api/todos/:id", patch(update_todo).delete(delete_todo))
         // User stories
         .route("/api/user-stories", post(create_user_story))
-        .route("/api/user-stories/:id", delete(delete_user_story))
+        .route("/api/user-stories/:id", patch(update_user_story).delete(delete_user_story))
         // Epics
         .route("/api/epics", post(create_epic))
-        .route("/api/epics/:id", delete(delete_epic))
+        .route("/api/epics/:id", patch(update_epic).delete(delete_epic))
         // Personas
         .route("/api/personas", post(create_persona))
-        .route("/api/personas/:id", delete(delete_persona))
+        .route("/api/personas/:id", patch(update_persona).delete(delete_persona))
         // Workflows
         .route("/api/workflows", post(create_workflow))
-        .route("/api/workflows/:id", delete(delete_workflow))
+        .route("/api/workflows/:id", patch(update_workflow).delete(delete_workflow))
         // Context
         .route("/api/contexts", post(create_context))
+        .route("/api/contexts/:id", patch(update_context))
         .route("/api/ctx/task/:id", get(get_task_context))
         .route("/api/ctx/file/:id", get(get_file_context))
         .route("/api/ctx/epic/:id", get(get_epic_context))

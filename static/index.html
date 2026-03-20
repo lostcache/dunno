@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dunno UI</title>
+<script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; font-size: 14px; height: 100vh; display: flex; flex-direction: column; background: #0f1117; color: #e2e8f0; }
+
+  nav { display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: #1a1d27; border-bottom: 1px solid #2d3148; flex-shrink: 0; }
+  nav h1 { font-size: 16px; font-weight: 700; color: #a78bfa; margin-right: 8px; }
+  nav select { background: #252840; color: #e2e8f0; border: 1px solid #3d4165; padding: 4px 8px; border-radius: 4px; }
+  nav button { background: #252840; color: #e2e8f0; border: 1px solid #3d4165; padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+  nav button:hover { background: #3d4165; }
+  nav .view-btns { margin-left: auto; display: flex; gap: 6px; }
+  nav .view-btns button.active { background: #5b45d6; border-color: #7c6df0; }
+
+  .main-area { display: flex; flex: 1; overflow: hidden; }
+
+  aside { width: 220px; flex-shrink: 0; background: #14172a; border-right: 1px solid #2d3148; display: flex; flex-direction: column; overflow: hidden; }
+  .entity-tabs { display: flex; flex-direction: column; overflow-y: auto; flex: 1; padding: 8px 0; }
+  .entity-tab { padding: 6px 16px; cursor: pointer; color: #94a3b8; font-size: 13px; border-left: 3px solid transparent; }
+  .entity-tab:hover { background: #1e2135; color: #e2e8f0; }
+  .entity-tab.active { border-left-color: #7c6df0; color: #a78bfa; background: #1e2135; }
+  .sidebar-actions { padding: 10px 12px; border-top: 1px solid #2d3148; display: flex; gap: 6px; }
+  .sidebar-actions button { flex: 1; padding: 6px; background: #5b45d6; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .sidebar-actions button:hover { background: #7c6df0; }
+  .item-list { padding: 0 8px 8px; overflow-y: auto; max-height: 280px; }
+  .item-row { padding: 5px 8px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: #cbd5e1; font-size: 12px; }
+  .item-row:hover { background: #1e2135; }
+  .item-row .del-btn { opacity: 0; color: #f87171; font-size: 11px; border: none; background: none; cursor: pointer; }
+  .item-row:hover .del-btn { opacity: 1; }
+
+  main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+  /* Graph view */
+  #graph-view { flex: 1; display: flex; flex-direction: column; position: relative; }
+  #cy { flex: 1; background: #0f1117; }
+  #node-detail { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px 16px; background: #14172a; border-top: 1px solid #2d3148; max-height: 160px; overflow-y: auto; font-size: 12px; display: none; z-index: 10; }
+  #node-detail h3 { color: #a78bfa; margin-bottom: 6px; }
+  #node-detail pre { white-space: pre-wrap; word-break: break-all; color: #94a3b8; }
+
+  /* Context view */
+  #ctx-view { flex: 1; padding: 20px; display: none; flex-direction: column; gap: 12px; }
+  #ctx-view .ctx-controls { display: flex; gap: 8px; align-items: center; }
+  #ctx-view select, #ctx-view input { background: #252840; color: #e2e8f0; border: 1px solid #3d4165; padding: 6px 10px; border-radius: 4px; }
+  #ctx-view input { flex: 1; }
+  #ctx-view button { padding: 6px 14px; background: #5b45d6; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+  #ctx-view button:hover { background: #7c6df0; }
+  #ctx-view label { display: flex; align-items: center; gap: 4px; color: #94a3b8; }
+  #ctx-output { flex: 1; overflow-y: auto; }
+  #ctx-output pre { background: #14172a; border: 1px solid #2d3148; padding: 12px; border-radius: 6px; white-space: pre-wrap; word-break: break-all; color: #94a3b8; font-size: 12px; }
+
+  /* Status bar */
+  #status { padding: 5px 16px; background: #14172a; border-top: 1px solid #2d3148; font-size: 12px; color: #64748b; flex-shrink: 0; min-height: 24px; }
+  #status.ok { color: #4ade80; }
+  #status.err { color: #f87171; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: flex; align-items: center; justify-content: center; }
+  .modal { background: #1a1d27; border: 1px solid #3d4165; border-radius: 8px; padding: 20px; min-width: 360px; max-width: 500px; width: 90%; }
+  .modal h2 { color: #a78bfa; margin-bottom: 14px; font-size: 16px; }
+  .modal label { display: block; margin-bottom: 10px; }
+  .modal label span { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+  .modal input, .modal textarea, .modal select { width: 100%; background: #252840; color: #e2e8f0; border: 1px solid #3d4165; padding: 6px 10px; border-radius: 4px; font-size: 13px; font-family: inherit; }
+  .modal textarea { height: 80px; resize: vertical; }
+  .modal .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .modal .modal-btns button { padding: 6px 16px; border-radius: 4px; cursor: pointer; border: none; font-size: 13px; }
+  .modal .modal-btns .cancel { background: #252840; color: #94a3b8; }
+  .modal .modal-btns .submit { background: #5b45d6; color: #fff; }
+  .modal .modal-btns .submit:hover { background: #7c6df0; }
+</style>
+</head>
+<body>
+
+<nav>
+  <h1>Dunno UI</h1>
+  <select id="project-select"><option value="">— select project —</option></select>
+  <button onclick="App.refresh()" title="Refresh">↻</button>
+  <div class="view-btns">
+    <button id="btn-graph" class="active" onclick="App.setView('graph')">Graph</button>
+    <button id="btn-ctx" onclick="App.setView('ctx')">Context</button>
+  </div>
+</nav>
+
+<div class="main-area">
+  <aside>
+    <div class="entity-tabs" id="entity-tabs"></div>
+    <div class="item-list" id="item-list"></div>
+    <div class="sidebar-actions">
+      <button onclick="App.openCreate()">+ Create</button>
+    </div>
+  </aside>
+
+  <main>
+    <div id="graph-view">
+      <div id="cy"></div>
+      <div id="node-detail">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <h3 id="nd-title"></h3>
+          <button onclick="App.openEdit()" style="padding:3px 10px;background:#5b45d6;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Edit</button>
+        </div>
+        <pre id="nd-body"></pre>
+      </div>
+    </div>
+
+    <div id="ctx-view">
+      <div class="ctx-controls">
+        <select id="ctx-type">
+          <option value="task">Task</option>
+          <option value="file">File</option>
+          <option value="epic">Epic</option>
+        </select>
+        <input id="ctx-id" placeholder="record id e.g. task:abc123">
+        <label><input type="checkbox" id="ctx-full"> Full</label>
+        <button onclick="App.fetchCtx()">Fetch</button>
+      </div>
+      <div id="ctx-output"><pre>Select type and enter an ID, then click Fetch.</pre></div>
+    </div>
+  </main>
+</div>
+
+<div id="status">Ready</div>
+
+<div id="modal" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <h2 id="modal-title">Create</h2>
+    <form id="modal-form"></form>
+    <div class="modal-btns">
+      <button class="cancel" onclick="App.closeModal()">Cancel</button>
+      <button class="submit" onclick="App.submitCreate()">Create</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ENTITY_TABS = [
+  'projects','modules','submodules','files','tasks','todos','user-stories','epics','personas','workflows','contexts'
+];
+
+const SCHEMAS = {
+  projects: [
+    { name:'name', label:'Name', type:'text', required:true },
+    { name:'description', label:'Description', type:'textarea', required:true },
+  ],
+  modules: [
+    { name:'name', label:'Name', type:'text', required:true },
+    { name:'description', label:'Description', type:'textarea', required:true },
+    { name:'notes', label:'Notes', type:'textarea' },
+    { name:'project_id', label:'Project ID', type:'text', required:true, fill:'projectId' },
+  ],
+  submodules: [
+    { name:'name', label:'Name', type:'text', required:true },
+    { name:'description', label:'Description', type:'textarea', required:true },
+    { name:'notes', label:'Notes', type:'textarea' },
+    { name:'module_id', label:'Module ID', type:'text', required:true },
+    { name:'project_id', label:'Project ID', type:'text', required:true, fill:'projectId' },
+  ],
+  files: [
+    { name:'name', label:'Name', type:'text', required:true },
+    { name:'path', label:'Path', type:'text', required:true },
+    { name:'description', label:'Description', type:'textarea' },
+    { name:'notes', label:'Notes', type:'textarea' },
+    { name:'project_id', label:'Project ID', type:'text', required:true, fill:'projectId' },
+    { name:'parent_id', label:'Parent ID (module or submodule)', type:'text' },
+  ],
+  tasks: [
+    { name:'name', label:'Name', type:'text', required:true },
+    { name:'description', label:'Description', type:'textarea', required:true },
+    { name:'module_id', label:'Module ID', type:'text' },
+    { name:'project_id', label:'Project ID', type:'text', fill:'projectId' },
+  ],
+  todos: [
+    { name:'content', label:'Content', type:'textarea', required:true },
+    { name:'project_id', label:'Project ID', type:'text', fill:'projectId' },
+  ],
+  'user-stories': [
+    { name:'title', label:'Title', type:'text', required:true },
+    { name:'description', label:'Description', type:'textarea', required:true },
+    { name:'project_id', label:'Project ID', type:'text', required:true, fill:'projectId' },
+  ],
+  epics: [
+    { name:'title', label:'Title', type:'text', required:true },
+    { name:'description', label:'Description', type:'textarea', required:true },
+    { name:'project_id', label:'Project ID', type:'text', required:true, fill:'projectId' },
+  ],
+  personas: [
+    { name:'name', label:'Name', type:'text', required:true },
+    { name:'content', label:'Content', type:'textarea', required:true },
+    { name:'project_id', label:'Project ID', type:'text', required:true, fill:'projectId' },
+  ],
+  workflows: [
+    { name:'name', label:'Name', type:'text', required:true },
+    { name:'content', label:'Content', type:'textarea', required:true },
+    { name:'project_id', label:'Project ID', type:'text', required:true, fill:'projectId' },
+  ],
+  contexts: [
+    { name:'link_to', label:'Link To (node ID)', type:'text', required:true },
+    { name:'fields_type', label:'Type', type:'text', required:true },
+    { name:'fields_content', label:'Content', type:'textarea' },
+    { name:'fields_description', label:'Description', type:'textarea' },
+  ],
+};
+
+const EDIT_SCHEMAS = {
+  project: [
+    { name:'name', label:'Name', type:'text' },
+    { name:'description', label:'Description', type:'textarea' },
+  ],
+  module: [
+    { name:'name', label:'Name', type:'text' },
+    { name:'description', label:'Description', type:'textarea' },
+    { name:'notes', label:'Notes', type:'textarea' },
+  ],
+  submodule: [
+    { name:'name', label:'Name', type:'text' },
+    { name:'description', label:'Description', type:'textarea' },
+    { name:'notes', label:'Notes', type:'textarea' },
+  ],
+  file: [
+    { name:'name', label:'Name', type:'text' },
+    { name:'path', label:'Path', type:'text' },
+    { name:'description', label:'Description', type:'textarea' },
+    { name:'notes', label:'Notes', type:'textarea' },
+  ],
+  task: [
+    { name:'name', label:'Name', type:'text' },
+    { name:'description', label:'Description', type:'textarea' },
+    { name:'status', label:'Status', type:'select', options:['not_started','started','finished'] },
+  ],
+  todo_item: [
+    { name:'content', label:'Content', type:'textarea' },
+  ],
+  user_story: [
+    { name:'title', label:'Title', type:'text' },
+    { name:'description', label:'Description', type:'textarea' },
+  ],
+  epic: [
+    { name:'title', label:'Title', type:'text' },
+    { name:'description', label:'Description', type:'textarea' },
+  ],
+  persona: [
+    { name:'name', label:'Name', type:'text' },
+    { name:'content', label:'Content', type:'textarea' },
+  ],
+  workflow: [
+    { name:'name', label:'Name', type:'text' },
+    { name:'content', label:'Content', type:'textarea' },
+  ],
+  context: [
+    { name:'type', label:'Type', type:'text' },
+    { name:'content', label:'Content', type:'textarea' },
+    { name:'description', label:'Description', type:'textarea' },
+    { name:'example', label:'Example', type:'textarea' },
+    { name:'severity', label:'Severity', type:'text' },
+    { name:'category', label:'Category', type:'text' },
+  ],
+};
+
+const EDIT_ENDPOINTS = {
+  project: '/api/projects',
+  module: '/api/modules',
+  submodule: '/api/submodules',
+  file: '/api/files',
+  task: '/api/tasks',
+  todo_item: '/api/todos',
+  user_story: '/api/user-stories',
+  epic: '/api/epics',
+  persona: '/api/personas',
+  workflow: '/api/workflows',
+  context: '/api/contexts',
+};
+
+// Node colors by type
+const NODE_COLORS = {
+  project:     { bg:'#3b82f6', fg:'#fff' },
+  module:      { bg:'#8b5cf6', fg:'#fff' },
+  submodule:   { bg:'#a78bfa', fg:'#fff' },
+  file:        { bg:'#22c55e', fg:'#fff' },
+  task:        { bg:'#f97316', fg:'#fff' },
+  context:     { bg:'#ef4444', fg:'#fff' },
+  epic:        { bg:'#eab308', fg:'#000' },
+  user_story:  { bg:'#06b6d4', fg:'#fff' },
+  todo_item:   { bg:'#64748b', fg:'#fff' },
+  persona:     { bg:'#ec4899', fg:'#fff' },
+  workflow:    { bg:'#14b8a6', fg:'#fff' },
+};
+
+const App = {
+  projectId: null,
+  activeTab: 'projects',
+  mainView: 'graph',
+  cy: null,
+  editingNode: null,
+
+  async init() {
+    this.buildEntityTabs();
+    await this.loadProjects();
+    this.initCy();
+    await this.loadGraph();
+    await this.loadItems();
+  },
+
+  buildEntityTabs() {
+    const el = document.getElementById('entity-tabs');
+    el.innerHTML = ENTITY_TABS.map(t =>
+      `<div class="entity-tab${t===this.activeTab?' active':''}" onclick="App.setTab('${t}')">${t}</div>`
+    ).join('');
+  },
+
+  async loadProjects() {
+    const projects = await api('/api/projects');
+    const sel = document.getElementById('project-select');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— select project —</option>' +
+      projects.map(p => `<option value="${p.id}"${p.id===cur?' selected':''}>${p.name}</option>`).join('');
+    if (!this.projectId && projects.length) {
+      this.projectId = projects[0].id;
+      sel.value = this.projectId;
+    }
+    sel.onchange = () => { this.projectId = sel.value || null; this.refresh(); };
+  },
+
+  async refresh() {
+    await this.loadProjects();
+    await this.loadGraph();
+    await this.loadItems();
+    status('Refreshed', 'ok');
+  },
+
+  setTab(tab) {
+    this.activeTab = tab;
+    document.querySelectorAll('.entity-tab').forEach(el => {
+      el.classList.toggle('active', el.textContent === tab);
+    });
+    this.loadItems();
+  },
+
+  setView(view) {
+    this.mainView = view;
+    document.getElementById('graph-view').style.display = view === 'graph' ? 'flex' : 'none';
+    document.getElementById('ctx-view').style.display = view === 'ctx' ? 'flex' : 'none';
+    document.getElementById('btn-graph').classList.toggle('active', view === 'graph');
+    document.getElementById('btn-ctx').classList.toggle('active', view === 'ctx');
+  },
+
+  initCy() {
+    this.cy = cytoscape({
+      container: document.getElementById('cy'),
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'label': 'data(label)',
+            'color': ele => (NODE_COLORS[ele.data('node_type')] || {fg:'#fff'}).fg,
+            'background-color': ele => (NODE_COLORS[ele.data('node_type')] || {bg:'#64748b'}).bg,
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'font-size': '11px',
+            'width': 'label',
+            'height': 'label',
+            'padding': '8px',
+            'shape': ele => {
+              const t = ele.data('node_type');
+              if (t === 'context') return 'diamond';
+              if (t === 'persona' || t === 'workflow') return 'star';
+              return 'roundrectangle';
+            },
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'label': 'data(edge_type)',
+            'font-size': '9px',
+            'color': '#64748b',
+            'curve-style': 'bezier',
+            'target-arrow-shape': 'triangle',
+            'line-color': '#3d4165',
+            'target-arrow-color': '#3d4165',
+            'width': 1,
+            'text-rotation': 'autorotate',
+          }
+        },
+        {
+          selector: ':selected',
+          style: { 'border-width': 2, 'border-color': '#a78bfa' }
+        },
+      ],
+      layout: { name: 'cose' },
+      wheelSensitivity: 0.3,
+    });
+
+    this.cy.on('tap', 'node', evt => {
+      const node = evt.target;
+      const data = node.data();
+      const detail = document.getElementById('node-detail');
+      document.getElementById('nd-title').textContent = `${data.node_type}: ${data.label}`;
+      document.getElementById('nd-body').textContent = JSON.stringify(data, null, 2);
+      detail.style.display = 'block';
+      this.editingNode = data;
+    });
+    this.cy.on('tap', evt => {
+      if (evt.target === this.cy) {
+        document.getElementById('node-detail').style.display = 'none';
+      }
+    });
+  },
+
+  async loadGraph() {
+    try {
+      const data = await api('/api/graph');
+      this.cy.elements().remove();
+      this.cy.add(data.elements);
+      this.cy.layout({ name: 'cose', animate: false, randomize: true }).run();
+    } catch(e) {
+      status('Graph load failed: ' + e.message, 'err');
+    }
+  },
+
+  async loadItems() {
+    const tab = this.activeTab;
+    const pid = this.projectId;
+    let url;
+    try {
+      if (tab === 'projects') url = '/api/projects';
+      else if (tab === 'modules' && pid) url = `/api/projects/${pid}/modules`;
+      else if (tab === 'modules') url = '/api/modules';
+      else if (tab === 'submodules' && pid) { /* loaded via module */ url = null; }
+      else if (tab === 'files' && pid) url = `/api/projects/${pid}/files`;
+      else if (tab === 'tasks' && pid) url = `/api/projects/${pid}/tasks`;
+      else if (tab === 'todos' && pid) url = `/api/projects/${pid}/todos`;
+      else if (tab === 'user-stories' && pid) url = `/api/projects/${pid}/user-stories`;
+      else if (tab === 'epics' && pid) url = `/api/projects/${pid}/epics`;
+      else if (tab === 'personas' && pid) url = `/api/projects/${pid}/personas`;
+      else if (tab === 'workflows' && pid) url = `/api/projects/${pid}/workflows`;
+      else { url = null; }
+
+      if (!url) { document.getElementById('item-list').innerHTML = '<div style="padding:8px;color:#64748b;font-size:12px;">Select a project</div>'; return; }
+      const items = await api(url);
+      this.renderItems(items, tab);
+    } catch(e) {
+      status('Load failed: ' + e.message, 'err');
+    }
+  },
+
+  renderItems(items, tab) {
+    const el = document.getElementById('item-list');
+    if (!items.length) { el.innerHTML = '<div style="padding:8px;color:#64748b;font-size:12px;">No items</div>'; return; }
+    el.innerHTML = items.map(item => {
+      const label = item.name || item.title || item.content || item.id || '?';
+      const id = item.id || '';
+      return `<div class="item-row">
+        <span title="${id}">${label.length > 28 ? label.slice(0,28)+'…' : label}</span>
+        <button class="del-btn" onclick="App.deleteItem('${tab}','${id}',event)">✕</button>
+      </div>`;
+    }).join('');
+  },
+
+  async deleteItem(tab, id, evt) {
+    evt.stopPropagation();
+    const endpoints = {
+      projects: '/api/projects',
+      modules: '/api/modules',
+      submodules: '/api/submodules',
+      files: '/api/files',
+      tasks: '/api/tasks',
+      todos: '/api/todos',
+      'user-stories': '/api/user-stories',
+      epics: '/api/epics',
+      personas: '/api/personas',
+      workflows: '/api/workflows',
+    };
+    const base = endpoints[tab];
+    if (!base) return;
+    try {
+      await apiDel(`${base}/${encodeURIComponent(id)}`);
+      status(`Deleted ${id}`, 'ok');
+      this.refresh();
+    } catch(e) {
+      status('Delete failed: ' + e.message, 'err');
+    }
+  },
+
+  openCreate() {
+    const btn = document.querySelector('#modal .modal-btns .submit');
+    btn.textContent = 'Create';
+    btn.onclick = () => App.submitCreate();
+    const tab = this.activeTab;
+    if (tab === 'contexts') { this.openCreateContext(); return; }
+    const schema = SCHEMAS[tab];
+    if (!schema) { status('No create form for ' + tab, 'err'); return; }
+    document.getElementById('modal-title').textContent = 'Create ' + tab.slice(0,-1);
+    const form = document.getElementById('modal-form');
+    form.innerHTML = schema.map(f => {
+      const val = f.fill === 'projectId' ? (this.projectId || '') : '';
+      const inp = f.type === 'textarea'
+        ? `<textarea name="${f.name}" ${f.required?'required':''}>${val}</textarea>`
+        : `<input type="text" name="${f.name}" value="${val}" ${f.required?'required':''}>`;
+      return `<label><span>${f.label}${f.required?' *':''}</span>${inp}</label>`;
+    }).join('');
+    document.getElementById('modal').style.display = 'flex';
+  },
+
+  openCreateContext() {
+    const btn = document.querySelector('#modal .modal-btns .submit');
+    btn.textContent = 'Create';
+    btn.onclick = () => App.submitCreate();
+    const schema = SCHEMAS['contexts'];
+    document.getElementById('modal-title').textContent = 'Create Context';
+    const form = document.getElementById('modal-form');
+    form.innerHTML = schema.map(f => {
+      const inp = f.type === 'textarea'
+        ? `<textarea name="${f.name}" ${f.required?'required':''}></textarea>`
+        : `<input type="text" name="${f.name}" ${f.required?'required':''}>`;
+      return `<label><span>${f.label}${f.required?' *':''}</span>${inp}</label>`;
+    }).join('');
+    document.getElementById('modal').style.display = 'flex';
+  },
+
+  openEdit() {
+    const data = this.editingNode;
+    if (!data) { status('No node selected', 'err'); return; }
+    const schema = EDIT_SCHEMAS[data.node_type];
+    if (!schema) { status('No edit form for ' + data.node_type, 'err'); return; }
+    document.getElementById('modal-title').textContent = `Edit ${data.node_type}: ${data.label}`;
+    const form = document.getElementById('modal-form');
+    form.innerHTML = schema.map(f => {
+      const val = (data[f.name] != null ? data[f.name] : '');
+      let inp;
+      if (f.type === 'textarea') {
+        inp = `<textarea name="${f.name}">${val}</textarea>`;
+      } else if (f.type === 'select') {
+        const opts = f.options.map(o => `<option value="${o}"${o===val?' selected':''}>${o}</option>`).join('');
+        inp = `<select name="${f.name}">${opts}</select>`;
+      } else {
+        inp = `<input type="text" name="${f.name}" value="${val}">`;
+      }
+      return `<label><span>${f.label}</span>${inp}</label>`;
+    }).join('');
+    const submitBtn = document.querySelector('#modal .modal-btns .submit');
+    submitBtn.textContent = 'Save';
+    submitBtn.onclick = () => App.submitEdit();
+    document.getElementById('modal').style.display = 'flex';
+  },
+
+  async submitEdit() {
+    const data = this.editingNode;
+    if (!data) return;
+    const nodeType = data.node_type;
+    const endpoint = EDIT_ENDPOINTS[nodeType];
+    if (!endpoint) { status('No endpoint for ' + nodeType, 'err'); return; }
+    const form = document.getElementById('modal-form');
+    const raw = Object.fromEntries(new FormData(form).entries());
+    let body;
+    if (nodeType === 'context') {
+      body = { fields: raw };
+    } else {
+      body = raw;
+    }
+    try {
+      await apiPatch(`${endpoint}/${encodeURIComponent(data.id)}`, body);
+      this.closeModal();
+      document.getElementById('node-detail').style.display = 'none';
+      this.editingNode = null;
+      status('Saved', 'ok');
+      this.refresh();
+    } catch(e) {
+      status('Save failed: ' + e.message, 'err');
+    }
+  },
+
+  closeModal() {
+    document.getElementById('modal').style.display = 'none';
+  },
+
+  async submitCreate() {
+    const tab = this.activeTab;
+    const form = document.getElementById('modal-form');
+    const data = Object.fromEntries(new FormData(form).entries());
+
+    let url, body;
+    if (tab === 'contexts') {
+      const fields = {};
+      if (data.fields_type) fields.type = data.fields_type;
+      if (data.fields_content) fields.content = data.fields_content;
+      if (data.fields_description) fields.description = data.fields_description;
+      body = { fields, link_to: data.link_to };
+      url = '/api/contexts';
+    } else {
+      const endpointMap = {
+        projects: '/api/projects',
+        modules: '/api/modules',
+        submodules: '/api/submodules',
+        files: '/api/files',
+        tasks: '/api/tasks',
+        todos: '/api/todos',
+        'user-stories': '/api/user-stories',
+        epics: '/api/epics',
+        personas: '/api/personas',
+        workflows: '/api/workflows',
+      };
+      url = endpointMap[tab];
+      body = data;
+    }
+
+    try {
+      await apiPost(url, body);
+      this.closeModal();
+      status('Created successfully', 'ok');
+      this.refresh();
+    } catch(e) {
+      status('Create failed: ' + e.message, 'err');
+    }
+  },
+
+  async fetchCtx() {
+    const type = document.getElementById('ctx-type').value;
+    const id = document.getElementById('ctx-id').value.trim();
+    const full = document.getElementById('ctx-full').checked;
+    if (!id) { status('Enter an ID', 'err'); return; }
+    try {
+      const data = await api(`/api/ctx/${type}/${encodeURIComponent(id)}?full=${full}`);
+      document.getElementById('ctx-output').innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+      status('Context fetched', 'ok');
+    } catch(e) {
+      status('Fetch failed: ' + e.message, 'err');
+    }
+  },
+};
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+
+async function api(url) {
+  const r = await fetch(url);
+  if (!r.ok) { const e = await r.json().catch(() => ({error: r.statusText})); throw new Error(e.error || r.statusText); }
+  return r.json();
+}
+
+async function apiPost(url, body) {
+  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (!r.ok) { const e = await r.json().catch(() => ({error: r.statusText})); throw new Error(e.error || r.statusText); }
+  return r.json();
+}
+
+async function apiPatch(url, body) {
+  const r = await fetch(url, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (!r.ok) { const e = await r.json().catch(() => ({error: r.statusText})); throw new Error(e.error || r.statusText); }
+  return r.json();
+}
+
+async function apiDel(url) {
+  const r = await fetch(url, { method:'DELETE' });
+  if (!r.ok && r.status !== 204) { const e = await r.json().catch(() => ({error: r.statusText})); throw new Error(e.error || r.statusText); }
+}
+
+function status(msg, cls) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = cls || '';
+  if (cls === 'ok') setTimeout(() => { if (el.textContent === msg) { el.textContent = 'Ready'; el.className = ''; }}, 3000);
+}
+
+// Close modal on overlay click
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target.id === 'modal') App.closeModal();
+});
+
+App.init().catch(e => status('Init failed: ' + e.message, 'err'));
+</script>
+</body>
+</html>

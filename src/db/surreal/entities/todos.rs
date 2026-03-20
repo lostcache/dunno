@@ -59,6 +59,40 @@ impl DB {
         self.list_records("todo_item").await
     }
 
+    /// Updates a todo item's content.
+    pub async fn update_todo(
+        &self,
+        todo_id: &str,
+        content: Option<String>,
+    ) -> anyhow::Result<Option<crate::models::TodoItem>> {
+        let key = todo_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(todo_id);
+
+        let mut patch = serde_json::Map::new();
+        if let Some(content) = content {
+            patch.insert("content".to_string(), serde_json::Value::String(content));
+        }
+
+        if patch.is_empty() {
+            return self.get_todo(todo_id).await;
+        }
+
+        let updated: Option<surrealdb::types::Value> = self
+            .client
+            .update(("todo_item", key))
+            .merge(json_to_surreal(serde_json::Value::Object(patch)))
+            .await?;
+
+        if let Some(val) = updated {
+            let json = surreal_to_json(val);
+            Ok(Some(serde_json::from_value(json)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Deletes a todo by record id.
     pub async fn delete_todo(&self, todo_id: &str) -> anyhow::Result<bool> {
         let key = todo_id

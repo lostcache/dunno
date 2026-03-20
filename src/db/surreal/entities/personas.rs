@@ -78,6 +78,44 @@ impl DB {
         .await
     }
 
+    /// Updates a persona's name or content.
+    pub async fn update_persona(
+        &self,
+        persona_id: &str,
+        name: Option<String>,
+        content: Option<String>,
+    ) -> anyhow::Result<Option<crate::models::Persona>> {
+        let key = persona_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(persona_id);
+
+        let mut patch = serde_json::Map::new();
+        if let Some(name) = name {
+            patch.insert("name".to_string(), serde_json::Value::String(name));
+        }
+        if let Some(content) = content {
+            patch.insert("content".to_string(), serde_json::Value::String(content));
+        }
+
+        if patch.is_empty() {
+            return self.get_persona(persona_id).await;
+        }
+
+        let updated: Option<surrealdb::types::Value> = self
+            .client
+            .update(("persona", key))
+            .merge(json_to_surreal(serde_json::Value::Object(patch)))
+            .await?;
+
+        if let Some(val) = updated {
+            let json = surreal_to_json(val);
+            Ok(Some(serde_json::from_value(json)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Deletes a persona by id.
     pub async fn delete_persona(&self, persona_id: &str) -> anyhow::Result<bool> {
         let key = persona_id

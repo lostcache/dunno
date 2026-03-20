@@ -205,6 +205,52 @@ impl DB {
         }
     }
 
+    /// Updates a file's name, path, description, or notes.
+    pub async fn update_file(
+        &self,
+        file_id: &str,
+        name: Option<String>,
+        path: Option<String>,
+        description: Option<String>,
+        notes: Option<String>,
+    ) -> anyhow::Result<Option<crate::models::File>> {
+        let key = file_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(file_id);
+
+        let mut patch = serde_json::Map::new();
+        if let Some(name) = name {
+            patch.insert("name".to_string(), serde_json::Value::String(name));
+        }
+        if let Some(path) = path {
+            patch.insert("path".to_string(), serde_json::Value::String(path));
+        }
+        if let Some(description) = description {
+            patch.insert("description".to_string(), serde_json::Value::String(description));
+        }
+        if let Some(notes) = notes {
+            patch.insert("notes".to_string(), serde_json::Value::String(notes));
+        }
+
+        if patch.is_empty() {
+            return self.get_file(file_id).await;
+        }
+
+        let updated: Option<surrealdb::types::Value> = self
+            .client
+            .update(("file", key))
+            .merge(json_to_surreal(serde_json::Value::Object(patch)))
+            .await?;
+
+        if let Some(val) = updated {
+            let json = surreal_to_json(val);
+            Ok(Some(serde_json::from_value(json)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Deletes a file by id.
     pub async fn delete_file(&self, file_id: &str) -> anyhow::Result<bool> {
         let key = file_id
