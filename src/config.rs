@@ -113,7 +113,51 @@ impl Config {
 
         // 1. CLI args (highest)
         config.apply_cli_overrides(cli_backend)?;
+
+        // Auto-detect: if still on local backend and dn-ui is managing a surreal server, use it.
+        if matches!(config.backend, StorageBackend::Local) {
+            if let Some(url) = Self::active_server_url() {
+                config.backend = StorageBackend::Cloud;
+                config.cloud.url = url;
+                config.cloud.namespace = "dunno".to_string();
+                config.cloud.database = "dunno".to_string();
+                config.cloud.username = "root".to_string();
+                config.cloud.password = "root".to_string();
+                config.cloud.auth_type = "root".to_string();
+            }
+        }
+
         Ok(config)
+    }
+
+    /// Path to the marker file written by dn-ui when it manages a surreal subprocess.
+    /// ~/.local/share/dunno/ui-server.port
+    pub fn ui_server_marker_path() -> std::path::PathBuf {
+        let base = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+        base.join(".local").join("share").join("dunno").join("ui-server.port")
+    }
+
+    /// If dn-ui is running and managing a surreal subprocess, returns its WebSocket URL.
+    /// Returns None if no marker file exists.
+    pub fn active_server_url() -> Option<String> {
+        let port_str = std::fs::read_to_string(Self::ui_server_marker_path()).ok()?;
+        let port: u16 = port_str.trim().parse().ok()?;
+        Some(format!("ws://127.0.0.1:{}/rpc", port))
+    }
+
+    /// Write the surreal subprocess port to the marker file.
+    pub fn write_ui_server_marker(port: u16) -> anyhow::Result<()> {
+        let path = Self::ui_server_marker_path();
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&path, port.to_string())?;
+        Ok(())
+    }
+
+    /// Remove the marker file (called on dn-ui exit).
+    pub fn remove_ui_server_marker() {
+        let _ = std::fs::remove_file(Self::ui_server_marker_path());
     }
 
     // Helper for testing - allows specifying custom paths and controlling env overrides
