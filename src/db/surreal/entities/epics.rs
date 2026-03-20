@@ -195,7 +195,8 @@ impl DB {
         });
 
         for pid in &ancestry.project_ids {
-            ctx.persona.extend(self.list_personas_by_project(pid).await?);
+            ctx.persona
+                .extend(self.list_personas_by_project(pid).await?);
             ctx.workflow
                 .extend(self.list_workflows_by_project(pid).await?);
         }
@@ -233,7 +234,10 @@ impl DB {
             patch.insert("title".to_string(), serde_json::Value::String(title));
         }
         if let Some(description) = description {
-            patch.insert("description".to_string(), serde_json::Value::String(description));
+            patch.insert(
+                "description".to_string(),
+                serde_json::Value::String(description),
+            );
         }
 
         if patch.is_empty() {

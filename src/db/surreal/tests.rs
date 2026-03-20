@@ -64,7 +64,14 @@ async fn test_link_context_all_levels() {
     let submodule_id = submodule.id.expect("id");
 
     let file = db
-        .create_file("f.rs", "src/f.rs", None, None, &project_id, Some(&submodule_id))
+        .create_file(
+            "f.rs",
+            "src/f.rs",
+            None,
+            None,
+            &project_id,
+            Some(&submodule_id),
+        )
         .await
         .expect("create file");
     let file_id = file.id.expect("id");
@@ -350,12 +357,7 @@ async fn test_list_tasks_by_project() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module(
-            "crate::models::Module1",
-            "First module",
-            None,
-            &project_id,
-        )
+        .create_module("crate::models::Module1", "First module", None, &project_id)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -406,12 +408,7 @@ async fn test_create_task_bidirectional_edges() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module(
-            "crate::models::Module1",
-            "First module",
-            None,
-            &project_id,
-        )
+        .create_module("crate::models::Module1", "First module", None, &project_id)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -766,7 +763,14 @@ async fn test_file_operations() {
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
     let file = db
-        .create_file("main.rs", "src/main.rs", None, None, &project_id, Some(&module_id))
+        .create_file(
+            "main.rs",
+            "src/main.rs",
+            None,
+            None,
+            &project_id,
+            Some(&module_id),
+        )
         .await
         .expect("Failed to create file");
     let file_id = file.id.expect("file id");
@@ -974,7 +978,6 @@ async fn test_create_module_with_project() {
         "module must appear in list_modules"
     );
 }
-
 
 #[tokio::test]
 async fn test_freestanding_file() {
@@ -1648,7 +1651,14 @@ async fn test_list_files_by_submodule() {
     let file1_id = file1.id.expect("file id");
 
     let file2 = db
-        .create_file("jwt.rs", "src/auth/jwt.rs", None, None, &project_id, Some(&submodule_id))
+        .create_file(
+            "jwt.rs",
+            "src/auth/jwt.rs",
+            None,
+            None,
+            &project_id,
+            Some(&submodule_id),
+        )
         .await
         .expect("Failed to create file 2");
     let _file2_id = file2.id.expect("file id");
@@ -2534,14 +2544,28 @@ async fn test_list_files_by_project() {
 
     // Create file linked to module
     let file1 = db
-        .create_file("f1.rs", "src/f1.rs", Some("d"), None, &project_id, Some(&module_id))
+        .create_file(
+            "f1.rs",
+            "src/f1.rs",
+            Some("d"),
+            None,
+            &project_id,
+            Some(&module_id),
+        )
         .await
         .expect("create file 1");
     let file1_id = file1.id.expect("id");
 
     // Create file linked to submodule
     let file2 = db
-        .create_file("f2.rs", "src/f2.rs", Some("d"), None, &project_id, Some(&submodule_id))
+        .create_file(
+            "f2.rs",
+            "src/f2.rs",
+            Some("d"),
+            None,
+            &project_id,
+            Some(&submodule_id),
+        )
         .await
         .expect("create file 2");
     let file2_id = file2.id.expect("id");
@@ -2702,7 +2726,14 @@ async fn test_file_belongs_to_edges() {
 
     // Create file linked to module
     let file = db
-        .create_file("test.rs", "src/test.rs", Some("d"), None, &project_id, Some(&module_id))
+        .create_file(
+            "test.rs",
+            "src/test.rs",
+            Some("d"),
+            None,
+            &project_id,
+            Some(&module_id),
+        )
         .await
         .expect("create file");
     let file_id = file.id.expect("id");
@@ -3231,11 +3262,18 @@ async fn test_task_ctx_full_includes_persona_workflow() {
     let pid = p.id.unwrap();
     let m = db.create_module("mod", "d", None, &pid).await.unwrap();
     let mid = m.id.unwrap();
-    let t = db.create_task("task", "d", Some(&mid), Some(&pid)).await.unwrap();
+    let t = db
+        .create_task("task", "d", Some(&mid), Some(&pid))
+        .await
+        .unwrap();
     let tid = t.id.unwrap();
 
-    db.create_persona("P1", "persona content", &pid).await.unwrap();
-    db.create_workflow("W1", "workflow content", &pid).await.unwrap();
+    db.create_persona("P1", "persona content", &pid)
+        .await
+        .unwrap();
+    db.create_workflow("W1", "workflow content", &pid)
+        .await
+        .unwrap();
 
     // Node mode: persona and workflow should be empty
     let node_ctx = db.get_task_context(&tid, false).await.expect("node ctx");
@@ -3258,7 +3296,9 @@ async fn test_task_ctx_full_includes_persona_workflow() {
         })
         .await
         .unwrap();
-    db.create_persona("P2", "other persona", &p2.id.unwrap()).await.unwrap();
+    db.create_persona("P2", "other persona", &p2.id.unwrap())
+        .await
+        .unwrap();
     let full_ctx2 = db.get_task_context(&tid, true).await.expect("full ctx2");
     assert_eq!(full_ctx2.persona.len(), 1);
 }
@@ -3282,8 +3322,12 @@ async fn test_file_ctx_full_includes_persona_workflow() {
         .unwrap();
     let fid = f.id.unwrap();
 
-    db.create_persona("P1", "persona content", &pid).await.unwrap();
-    db.create_workflow("W1", "workflow content", &pid).await.unwrap();
+    db.create_persona("P1", "persona content", &pid)
+        .await
+        .unwrap();
+    db.create_workflow("W1", "workflow content", &pid)
+        .await
+        .unwrap();
 
     // Node mode: persona and workflow should be empty
     let node_ctx = db.get_file_context(&fid, false).await.expect("node ctx");
@@ -3314,8 +3358,12 @@ async fn test_epic_ctx_full_includes_persona_workflow() {
     let e = db.create_epic("epic", "d", &pid).await.unwrap();
     let eid = e.id.unwrap();
 
-    db.create_persona("P1", "persona content", &pid).await.unwrap();
-    db.create_workflow("W1", "workflow content", &pid).await.unwrap();
+    db.create_persona("P1", "persona content", &pid)
+        .await
+        .unwrap();
+    db.create_workflow("W1", "workflow content", &pid)
+        .await
+        .unwrap();
 
     // Node mode: persona and workflow should be empty
     let node_ctx = db.get_epic_context(&eid, false).await.expect("node ctx");

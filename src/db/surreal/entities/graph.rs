@@ -1,5 +1,5 @@
-use crate::db::surreal::util::{is_missing_table_error, surreal_to_json};
 use crate::db::surreal::DB;
+use crate::db::surreal::util::{is_missing_table_error, surreal_to_json};
 
 impl DB {
     /// Returns all nodes and edges as a Cytoscape-compatible JSON structure.

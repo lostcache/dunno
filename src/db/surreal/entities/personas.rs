@@ -123,8 +123,7 @@ impl DB {
             .map(|(_, key)| key)
             .unwrap_or(persona_id);
 
-        let deleted: Option<surrealdb::types::Value> =
-            self.client.delete(("persona", key)).await?;
+        let deleted: Option<surrealdb::types::Value> = self.client.delete(("persona", key)).await?;
         Ok(deleted.is_some())
     }
 }
@@ -135,8 +134,7 @@ mod tests {
 
     #[test]
     fn validate_persona_params_accepts_valid_input() {
-        validate_persona_params("Valid Name", "Valid content")
-            .expect("should accept valid params");
+        validate_persona_params("Valid Name", "Valid content").expect("should accept valid params");
     }
 
     #[test]

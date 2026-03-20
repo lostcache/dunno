@@ -277,12 +277,7 @@ async fn handle_module_command(
             })?;
 
             let created = db
-                .create_module(
-                    &name,
-                    &description,
-                    notes.as_deref(),
-                    &project_id,
-                )
+                .create_module(&name, &description, notes.as_deref(), &project_id)
                 .await?;
             let module_id = match &created.id {
                 Some(id) => id.as_str(),

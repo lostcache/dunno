@@ -134,7 +134,10 @@ impl Config {
     /// ~/.local/share/dunno/ui-server.port
     pub fn ui_server_marker_path() -> std::path::PathBuf {
         let base = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-        base.join(".local").join("share").join("dunno").join("ui-server.port")
+        base.join(".local")
+            .join("share")
+            .join("dunno")
+            .join("ui-server.port")
     }
 
     /// If dn-ui is running and managing a surreal subprocess, returns its WebSocket URL.

@@ -219,7 +219,10 @@ impl DB {
             patch.insert("title".to_string(), serde_json::Value::String(title));
         }
         if let Some(description) = description {
-            patch.insert("description".to_string(), serde_json::Value::String(description));
+            patch.insert(
+                "description".to_string(),
+                serde_json::Value::String(description),
+            );
         }
 
         if patch.is_empty() {

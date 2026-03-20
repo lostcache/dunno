@@ -1,3 +1,5 @@
+use axum::Json;
+use axum::http::{Method, header::CONTENT_TYPE};
 use axum::{
     Router,
     extract::{Path, Query, State},
@@ -5,13 +7,11 @@ use axum::{
     response::{Html, IntoResponse},
     routing::{get, patch, post},
 };
-use axum::Json;
 use clap::Parser;
 use dunno::{config::Config, db::surreal::DB};
 use serde::Deserialize;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
-use axum::http::{Method, header::CONTENT_TYPE};
 
 const INDEX_HTML: &str = include_str!("../../static/index.html");
 
@@ -223,9 +223,7 @@ async fn serve_index() -> impl IntoResponse {
 }
 
 // Projects
-async fn list_projects(
-    State(state): State<Arc<AppState>>,
-) -> ApiResult<serde_json::Value> {
+async fn list_projects(State(state): State<Arc<AppState>>) -> ApiResult<serde_json::Value> {
     let projects = state.db.list_projects().await?;
     Ok(Json(serde_json::to_value(projects)?))
 }
@@ -251,7 +249,11 @@ async fn delete_project(
     if deleted {
         Ok(StatusCode::NO_CONTENT.into_response())
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error":"not found"})),
+        )
+            .into_response())
     }
 }
 
@@ -260,14 +262,15 @@ async fn update_project(
     State(state): State<Arc<AppState>>,
     Json(body): Json<UpdateProjectBody>,
 ) -> ApiResult<serde_json::Value> {
-    let updated = state.db.update_project(&id, body.name, body.description).await?;
+    let updated = state
+        .db
+        .update_project(&id, body.name, body.description)
+        .await?;
     Ok(Json(serde_json::to_value(updated)?))
 }
 
 // Modules
-async fn list_modules(
-    State(state): State<Arc<AppState>>,
-) -> ApiResult<serde_json::Value> {
+async fn list_modules(State(state): State<Arc<AppState>>) -> ApiResult<serde_json::Value> {
     let modules = state.db.list_modules().await?;
     Ok(Json(serde_json::to_value(modules)?))
 }
@@ -304,7 +307,11 @@ async fn delete_module(
     if deleted {
         Ok(StatusCode::NO_CONTENT.into_response())
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error":"not found"})),
+        )
+            .into_response())
     }
 }
 
@@ -313,7 +320,10 @@ async fn update_module(
     State(state): State<Arc<AppState>>,
     Json(body): Json<UpdateModuleBody>,
 ) -> ApiResult<serde_json::Value> {
-    let updated = state.db.update_module(&id, body.name, body.description, body.notes).await?;
+    let updated = state
+        .db
+        .update_module(&id, body.name, body.description, body.notes)
+        .await?;
     Ok(Json(serde_json::to_value(updated)?))
 }
 
@@ -351,7 +361,11 @@ async fn delete_submodule(
     if deleted {
         Ok(StatusCode::NO_CONTENT.into_response())
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error":"not found"})),
+        )
+            .into_response())
     }
 }
 
@@ -360,7 +374,10 @@ async fn update_submodule(
     State(state): State<Arc<AppState>>,
     Json(body): Json<UpdateSubmoduleBody>,
 ) -> ApiResult<serde_json::Value> {
-    let updated = state.db.update_submodule(&id, body.name, body.description, body.notes).await?;
+    let updated = state
+        .db
+        .update_submodule(&id, body.name, body.description, body.notes)
+        .await?;
     Ok(Json(serde_json::to_value(updated)?))
 }
 
@@ -407,7 +424,11 @@ async fn delete_file(
     if deleted {
         Ok(StatusCode::NO_CONTENT.into_response())
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error":"not found"})),
+        )
+            .into_response())
     }
 }
 
@@ -416,7 +437,10 @@ async fn update_file(
     State(state): State<Arc<AppState>>,
     Json(body): Json<UpdateFileBody>,
 ) -> ApiResult<serde_json::Value> {
-    let updated = state.db.update_file(&id, body.name, body.path, body.description, body.notes).await?;
+    let updated = state
+        .db
+        .update_file(&id, body.name, body.path, body.description, body.notes)
+        .await?;
     Ok(Json(serde_json::to_value(updated)?))
 }
 
@@ -469,7 +493,11 @@ async fn delete_task(
     if deleted {
         Ok(StatusCode::NO_CONTENT.into_response())
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error":"not found"})),
+        )
+            .into_response())
     }
 }
 
@@ -501,7 +529,11 @@ async fn delete_todo(
     if deleted {
         Ok(StatusCode::NO_CONTENT.into_response())
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error":"not found"})),
+        )
+            .into_response())
     }
 }
 
@@ -542,7 +574,11 @@ async fn delete_user_story(
     if deleted {
         Ok(StatusCode::NO_CONTENT.into_response())
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error":"not found"})),
+        )
+            .into_response())
     }
 }
 
@@ -551,7 +587,10 @@ async fn update_user_story(
     State(state): State<Arc<AppState>>,
     Json(body): Json<UpdateUserStoryBody>,
 ) -> ApiResult<serde_json::Value> {
-    let updated = state.db.update_user_story(&id, body.title, body.description).await?;
+    let updated = state
+        .db
+        .update_user_story(&id, body.title, body.description)
+        .await?;
     Ok(Json(serde_json::to_value(updated)?))
 }
 
@@ -583,7 +622,11 @@ async fn delete_epic(
     if deleted {
         Ok(StatusCode::NO_CONTENT.into_response())
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error":"not found"})),
+        )
+            .into_response())
     }
 }
 
@@ -592,7 +635,10 @@ async fn update_epic(
     State(state): State<Arc<AppState>>,
     Json(body): Json<UpdateEpicBody>,
 ) -> ApiResult<serde_json::Value> {
-    let updated = state.db.update_epic(&id, body.title, body.description).await?;
+    let updated = state
+        .db
+        .update_epic(&id, body.title, body.description)
+        .await?;
     Ok(Json(serde_json::to_value(updated)?))
 }
 
@@ -624,7 +670,11 @@ async fn delete_persona(
     if deleted {
         Ok(StatusCode::NO_CONTENT.into_response())
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error":"not found"})),
+        )
+            .into_response())
     }
 }
 
@@ -633,7 +683,10 @@ async fn update_persona(
     State(state): State<Arc<AppState>>,
     Json(body): Json<UpdatePersonaBody>,
 ) -> ApiResult<serde_json::Value> {
-    let updated = state.db.update_persona(&id, body.name, body.content).await?;
+    let updated = state
+        .db
+        .update_persona(&id, body.name, body.content)
+        .await?;
     Ok(Json(serde_json::to_value(updated)?))
 }
 
@@ -665,7 +718,11 @@ async fn delete_workflow(
     if deleted {
         Ok(StatusCode::NO_CONTENT.into_response())
     } else {
-        Ok((StatusCode::NOT_FOUND, Json(serde_json::json!({"error":"not found"}))).into_response())
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error":"not found"})),
+        )
+            .into_response())
     }
 }
 
@@ -674,7 +731,10 @@ async fn update_workflow(
     State(state): State<Arc<AppState>>,
     Json(body): Json<UpdateWorkflowBody>,
 ) -> ApiResult<serde_json::Value> {
-    let updated = state.db.update_workflow(&id, body.name, body.content).await?;
+    let updated = state
+        .db
+        .update_workflow(&id, body.name, body.content)
+        .await?;
     Ok(Json(serde_json::to_value(updated)?))
 }
 
@@ -708,7 +768,10 @@ async fn get_task_context(
     Query(q): Query<FullQuery>,
     State(state): State<Arc<AppState>>,
 ) -> ApiResult<serde_json::Value> {
-    let ctx = state.db.get_task_context(&id, q.full.unwrap_or(false)).await?;
+    let ctx = state
+        .db
+        .get_task_context(&id, q.full.unwrap_or(false))
+        .await?;
     Ok(Json(serde_json::to_value(ctx)?))
 }
 
@@ -717,7 +780,10 @@ async fn get_file_context(
     Query(q): Query<FullQuery>,
     State(state): State<Arc<AppState>>,
 ) -> ApiResult<serde_json::Value> {
-    let ctx = state.db.get_file_context(&id, q.full.unwrap_or(false)).await?;
+    let ctx = state
+        .db
+        .get_file_context(&id, q.full.unwrap_or(false))
+        .await?;
     Ok(Json(serde_json::to_value(ctx)?))
 }
 
@@ -726,7 +792,10 @@ async fn get_epic_context(
     Query(q): Query<FullQuery>,
     State(state): State<Arc<AppState>>,
 ) -> ApiResult<serde_json::Value> {
-    let ctx = state.db.get_epic_context(&id, q.full.unwrap_or(false)).await?;
+    let ctx = state
+        .db
+        .get_epic_context(&id, q.full.unwrap_or(false))
+        .await?;
     Ok(Json(serde_json::to_value(ctx)?))
 }
 
@@ -735,14 +804,15 @@ async fn link_nodes(
     State(state): State<Arc<AppState>>,
     Json(body): Json<LinkBody>,
 ) -> ApiResult<serde_json::Value> {
-    state.db.link(&body.from_id, &body.edge, &body.to_id).await?;
+    state
+        .db
+        .link(&body.from_id, &body.edge, &body.to_id)
+        .await?;
     Ok(Json(serde_json::json!({"ok": true})))
 }
 
 // Graph
-async fn get_graph(
-    State(state): State<Arc<AppState>>,
-) -> ApiResult<serde_json::Value> {
+async fn get_graph(State(state): State<Arc<AppState>>) -> ApiResult<serde_json::Value> {
     let data = state.db.get_graph_data().await?;
     Ok(Json(data))
 }
@@ -766,23 +836,41 @@ fn build_router(state: Arc<AppState>) -> Router {
     Router::new()
         // Projects
         .route("/api/projects", get(list_projects).post(create_project))
-        .route("/api/projects/:id", patch(update_project).delete(delete_project))
+        .route(
+            "/api/projects/:id",
+            patch(update_project).delete(delete_project),
+        )
         .route("/api/projects/:pid/modules", get(list_modules_by_project))
         .route("/api/projects/:pid/files", get(list_files_by_project))
         .route("/api/projects/:pid/tasks", get(list_tasks_by_project))
         .route("/api/projects/:pid/todos", get(list_todos_by_project))
-        .route("/api/projects/:pid/user-stories", get(list_user_stories_by_project))
+        .route(
+            "/api/projects/:pid/user-stories",
+            get(list_user_stories_by_project),
+        )
         .route("/api/projects/:pid/epics", get(list_epics_by_project))
         .route("/api/projects/:pid/personas", get(list_personas_by_project))
-        .route("/api/projects/:pid/workflows", get(list_workflows_by_project))
+        .route(
+            "/api/projects/:pid/workflows",
+            get(list_workflows_by_project),
+        )
         // Modules
         .route("/api/modules", get(list_modules).post(create_module))
-        .route("/api/modules/:id", patch(update_module).delete(delete_module))
-        .route("/api/modules/:mid/submodules", get(list_submodules_by_module))
+        .route(
+            "/api/modules/:id",
+            patch(update_module).delete(delete_module),
+        )
+        .route(
+            "/api/modules/:mid/submodules",
+            get(list_submodules_by_module),
+        )
         .route("/api/modules/:mid/files", get(list_files_by_module))
         // Submodules
         .route("/api/submodules", post(create_submodule))
-        .route("/api/submodules/:id", patch(update_submodule).delete(delete_submodule))
+        .route(
+            "/api/submodules/:id",
+            patch(update_submodule).delete(delete_submodule),
+        )
         // Files
         .route("/api/files", post(create_file))
         .route("/api/files/:id", patch(update_file).delete(delete_file))
@@ -794,16 +882,25 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/todos/:id", patch(update_todo).delete(delete_todo))
         // User stories
         .route("/api/user-stories", post(create_user_story))
-        .route("/api/user-stories/:id", patch(update_user_story).delete(delete_user_story))
+        .route(
+            "/api/user-stories/:id",
+            patch(update_user_story).delete(delete_user_story),
+        )
         // Epics
         .route("/api/epics", post(create_epic))
         .route("/api/epics/:id", patch(update_epic).delete(delete_epic))
         // Personas
         .route("/api/personas", post(create_persona))
-        .route("/api/personas/:id", patch(update_persona).delete(delete_persona))
+        .route(
+            "/api/personas/:id",
+            patch(update_persona).delete(delete_persona),
+        )
         // Workflows
         .route("/api/workflows", post(create_workflow))
-        .route("/api/workflows/:id", patch(update_workflow).delete(delete_workflow))
+        .route(
+            "/api/workflows/:id",
+            patch(update_workflow).delete(delete_workflow),
+        )
         // Context
         .route("/api/contexts", post(create_context))
         .route("/api/contexts/:id", patch(update_context))
@@ -828,14 +925,21 @@ fn find_free_port(start: u16) -> anyhow::Result<u16> {
             return Ok(port);
         }
     }
-    Err(anyhow::anyhow!("No free port found in range {}..{}", start, start + 20))
+    Err(anyhow::anyhow!(
+        "No free port found in range {}..{}",
+        start,
+        start + 20
+    ))
 }
 
 /// Poll until the given port accepts TCP connections, or timeout elapses.
 async fn wait_for_port(port: u16, timeout: std::time::Duration) -> anyhow::Result<()> {
     let deadline = tokio::time::Instant::now() + timeout;
     loop {
-        if tokio::net::TcpStream::connect(("127.0.0.1", port)).await.is_ok() {
+        if tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .is_ok()
+        {
             return Ok(());
         }
         if tokio::time::Instant::now() >= deadline {
@@ -851,7 +955,9 @@ async fn wait_for_port(port: u16, timeout: std::time::Duration) -> anyhow::Resul
 
 /// Attempt to spawn a `surreal start` subprocess serving the given DB file.
 /// Returns (Child, port) on success, or an error if `surreal` is not found.
-async fn spawn_surreal_server(db_path: &std::path::Path) -> anyhow::Result<(std::process::Child, u16)> {
+async fn spawn_surreal_server(
+    db_path: &std::path::Path,
+) -> anyhow::Result<(std::process::Child, u16)> {
     use anyhow::Context as _;
     let port = find_free_port(8765)?;
     let child = std::process::Command::new("surreal")
@@ -900,7 +1006,10 @@ async fn main() -> anyhow::Result<()> {
                 config.cloud.password = "root".to_string();
                 config.cloud.auth_type = "root".to_string();
                 surreal_child = Some(child);
-                eprintln!("dn-ui: surreal server started on port {} (shared with dn CLI)", port);
+                eprintln!(
+                    "dn-ui: surreal server started on port {} (shared with dn CLI)",
+                    port
+                );
             }
             Err(e) => {
                 eprintln!("dn-ui: warning — could not spawn surreal server: {e}");

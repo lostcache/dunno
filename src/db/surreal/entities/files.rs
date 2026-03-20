@@ -48,7 +48,10 @@ impl DB {
             notes: notes.map(|s| s.to_string()),
         };
         let result = self.create_file_record(&file).await?;
-        let fid = result.id.as_ref().ok_or_else(|| anyhow::anyhow!("File created without ID"))?;
+        let fid = result
+            .id
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("File created without ID"))?;
         self.link(fid, "belongs_to_project", project_id).await?;
         if let Some(pid) = parent_id {
             let table = ensure_one_of_record_ids(&["module", "submodule"], pid)?;
@@ -60,7 +63,9 @@ impl DB {
                 // Derive and link to the submodule's module (if any)
                 let mut response = self
                     .client
-                    .query("SELECT ->belongs_to_module->module.id AS mid FROM ONLY type::record($sid)")
+                    .query(
+                        "SELECT ->belongs_to_module->module.id AS mid FROM ONLY type::record($sid)",
+                    )
                     .bind(("sid", pid.to_string()))
                     .await?;
                 let submodule_record: Option<surrealdb::types::Value> = response.take(0)?;
@@ -184,7 +189,8 @@ impl DB {
         });
 
         for pid in &ancestry.project_ids {
-            ctx.persona.extend(self.list_personas_by_project(pid).await?);
+            ctx.persona
+                .extend(self.list_personas_by_project(pid).await?);
             ctx.workflow
                 .extend(self.list_workflows_by_project(pid).await?);
         }
@@ -227,7 +233,10 @@ impl DB {
             patch.insert("path".to_string(), serde_json::Value::String(path));
         }
         if let Some(description) = description {
-            patch.insert("description".to_string(), serde_json::Value::String(description));
+            patch.insert(
+                "description".to_string(),
+                serde_json::Value::String(description),
+            );
         }
         if let Some(notes) = notes {
             patch.insert("notes".to_string(), serde_json::Value::String(notes));
