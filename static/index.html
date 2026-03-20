@@ -476,7 +476,8 @@ const App = {
 
   async loadGraph() {
     try {
-      const data = await api('/api/graph');
+      const url = this.projectId ? `/api/projects/${this.projectId}/graph` : '/api/graph';
+      const data = await api(url);
       this.cy.elements().remove();
       this.cy.add(data.elements);
       this.cy.layout({ name: 'cose', animate: false, randomize: true }).run();

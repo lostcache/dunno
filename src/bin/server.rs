@@ -747,6 +747,14 @@ async fn get_graph(
     Ok(Json(data))
 }
 
+async fn get_project_graph(
+    State(state): State<Arc<AppState>>,
+    Path(pid): Path<String>,
+) -> ApiResult<serde_json::Value> {
+    let data = state.db.get_graph_data_by_project(&pid).await?;
+    Ok(Json(data))
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 fn build_router(state: Arc<AppState>) -> Router {
@@ -806,6 +814,7 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/link", post(link_nodes))
         // Graph
         .route("/api/graph", get(get_graph))
+        .route("/api/projects/:pid/graph", get(get_project_graph))
         // SPA fallback
         .fallback(serve_index)
         .with_state(state)
