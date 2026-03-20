@@ -918,67 +918,55 @@ fn build_router(state: Arc<AppState>) -> Router {
         .layer(cors)
 }
 
-/// Find an available TCP port starting from `start`.
-fn find_free_port(start: u16) -> anyhow::Result<u16> {
-    for port in start..start + 20 {
-        if std::net::TcpListener::bind(("127.0.0.1", port)).is_ok() {
-            return Ok(port);
-        }
-    }
-    Err(anyhow::anyhow!(
-        "No free port found in range {}..{}",
-        start,
-        start + 20
-    ))
-}
-
-/// Poll until the given port accepts TCP connections, or timeout elapses.
-async fn wait_for_port(port: u16, timeout: std::time::Duration) -> anyhow::Result<()> {
-    let deadline = tokio::time::Instant::now() + timeout;
-    loop {
-        if tokio::net::TcpStream::connect(("127.0.0.1", port))
-            .await
-            .is_ok()
-        {
-            return Ok(());
-        }
-        if tokio::time::Instant::now() >= deadline {
-            return Err(anyhow::anyhow!(
-                "surreal server did not start on port {} within {:?}",
-                port,
-                timeout
-            ));
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    }
-}
-
-/// Attempt to spawn a `surreal start` subprocess serving the given DB file.
-/// Returns (Child, port) on success, or an error if `surreal` is not found.
-async fn spawn_surreal_server(
-    db_path: &std::path::Path,
-) -> anyhow::Result<(std::process::Child, u16)> {
-    use anyhow::Context as _;
-    let port = find_free_port(8765)?;
-    let child = std::process::Command::new("surreal")
-        .args([
-            "start",
-            "--bind", &format!("127.0.0.1:{}", port),
-            "--user", "root",
-            "--pass", "root",
-            &format!("surrealkv://{}", db_path.display()),
-        ])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-        .context("`surreal` binary not found. Install it with: curl -sSf https://install.surrealdb.com | sh")?;
-    wait_for_port(port, std::time::Duration::from_secs(10)).await?;
-    Ok((child, port))
-}
-
 /// Resolves to () when Ctrl+C is received.
 async fn shutdown_signal() {
     tokio::signal::ctrl_c().await.ok();
+}
+
+fn find_free_port() -> u16 {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("failed to bind :0");
+    listener.local_addr().unwrap().port()
+}
+
+async fn wait_for_port(port: u16, timeout_secs: u64) -> bool {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
+    while std::time::Instant::now() < deadline {
+        if tokio::net::TcpStream::connect(format!("127.0.0.1:{}", port))
+            .await
+            .is_ok()
+        {
+            return true;
+        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+    }
+    false
+}
+
+fn spawn_surreal_server(
+    surreal_port: u16,
+    db_path: &std::path::Path,
+) -> anyhow::Result<std::process::Child> {
+    std::process::Command::new("surreal")
+        .args([
+            "start",
+            "--bind",
+            &format!("127.0.0.1:{}", surreal_port),
+            "--username",
+            "root",
+            "--password",
+            "root",
+            &format!("surrealkv://{}", db_path.to_string_lossy()),
+        ])
+        .spawn()
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                anyhow::anyhow!(
+                    "surreal binary not found — install it with:\n  curl -sSf https://install.surrealdb.com | sh"
+                )
+            } else {
+                e.into()
+            }
+        })
 }
 
 #[tokio::main]
@@ -989,36 +977,39 @@ async fn main() -> anyhow::Result<()> {
         .install_default()
         .ok();
 
-    let mut config = Config::load(args.backend.as_deref())?;
+    let config = Config::load(args.backend.as_deref())?;
 
-    // If local backend, spawn surreal as a subprocess so dn CLI can share the DB.
-    let mut surreal_child: Option<std::process::Child> = None;
-    if matches!(config.backend, dunno::config::StorageBackend::Local) {
-        let db_path = config.local_data_path();
-        match spawn_surreal_server(&db_path).await {
-            Ok((child, port)) => {
-                Config::write_ui_server_marker(port)?;
-                config.backend = dunno::config::StorageBackend::Cloud;
-                config.cloud.url = format!("ws://127.0.0.1:{}/rpc", port);
-                config.cloud.namespace = "dunno".to_string();
-                config.cloud.database = "dunno".to_string();
-                config.cloud.username = "root".to_string();
-                config.cloud.password = "root".to_string();
-                config.cloud.auth_type = "root".to_string();
-                surreal_child = Some(child);
-                eprintln!(
-                    "dn-ui: surreal server started on port {} (shared with dn CLI)",
-                    port
-                );
+    let (db, surreal_child): (DB, Option<std::process::Child>) =
+        if matches!(config.backend, dunno::config::StorageBackend::Local) {
+            let db_path = config.local_data_path();
+            if let Some(parent) = db_path.parent() {
+                std::fs::create_dir_all(parent)?;
             }
-            Err(e) => {
-                eprintln!("dn-ui: warning — could not spawn surreal server: {e}");
-                eprintln!("dn-ui: running in solo mode (concurrent dn CLI access not available)");
+            let surreal_port = find_free_port();
+            match spawn_surreal_server(surreal_port, &db_path) {
+                Ok(child) => {
+                    if !wait_for_port(surreal_port, 10).await {
+                        return Err(anyhow::anyhow!(
+                            "surreal server did not start within 10 seconds"
+                        ));
+                    }
+                    Config::write_ui_server_marker(surreal_port)?;
+                    let ws_url = format!("ws://127.0.0.1:{}/rpc", surreal_port);
+                    let db = DB::new(&ws_url).await?;
+                    (db, Some(child))
+                }
+                Err(e) => {
+                    eprintln!("dn-ui: {e}");
+                    eprintln!("dn-ui: running in solo mode — dn CLI cannot be used concurrently");
+                    let db = DB::from_config(&config).await?;
+                    (db, None)
+                }
             }
-        }
-    }
+        } else {
+            let db = DB::from_config(&config).await?;
+            (db, None)
+        };
 
-    let db = DB::from_config(&config).await?;
     let state = Arc::new(AppState { db });
 
     let addr = format!("127.0.0.1:{}", args.port);
@@ -1034,9 +1025,8 @@ async fn main() -> anyhow::Result<()> {
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
-    // Cleanup on exit
     if let Some(mut child) = surreal_child {
-        child.kill().ok();
+        let _ = child.kill();
     }
     Config::remove_ui_server_marker();
 
