@@ -103,14 +103,14 @@
   <h1>Dunno UI</h1>
   <select id="project-select"><option value="">— select project —</option></select>
   <button onclick="App.refresh()" title="Refresh">↻</button>
-  <button id="btn-filter" onclick="App.toggleFilterPanel()">Filter</button>
+  <button id="btn-filter" class="active" onclick="App.toggleFilterPanel()">Filter</button>
   <div class="view-btns">
     <button id="btn-graph" class="active" onclick="App.setView('graph')">Graph</button>
     <button id="btn-ctx" onclick="App.setView('ctx')">Context</button>
   </div>
 </nav>
 
-<div id="filter-panel" style="display:none"></div>
+<div id="filter-panel" style="display:flex"></div>
 
 <div class="main-area">
   <aside>
