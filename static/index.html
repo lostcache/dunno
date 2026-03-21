@@ -77,6 +77,13 @@
   .modal .modal-btns .cancel { background: #252840; color: #94a3b8; }
   .modal .modal-btns .submit { background: #5b45d6; color: #fff; }
   .modal .modal-btns .submit:hover { background: #7c6df0; }
+
+  /* Node hover action buttons */
+  #node-hover-btns { position: absolute; display: none; gap: 4px; z-index: 20; pointer-events: auto; transform: translate(-50%, calc(-100% - 8px)); }
+  #node-hover-btns button { padding: 3px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; color: #fff; }
+  #node-hover-btns .nhb-edit { background: #5b45d6; }
+  #node-hover-btns .nhb-delete { background: #dc2626; }
+  #node-hover-btns button:hover { opacity: 0.85; }
 </style>
 </head>
 <body>
@@ -103,6 +110,10 @@
   <main>
     <div id="graph-view">
       <div id="cy"></div>
+      <div id="node-hover-btns">
+        <button class="nhb-edit" onclick="App.openEdit()">Edit</button>
+        <button class="nhb-delete" onclick="App.deleteNode()">Delete</button>
+      </div>
       <div id="node-detail">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
           <h3 id="nd-title"></h3>
@@ -461,6 +472,27 @@ const App = {
       // Defer to select/unselect events which fire after tap updates selection
       setTimeout(() => this.onSelectionChange(), 0);
     });
+
+    let _hoverHideTimer = null;
+    const hoverDiv = document.getElementById('node-hover-btns');
+    this.cy.on('mouseover', 'node', evt => {
+      clearTimeout(_hoverHideTimer);
+      const node = evt.target;
+      this.editingNode = node.data();
+      const cyRect = this.cy.container().getBoundingClientRect();
+      const graphRect = document.getElementById('graph-view').getBoundingClientRect();
+      const pos = node.renderedPosition();
+      hoverDiv.style.left = (cyRect.left - graphRect.left + pos.x) + 'px';
+      hoverDiv.style.top  = (cyRect.top  - graphRect.top  + pos.y) + 'px';
+      hoverDiv.style.display = 'flex';
+    });
+    this.cy.on('mouseout', 'node', () => {
+      _hoverHideTimer = setTimeout(() => { hoverDiv.style.display = 'none'; }, 200);
+    });
+    hoverDiv.addEventListener('mouseenter', () => clearTimeout(_hoverHideTimer));
+    hoverDiv.addEventListener('mouseleave', () => {
+      _hoverHideTimer = setTimeout(() => { hoverDiv.style.display = 'none'; }, 200);
+    });
     this.cy.on('tap', evt => {
       if (evt.target === this.cy) {
         this.cy.$('node:selected').unselect();
@@ -610,6 +642,23 @@ const App = {
     submitBtn.textContent = 'Save';
     submitBtn.onclick = () => App.submitEdit();
     document.getElementById('modal').style.display = 'flex';
+  },
+
+  async deleteNode() {
+    const data = this.editingNode;
+    if (!data) return;
+    const base = EDIT_ENDPOINTS[data.node_type];
+    if (!base) { status('No delete endpoint for ' + data.node_type, 'err'); return; }
+    document.getElementById('node-hover-btns').style.display = 'none';
+    try {
+      await apiDel(`${base}/${encodeURIComponent(data.id)}`);
+      document.getElementById('node-detail').style.display = 'none';
+      this.editingNode = null;
+      status('Deleted ' + data.label, 'ok');
+      this.refresh();
+    } catch(e) {
+      status('Delete failed: ' + e.message, 'err');
+    }
   },
 
   async submitEdit() {
