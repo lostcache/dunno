@@ -84,6 +84,15 @@
   #node-hover-btns .nhb-edit { background: #5b45d6; }
   #node-hover-btns .nhb-delete { background: #dc2626; }
   #node-hover-btns button:hover { opacity: 0.85; }
+
+  /* Filter panel */
+  #filter-panel { background: #1a1d27; border-bottom: 1px solid #2d3148; padding: 8px 16px; display: flex; gap: 24px; flex-wrap: wrap; flex-shrink: 0; }
+  .filter-section { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .filter-section strong { margin-right: 4px; font-size: 11px; color: #94a3b8; white-space: nowrap; }
+  .filter-checkbox { display: flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer; color: #cbd5e1; user-select: none; }
+  .filter-checkbox input { cursor: pointer; }
+  .filter-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+  #btn-filter.active { background: #5b45d6; border-color: #7c6df0; }
 </style>
 </head>
 <body>
@@ -92,11 +101,14 @@
   <h1>Dunno UI</h1>
   <select id="project-select"><option value="">— select project —</option></select>
   <button onclick="App.refresh()" title="Refresh">↻</button>
+  <button id="btn-filter" onclick="App.toggleFilterPanel()">Filter</button>
   <div class="view-btns">
     <button id="btn-graph" class="active" onclick="App.setView('graph')">Graph</button>
     <button id="btn-ctx" onclick="App.setView('ctx')">Context</button>
   </div>
 </nav>
+
+<div id="filter-panel" style="display:none"></div>
 
 <div class="main-area">
   <aside>
@@ -368,9 +380,12 @@ const App = {
   mainView: 'graph',
   cy: null,
   editingNode: null,
+  hiddenNodeTypes: new Set(),
+  hiddenEdgeTypes: new Set(),
 
   async init() {
     this.buildEntityTabs();
+    this.buildFilterPanel();
     await this.loadProjects();
     this.initCy();
     await this.loadGraph();
@@ -382,6 +397,56 @@ const App = {
     el.innerHTML = ENTITY_TABS.map(t =>
       `<div class="entity-tab${t===this.activeTab?' active':''}" onclick="App.setTab('${t}')">${t}</div>`
     ).join('');
+  },
+
+  buildFilterPanel() {
+    const panel = document.getElementById('filter-panel');
+    const nodeSection = Object.keys(NODE_COLORS).map(type => {
+      const color = NODE_COLORS[type].bg;
+      return `<label class="filter-checkbox">
+        <input type="checkbox" checked onchange="App.toggleNodeType('${type}', this.checked)">
+        <span class="filter-dot" style="background:${color}"></span>
+        ${type}
+      </label>`;
+    }).join('');
+    const edgeSection = ALL_EDGE_TYPES.map(type =>
+      `<label class="filter-checkbox">
+        <input type="checkbox" checked onchange="App.toggleEdgeType('${type}', this.checked)">
+        ${type}
+      </label>`
+    ).join('');
+    panel.innerHTML = `
+      <div class="filter-section"><strong>Nodes</strong>${nodeSection}</div>
+      <div class="filter-section"><strong>Edges</strong>${edgeSection}</div>
+    `;
+  },
+
+  toggleFilterPanel() {
+    const panel = document.getElementById('filter-panel');
+    const btn = document.getElementById('btn-filter');
+    const open = panel.style.display === 'none';
+    panel.style.display = open ? 'flex' : 'none';
+    btn.classList.toggle('active', open);
+  },
+
+  toggleNodeType(type, visible) {
+    if (visible) this.hiddenNodeTypes.delete(type);
+    else this.hiddenNodeTypes.add(type);
+    this.applyFilters();
+  },
+
+  toggleEdgeType(type, visible) {
+    if (visible) this.hiddenEdgeTypes.delete(type);
+    else this.hiddenEdgeTypes.add(type);
+    this.applyFilters();
+  },
+
+  applyFilters() {
+    if (!this.cy) return;
+    this.cy.elements().show();
+    this.hiddenNodeTypes.forEach(t => this.cy.nodes(`[node_type = "${t}"]`).hide());
+    this.hiddenEdgeTypes.forEach(t => this.cy.edges(`[edge_type = "${t}"]`).hide());
+    this.cy.nodes(':hidden').connectedEdges().hide();
   },
 
   async loadProjects() {
@@ -513,6 +578,7 @@ const App = {
       this.cy.elements().remove();
       this.cy.add(data.elements);
       this.cy.layout({ name: 'cose', animate: false, randomize: true }).run();
+      this.applyFilters();
     } catch(e) {
       status('Graph load failed: ' + e.message, 'err');
     }
