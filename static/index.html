@@ -399,6 +399,28 @@ function darkenColor(hex, pct) {
   return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
 }
 
+function wrapText(str, maxLen = 80) {
+  if (!str) return '';
+  const words = str.split(' ');
+  let lines = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    if (word.length > maxLen) {
+      if (currentLine) lines.push(currentLine);
+      lines.push(word);
+      currentLine = '';
+    } else if (currentLine.length + word.length + (currentLine ? 1 : 0) <= maxLen) {
+      currentLine = currentLine ? currentLine + ' ' + word : word;
+    } else {
+      lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+  return lines.join('\n');
+}
+
 const App = {
   projectId: null,
   activeTab: 'projects',
@@ -518,7 +540,7 @@ const App = {
         {
           selector: 'node',
           style: {
-            'label': ele => (FRIENDLY_TYPES[ele.data('node_type')] || ele.data('node_type') || '') + '\n' + (ele.data('label') || ''),
+            'label': ele => (FRIENDLY_TYPES[ele.data('node_type')] || ele.data('node_type') || '') + '\n' + wrapText(ele.data('label') || ''),
             'text-wrap': 'wrap',
             'color': ele => (NODE_COLORS[ele.data('node_type')] || {fg:'#fff'}).fg,
             'background-fill': 'linear-gradient',
