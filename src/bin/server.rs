@@ -999,8 +999,10 @@ async fn main() -> anyhow::Result<()> {
                     (db, Some(child))
                 }
                 Err(e) => {
-                    eprintln!("dn-ui: {e}");
-                    eprintln!("dn-ui: running in solo mode — dn CLI cannot be used concurrently");
+                    eprintln!("Warning: {e}");
+                    eprintln!("dn-ui started, but the dn command-line tool will not be available while dn-ui is running.");
+                    eprintln!("To use both at the same time, install the surreal binary and restart dn-ui:");
+                    eprintln!("  curl -sSf https://install.surrealdb.com | sh");
                     let db = DB::from_config(&config).await?;
                     (db, None)
                 }

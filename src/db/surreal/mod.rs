@@ -38,7 +38,17 @@ impl DB {
                     std::fs::create_dir_all(parent)?;
                 }
                 let url = format!("surrealkv://{}", path.to_string_lossy());
-                Self::new_local(&url, "dunno", "dunno").await
+                Self::new_local(&url, "dunno", "dunno").await.map_err(|e| {
+                    if e.to_string().contains("already locked by another process") {
+                        anyhow::anyhow!(
+                            "Cannot access the database — dn-ui appears to be running and has it locked.\n\
+                             To use dn and dn-ui at the same time, install the surreal binary and restart dn-ui:\n\
+                             \n  curl -sSf https://install.surrealdb.com | sh"
+                        )
+                    } else {
+                        e
+                    }
+                })
             }
             crate::config::StorageBackend::Cloud => {
                 let cloud = &config.cloud;
