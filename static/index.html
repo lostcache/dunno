@@ -538,10 +538,10 @@ const App = {
       setTimeout(() => this.onSelectionChange(), 0);
     });
 
-    let _hoverHideTimer = null;
+    this._hoverHideTimer = null;
     const hoverDiv = document.getElementById('node-hover-btns');
     this.cy.on('mouseover', 'node', evt => {
-      clearTimeout(_hoverHideTimer);
+      clearTimeout(this._hoverHideTimer);
       const node = evt.target;
       this.editingNode = node.data();
       const cyRect = this.cy.container().getBoundingClientRect();
@@ -552,11 +552,11 @@ const App = {
       hoverDiv.style.display = 'flex';
     });
     this.cy.on('mouseout', 'node', () => {
-      _hoverHideTimer = setTimeout(() => { hoverDiv.style.display = 'none'; }, 200);
+      this._hoverHideTimer = setTimeout(() => { hoverDiv.style.display = 'none'; }, 200);
     });
-    hoverDiv.addEventListener('mouseenter', () => clearTimeout(_hoverHideTimer));
+    hoverDiv.addEventListener('mouseenter', () => clearTimeout(this._hoverHideTimer));
     hoverDiv.addEventListener('mouseleave', () => {
-      _hoverHideTimer = setTimeout(() => { hoverDiv.style.display = 'none'; }, 200);
+      this._hoverHideTimer = setTimeout(() => { hoverDiv.style.display = 'none'; }, 200);
     });
     this.cy.on('tap', evt => {
       if (evt.target === this.cy) {
@@ -616,11 +616,42 @@ const App = {
     el.innerHTML = items.map(item => {
       const label = item.name || item.title || item.content || item.id || '?';
       const id = item.id || '';
-      return `<div class="item-row">
+      return `<div class="item-row"
+        onmouseenter="App.hoverNode('${id}')"
+        onmouseleave="App.unhoverNode()"
+        onclick="App.selectNode('${id}')">
         <span title="${id}">${label.length > 28 ? label.slice(0,28)+'…' : label}</span>
         <button class="del-btn" onclick="App.deleteItem('${tab}','${id}',event)">✕</button>
       </div>`;
     }).join('');
+  },
+
+  hoverNode(id) {
+    clearTimeout(this._hoverHideTimer);
+    const node = this.cy && this.cy.getElementById(id);
+    if (!node || !node.length) return;
+    this.editingNode = node.data();
+    const hoverDiv = document.getElementById('node-hover-btns');
+    const cyRect = this.cy.container().getBoundingClientRect();
+    const graphRect = document.getElementById('graph-view').getBoundingClientRect();
+    const pos = node.renderedPosition();
+    hoverDiv.style.left = (cyRect.left - graphRect.left + pos.x) + 'px';
+    hoverDiv.style.top  = (cyRect.top  - graphRect.top  + pos.y) + 'px';
+    hoverDiv.style.display = 'flex';
+  },
+
+  unhoverNode() {
+    this._hoverHideTimer = setTimeout(() => {
+      document.getElementById('node-hover-btns').style.display = 'none';
+    }, 200);
+  },
+
+  selectNode(id) {
+    const node = this.cy && this.cy.getElementById(id);
+    if (!node || !node.length) return;
+    this.cy.$('node:selected').unselect();
+    node.select();
+    this.cy.animate({ center: { eles: node }, duration: 300 });
   },
 
   async deleteItem(tab, id, evt) {
