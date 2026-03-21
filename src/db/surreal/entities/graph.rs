@@ -134,11 +134,12 @@ impl DB {
         relevant_ids.insert(project_id.to_string());
 
         // belongs_to_project WHERE out = pid → in values
-        let sql = format!(
-            "SELECT in FROM belongs_to_project WHERE out = {}",
-            project_id
-        );
-        if let Ok(mut res) = self.client.query(&sql).await {
+        if let Ok(mut res) = self
+            .client
+            .query("SELECT in FROM belongs_to_project WHERE out = type::record($pid)")
+            .bind(("pid", project_id.to_string()))
+            .await
+        {
             let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
             for row in rows {
                 let json = surreal_to_json(row);
@@ -149,8 +150,76 @@ impl DB {
         }
 
         // has_todo WHERE in = pid → out values (todo_items)
-        let sql = format!("SELECT out FROM has_todo WHERE in = {}", project_id);
-        if let Ok(mut res) = self.client.query(&sql).await {
+        if let Ok(mut res) = self
+            .client
+            .query("SELECT out FROM has_todo WHERE in = type::record($pid)")
+            .bind(("pid", project_id.to_string()))
+            .await
+        {
+            let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
+            for row in rows {
+                let json = surreal_to_json(row);
+                if let Some(id) = json.get("out").and_then(|v| v.as_str()) {
+                    relevant_ids.insert(id.to_string());
+                }
+            }
+        }
+
+        // has_persona WHERE in = pid → out values (personas)
+        if let Ok(mut res) = self
+            .client
+            .query("SELECT out FROM has_persona WHERE in = type::record($pid)")
+            .bind(("pid", project_id.to_string()))
+            .await
+        {
+            let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
+            for row in rows {
+                let json = surreal_to_json(row);
+                if let Some(id) = json.get("out").and_then(|v| v.as_str()) {
+                    relevant_ids.insert(id.to_string());
+                }
+            }
+        }
+
+        // has_workflow WHERE in = pid → out values (workflows)
+        if let Ok(mut res) = self
+            .client
+            .query("SELECT out FROM has_workflow WHERE in = type::record($pid)")
+            .bind(("pid", project_id.to_string()))
+            .await
+        {
+            let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
+            for row in rows {
+                let json = surreal_to_json(row);
+                if let Some(id) = json.get("out").and_then(|v| v.as_str()) {
+                    relevant_ids.insert(id.to_string());
+                }
+            }
+        }
+
+        // has_epic WHERE in = pid → out values (epics)
+        if let Ok(mut res) = self
+            .client
+            .query("SELECT out FROM has_epic WHERE in = type::record($pid)")
+            .bind(("pid", project_id.to_string()))
+            .await
+        {
+            let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
+            for row in rows {
+                let json = surreal_to_json(row);
+                if let Some(id) = json.get("out").and_then(|v| v.as_str()) {
+                    relevant_ids.insert(id.to_string());
+                }
+            }
+        }
+
+        // has_user_story WHERE in = pid → out values (user_stories)
+        if let Ok(mut res) = self
+            .client
+            .query("SELECT out FROM has_user_story WHERE in = type::record($pid)")
+            .bind(("pid", project_id.to_string()))
+            .await
+        {
             let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
             for row in rows {
                 let json = surreal_to_json(row);
@@ -161,9 +230,13 @@ impl DB {
         }
 
         // contains WHERE in = pid → out values (modules)
-        let sql = format!("SELECT out FROM contains WHERE in = {}", project_id);
         let mut module_ids: Vec<String> = Vec::new();
-        if let Ok(mut res) = self.client.query(&sql).await {
+        if let Ok(mut res) = self
+            .client
+            .query("SELECT out FROM contains WHERE in = type::record($pid)")
+            .bind(("pid", project_id.to_string()))
+            .await
+        {
             let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
             for row in rows {
                 let json = surreal_to_json(row);
