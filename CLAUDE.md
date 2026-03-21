@@ -86,12 +86,20 @@ Knowledge can be attached to any structural node:
    - Identifying the specific files that need to be modified or created.
    - Understanding the necessary schema or logic changes.
    - Formulating a step-by-step implementation plan.
-4. **MANDATORY:** Present your research and implementation plan to the user and ask for their approval.
+4. **MANDATORY:** Present your research and implementation plan to the user and ask for
+   their approval **to create the task** (not to implement it).
    - _CRITICAL:_ Even if the user explicitly says "create a task for X", you MUST present your research and get approval first. NEVER run the `dn task add` command without
      explicit user confirmation of your plan.
 5. **After explicit approval**, create a task node and link to the relevant project, module/submodule and files.
    - `dn task add --project-ids <project_id> "Task Name" "<THE_ENTIRE_MULTILINE_APPROVED_PLAN_VERBATIM>"`
    - _CRITICAL:_ Do NOT summarize the plan. You MUST pass the full, multi-line implementation plan that was approved by the user as the description argument.
+   - _CRITICAL:_ "Making a task" or "creating a task" means running `dn task add` ONLY.
+     It does NOT mean implementing the feature. After creating the task, stop — do not
+     touch any code, files, or run any implementation commands unless the user explicitly
+     asks you to work on the task.
+   - **MANDATORY follow-up:** `dn task add` does NOT support `--file-ids`. You MUST separately link each relevant file using:
+     `dn link --from-id <file_id> --edge belongs_to_task --to-ids <task_id>`
+   - Do not consider the task fully created until all relevant files are linked.
 
 ## Working on a task
 

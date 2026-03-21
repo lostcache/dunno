@@ -80,6 +80,7 @@ impl DB {
             "belongs_to_epic",
             "has_persona",
             "has_workflow",
+            "belongs_to_task",
         ];
 
         for edge_table in &edge_tables {
@@ -367,6 +368,7 @@ impl DB {
             "belongs_to_epic",
             "has_persona",
             "has_workflow",
+            "belongs_to_task",
         ];
 
         for edge_table in &edge_tables {
