@@ -49,14 +49,15 @@
   #msp-pairs .pair-row.no-pair { color: #475569; }
 
   /* Context view */
-  #ctx-view { flex: 1; padding: 20px; display: none; flex-direction: column; gap: 12px; }
+  #ctx-view { flex: 1; padding: 20px; display: none; flex-direction: column; gap: 12px; min-height: 0; overflow: hidden; }
   #ctx-view .ctx-controls { display: flex; gap: 8px; align-items: center; }
   #ctx-view select, #ctx-view input { background: #252840; color: #e2e8f0; border: 1px solid #3d4165; padding: 6px 10px; border-radius: 4px; }
-  #ctx-view input { flex: 1; }
+  #ctx-id-container { flex: 1; display: flex; }
+  #ctx-id-container input, #ctx-id-container select { flex: 1; background: #252840; color: #e2e8f0; border: 1px solid #3d4165; padding: 6px 10px; border-radius: 4px; }
   #ctx-view button { padding: 6px 14px; background: #5b45d6; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
   #ctx-view button:hover { background: #7c6df0; }
   #ctx-view label { display: flex; align-items: center; gap: 4px; color: #94a3b8; }
-  #ctx-output { flex: 1; overflow-y: auto; }
+  #ctx-output { flex: 1; overflow-y: auto; min-height: 0; }
   #ctx-output pre { background: #14172a; border: 1px solid #2d3148; padding: 12px; border-radius: 6px; white-space: pre-wrap; word-break: break-all; color: #94a3b8; font-size: 12px; }
 
   /* Status bar */
@@ -147,12 +148,12 @@
 
     <div id="ctx-view">
       <div class="ctx-controls">
-        <select id="ctx-type">
+        <select id="ctx-type" onchange="App.onCtxTypeChange()">
           <option value="task">Task</option>
           <option value="file">File</option>
           <option value="epic">Epic</option>
         </select>
-        <input id="ctx-id" placeholder="record id e.g. task:abc123">
+        <div id="ctx-id-container"><input id="ctx-id" placeholder="record id e.g. task:abc123"></div>
         <label><input type="checkbox" id="ctx-full"> Full</label>
         <button onclick="App.fetchCtx()">Fetch</button>
       </div>
@@ -483,6 +484,7 @@ const App = {
     document.getElementById('ctx-view').style.display = view === 'ctx' ? 'flex' : 'none';
     document.getElementById('btn-graph').classList.toggle('active', view === 'graph');
     document.getElementById('btn-ctx').classList.toggle('active', view === 'ctx');
+    if (view === 'ctx') this.onCtxTypeChange();
   },
 
   initCy() {
@@ -1021,6 +1023,37 @@ const App = {
       this.refresh();
     } catch(e) {
       status('Create failed: ' + e.message, 'err');
+    }
+  },
+
+  async loadCtxTaskDropdown() {
+    const container = document.getElementById('ctx-id-container');
+    const pid = this.projectId;
+    if (!pid) {
+      container.innerHTML = '<input id="ctx-id" placeholder="record id e.g. task:abc123">';
+      return;
+    }
+    try {
+      const tasks = await api(`/api/projects/${pid}/tasks`);
+      if (!tasks.length) {
+        container.innerHTML = '<input id="ctx-id" placeholder="No tasks found">';
+        return;
+      }
+      container.innerHTML = '<select id="ctx-id">' +
+        tasks.map(t => `<option value="${t.id}">${t.title || t.name || t.id}</option>`).join('') +
+        '</select>';
+    } catch(e) {
+      container.innerHTML = '<input id="ctx-id" placeholder="record id e.g. task:abc123">';
+    }
+  },
+
+  onCtxTypeChange() {
+    const type = document.getElementById('ctx-type').value;
+    const container = document.getElementById('ctx-id-container');
+    if (type === 'task') {
+      this.loadCtxTaskDropdown();
+    } else {
+      container.innerHTML = '<input id="ctx-id" placeholder="record id e.g. task:abc123">';
     }
   },
 
