@@ -4,6 +4,10 @@
 
 `dn` is a Rust CLI tool that captures coding knowledge (mistakes, style guides, security details, custom fields) in a graph database and retrieves deterministic context for AI agents. Unlike traditional natural language search, dn uses a strict graph hierarchy where context is linked to nodes and inherited down the tree.
 
+## Command Policy
+
+- **ALWAYS** use the `dn` binary directly. It is the only approved interface for project operations.
+
 ---
 
 ## Core Hierarchy
@@ -28,13 +32,15 @@ Knowledge can be attached to any structural node:
 - **User Story**: Knowledge related to specific user stories
 - **Epic**: Knowledge related to specific epics
 - **Todo**: Knowledge related to specific todo items
+- **Persona**: AI agent persona definitions linked to a project
+- **Workflow**: Workflow definitions linked to a project
 
 ### Edges
 
 - `contains` - Parent contains child (project->module, module->submodule, module->file, submodule->file)
 - `has_task` - Parent has task (project->task, user_story->task, epic->task)
 - `has_context` - Node has knowledge (project, module, submodule, task, epic, file -> context)
-- `belongs_to_project` - Child belongs to project (task, context, user_story, epic, file -> project)
+- `belongs_to_project` - Child belongs to project (task, context, user_story, epic, file, persona, workflow -> project)
 - `belongs_to_module` - Child belongs to module (task, context, file -> module)
 - `belongs_to_submodule` - Child belongs to submodule (context, file -> submodule)
 - `belongs_to_story` - Child belongs to user story (task -> user_story)
@@ -43,6 +49,8 @@ Knowledge can be attached to any structural node:
 - `has_user_story` - Parent has user story (project, epic -> user_story)
 - `has_epic` - Parent has epic (project -> epic)
 - `has_todo` - Parent has todo (project -> todo_item)
+- `has_persona` - Parent has persona (project -> persona)
+- `has_workflow` - Parent has workflow (project -> workflow)
 - `has_module` - Parent has module (user_story -> module)
 - `has_submodule` - Parent has submodule (user_story -> submodule)
 
@@ -63,24 +71,50 @@ Knowledge can be attached to any structural node:
    - `dn project create "ProjectName" "Description"`
 2. Read the codebase for all the modules and submodules, create them and link to the respective project and module.
    - `dn module create --project-ids <project_id> "ModuleName" "Description"`
-   - `dn submodule create --module-ids <module_id> "SubmoduleName" "Description"`
-3. Create the file nodes with description and link to the respective module/submodule and project.
-   - `dn file create --parent-ids <module_or_submodule_id> "FileName" "Path" "Description"`
+   - `dn submodule add --project-ids <project_id> --module-ids <module_id> "SubmoduleName" "Description"`
+3. Create the file nodes with description and link to the respective project (required) and module/submodule (optional).
+   - `dn file add --project-ids <project_id> --parent-ids <module_or_submodule_id> "FileName" "Path" "Description"`
+   - `dn file add --project-ids <project_id> "FileName" "Path" "Description"` (no module/submodule)
 
-## Creating a task
+## Initializing a task
 
 1. Fetch an item from the todo list or user-story to work on.
    - `dn todo list --project-id <project_id>`
    - `dn user-story list --project-id <project_id>`
-2. Enter planning mode even if currently in agent mode.
-3. Do complete research of the task and consult the user.
-4. After approval, create a task node and link to the relevant project, module/submodule and files.
-   - `dn task create --project-ids <project_id> --module-ids <module_id> "Task Name" "Description"`
+2. If you have access to shell tool in Plan Mode switch to Plan Mode (if available) or remain in Agent Mode, but **DO NOT** create the task yet.
+3. **MANDATORY:** Do complete research on the task. This includes:
+   - Identifying the specific files that need to be modified or created.
+   - Understanding the necessary schema or logic changes.
+   - Formulating a step-by-step implementation plan.
+4. **MANDATORY:** Present your research and implementation plan to the user and ask for
+   their approval **to create the task** (not to implement it).
+   - _CRITICAL:_ Even if the user explicitly says "create a task for X", you MUST present your research and get approval first. NEVER run the `dn task add` command without
+     explicit user confirmation of your plan.
+5. **After explicit approval**, create a task node and link to the relevant project, module/submodule and files.
+   - `dn task add --project-ids <project_id> "Task Name" "<THE_ENTIRE_MULTILINE_APPROVED_PLAN_VERBATIM>"`
+   - _CRITICAL:_ Do NOT summarize the plan. You MUST pass the full, multi-line implementation plan that was approved by the user as the description argument.
+   - _CRITICAL:_ "Making a task" or "creating a task" means running `dn task add` ONLY.
+     It does NOT mean implementing the feature. After creating the task, stop — do not
+     touch any code, files, or run any implementation commands unless the user explicitly
+     asks you to work on the task.
+   - **MANDATORY follow-up:** `dn task add` does NOT support `--file-ids`. You MUST separately link each relevant file using:
+     `dn link --from-id <file_id> --edge belongs_to_task --to-ids <task_id>`
+   - Do not consider the task fully created until all relevant files are linked.
+
+## Starting Work
+
+When asked to "fetch a task" or "work on a task":
+
+1. **Always check for existing tasks first**: `dn task list --project-id <project_id>`
+2. If existing tasks are found, proceed to **Working on a task**.
+3. Only go to **Initializing a task** (from todos/user stories) if no existing tasks are pending.
 
 ## Working on a task
 
 1. Before working on a task, query the context with `dn ctx --task-id <id> --full` to see the inherited context.
-2. Mark the task as in progress.
+2. **MANDATORY:** If the context includes a `persona`, you MUST fully adopt it for the entire task — tone, verbosity, tool usage rules, response style, and all behavioural instructions. The persona overrides your defaults. If the context includes a `workflow`, follow it exactly.
+3. Mark the task as in progress.
+4. When done, mark the task as completed.
 
 ## Context/Knowledge capture during working on a task
 
@@ -91,7 +125,7 @@ Knowledge can be attached to any structural node:
 
 When discovering non-obvious and non-recorded information, add it to dn with appropriate type and link it to appropriate `package/module/submodule` node.
 
-**What counts as a learning:**
+#### **What counts as a learning:**
 
 - Hidden relationships between files/modules
 - Execution paths that differ from appearance
@@ -102,7 +136,7 @@ When discovering non-obvious and non-recorded information, add it to dn with app
 - Architectural decisions and constraints
 - Files that must change together
 
-**What NOT to include:**
+#### **What NOT to include:**
 
 - Obvious facts from documentation
 - Standard language/framework behavior

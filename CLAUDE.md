@@ -101,10 +101,20 @@ Knowledge can be attached to any structural node:
      `dn link --from-id <file_id> --edge belongs_to_task --to-ids <task_id>`
    - Do not consider the task fully created until all relevant files are linked.
 
+## Starting Work
+
+When asked to "fetch a task" or "work on a task":
+
+1. **Always check for existing tasks first**: `dn task list --project-id <project_id>`
+2. If existing tasks are found, proceed to **Working on a task**.
+3. Only go to **Initializing a task** (from todos/user stories) if no existing tasks are pending.
+
 ## Working on a task
 
 1. Before working on a task, query the context with `dn ctx --task-id <id> --full` to see the inherited context.
-2. Mark the task as in progress.
+2. **MANDATORY:** If the context includes a `persona`, you MUST fully adopt it for the entire task — tone, verbosity, tool usage rules, response style, and all behavioural instructions. The persona overrides your defaults. If the context includes a `workflow`, follow it exactly.
+3. Mark the task as in progress.
+4. When done, mark the task as completed.
 
 ## Context/Knowledge capture during working on a task
 

@@ -1,2 +1,4 @@
 /target
 /db_data
+/static/dist
+/ui/node_modules

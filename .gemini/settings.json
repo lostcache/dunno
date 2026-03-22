@@ -1,0 +1,36 @@
+{
+  "ui": {
+    "hideWindowTitle": true,
+    "inlineThinkingMode": "off",
+    "showStatusInTitle": true,
+    "showHomeDirectoryWarning": false,
+    "hideTips": false,
+    "hideBanner": true,
+    "footer": {
+      "hideContextPercentage": false
+    },
+    "showMemoryUsage": true,
+    "showCitations": true,
+    "showModelInfoInChat": true,
+    "useAlternateBuffer": true,
+    "loadingPhrases": "off"
+  },
+  "ide": {
+    "enabled": true
+  },
+  "tools": {
+    "shell": {
+      "showColor": true
+    }
+  },
+  "security": {
+    "enablePermanentToolApproval": true,
+    "environmentVariableRedaction": {
+      "enabled": true
+    }
+  },
+  "experimental": {
+    "modelSteering": true,
+    "directWebFetch": true
+  }
+}

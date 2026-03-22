@@ -1,0 +1,8 @@
+backend = "dev"
+
+[dev]
+url = "ws://127.0.0.1:8000/rpc"
+namespace = "dunno"
+database = "dunno"
+username = "root"
+password = "root"
