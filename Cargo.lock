@@ -1171,6 +1171,53 @@ dependencies = [
 ]
 
 [[package]]
+name = "dn"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "dn-core",
+ "rustls",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "dn-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cargo-llvm-cov",
+ "dirs",
+ "qdrant-client",
+ "rustls",
+ "serde",
+ "serde_json",
+ "surrealdb",
+ "tokio",
+ "toml",
+ "uuid",
+]
+
+[[package]]
+name = "dn-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum 0.7.9",
+ "clap",
+ "dn-core",
+ "mime_guess",
+ "open",
+ "rust-embed",
+ "rustls",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower-http 0.5.2",
+]
+
+[[package]]
 name = "dtoa"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1202,29 +1249,6 @@ name = "dunce"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
-
-[[package]]
-name = "dunno"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum 0.7.9",
- "cargo-llvm-cov",
- "clap",
- "dirs",
- "mime_guess",
- "open",
- "qdrant-client",
- "rust-embed",
- "rustls",
- "serde",
- "serde_json",
- "surrealdb",
- "tokio",
- "toml",
- "tower-http 0.5.2",
- "uuid",
-]
 
 [[package]]
 name = "earcutr"
