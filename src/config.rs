@@ -2,6 +2,7 @@
 #[serde(rename_all = "lowercase")]
 pub enum StorageBackend {
     Local,
+    Dev,
     Cloud,
 }
 
@@ -9,9 +10,10 @@ impl StorageBackend {
     fn parse(value: &str) -> anyhow::Result<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "local" => Ok(Self::Local),
+            "dev" => Ok(Self::Dev),
             "cloud" => Ok(Self::Cloud),
             other => Err(anyhow::anyhow!(
-                "Invalid backend '{}'. Expected one of: local, cloud",
+                "Invalid backend '{}'. Expected one of: local, dev, cloud",
                 other
             )),
         }
@@ -27,6 +29,27 @@ impl Default for LocalConfig {
     fn default() -> Self {
         Self {
             path: "~/.local/share/dunno/data.db".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DevConfig {
+    pub url: String,
+    pub namespace: String,
+    pub database: String,
+    pub username: String,
+    pub password: String,
+}
+
+impl Default for DevConfig {
+    fn default() -> Self {
+        Self {
+            url: "ws://127.0.0.1:8000/rpc".to_string(),
+            namespace: "dunno".to_string(),
+            database: "dunno".to_string(),
+            username: "root".to_string(),
+            password: "root".to_string(),
         }
     }
 }
@@ -58,6 +81,7 @@ impl Default for CloudConfig {
 pub struct Config {
     pub backend: StorageBackend,
     pub local: LocalConfig,
+    pub dev: DevConfig,
     pub cloud: CloudConfig,
     pub qdrant_url: String,
 }
@@ -67,6 +91,7 @@ impl Default for Config {
         Self {
             backend: StorageBackend::Local,
             local: LocalConfig::default(),
+            dev: DevConfig::default(),
             cloud: CloudConfig::default(),
             qdrant_url: "mem://".to_string(),
         }
@@ -77,6 +102,7 @@ impl Default for Config {
 struct PartialConfig {
     backend: Option<String>,
     local: Option<PartialLocalConfig>,
+    dev: Option<PartialDevConfig>,
     cloud: Option<PartialCloudConfig>,
     qdrant_url: Option<String>,
 }
@@ -84,6 +110,15 @@ struct PartialConfig {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct PartialLocalConfig {
     path: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct PartialDevConfig {
+    url: Option<String>,
+    namespace: Option<String>,
+    database: Option<String>,
+    username: Option<String>,
+    password: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -114,53 +149,7 @@ impl Config {
         // 1. CLI args (highest)
         config.apply_cli_overrides(cli_backend)?;
 
-        // Auto-detect: if still on local backend and dn-ui is managing a surreal server, use it.
-        if matches!(config.backend, StorageBackend::Local) {
-            if let Some(url) = Self::active_server_url() {
-                config.backend = StorageBackend::Cloud;
-                config.cloud.url = url;
-                config.cloud.namespace = "dunno".to_string();
-                config.cloud.database = "dunno".to_string();
-                config.cloud.username = "root".to_string();
-                config.cloud.password = "root".to_string();
-                config.cloud.auth_type = "root".to_string();
-            }
-        }
-
         Ok(config)
-    }
-
-    /// Path to the marker file written by dn-ui when it manages a surreal subprocess.
-    /// ~/.local/share/dunno/ui-server.port
-    pub fn ui_server_marker_path() -> std::path::PathBuf {
-        let base = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-        base.join(".local")
-            .join("share")
-            .join("dunno")
-            .join("ui-server.port")
-    }
-
-    /// If dn-ui is running and managing a surreal subprocess, returns its WebSocket URL.
-    /// Returns None if no marker file exists.
-    pub fn active_server_url() -> Option<String> {
-        let port_str = std::fs::read_to_string(Self::ui_server_marker_path()).ok()?;
-        let port: u16 = port_str.trim().parse().ok()?;
-        Some(format!("ws://127.0.0.1:{}/rpc", port))
-    }
-
-    /// Write the surreal subprocess port to the marker file.
-    pub fn write_ui_server_marker(port: u16) -> anyhow::Result<()> {
-        let path = Self::ui_server_marker_path();
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        std::fs::write(&path, port.to_string())?;
-        Ok(())
-    }
-
-    /// Remove the marker file (called on dn-ui exit).
-    pub fn remove_ui_server_marker() {
-        let _ = std::fs::remove_file(Self::ui_server_marker_path());
     }
 
     // Helper for testing - allows specifying custom paths and controlling env overrides
@@ -208,10 +197,18 @@ impl Config {
         serde_json::json!({
             "backend": match self.backend {
                 StorageBackend::Local => "local",
+                StorageBackend::Dev => "dev",
                 StorageBackend::Cloud => "cloud",
             },
             "local": {
                 "path": self.local.path,
+            },
+            "dev": {
+                "url": self.dev.url,
+                "namespace": self.dev.namespace,
+                "database": self.dev.database,
+                "username": self.dev.username,
+                "password": if self.dev.password.is_empty() { "" } else { "***redacted***" },
             },
             "cloud": {
                 "url": self.cloud.url,
@@ -229,8 +226,9 @@ impl Config {
 
     pub fn formatted(&self) -> String {
         let backend_str = match self.backend {
-            StorageBackend::Local => "local".to_string(),
-            StorageBackend::Cloud => "cloud".to_string(),
+            StorageBackend::Local => "local",
+            StorageBackend::Dev => "dev",
+            StorageBackend::Cloud => "cloud",
         };
 
         let mut output = String::new();
@@ -241,6 +239,19 @@ impl Config {
             StorageBackend::Local => {
                 output.push_str("--- Local Storage ---\n");
                 output.push_str(&format!("Database Path: {}\n", self.local.path));
+            }
+            StorageBackend::Dev => {
+                output.push_str("--- Dev Settings ---\n");
+                output.push_str(&format!("URL: {}\n", self.dev.url));
+                output.push_str(&format!("Namespace: {}\n", self.dev.namespace));
+                output.push_str(&format!("Database: {}\n", self.dev.database));
+                output.push_str(&format!("Username: {}\n", self.dev.username));
+                let password_display = if self.dev.password.is_empty() {
+                    "(not set)".to_string()
+                } else {
+                    "***redacted***".to_string()
+                };
+                output.push_str(&format!("Password: {}\n", password_display));
             }
             StorageBackend::Cloud => {
                 output.push_str("--- Cloud Settings ---\n");
@@ -291,6 +302,11 @@ impl Config {
         let pairs = [
             ("DUNNO_BACKEND", std::env::var("DUNNO_BACKEND").ok()),
             ("DUNNO_LOCAL_PATH", std::env::var("DUNNO_LOCAL_PATH").ok()),
+            ("DUNNO_DEV_URL", std::env::var("DUNNO_DEV_URL").ok()),
+            ("DUNNO_DEV_NS", std::env::var("DUNNO_DEV_NS").ok()),
+            ("DUNNO_DEV_DB", std::env::var("DUNNO_DEV_DB").ok()),
+            ("DUNNO_DEV_USER", std::env::var("DUNNO_DEV_USER").ok()),
+            ("DUNNO_DEV_PASS", std::env::var("DUNNO_DEV_PASS").ok()),
             ("DUNNO_CLOUD_URL", std::env::var("DUNNO_CLOUD_URL").ok()),
             ("DUNNO_CLOUD_NS", std::env::var("DUNNO_CLOUD_NS").ok()),
             ("DUNNO_CLOUD_DB", std::env::var("DUNNO_CLOUD_DB").ok()),
@@ -320,6 +336,21 @@ impl Config {
         }
         if let Some(value) = map.get("DUNNO_LOCAL_PATH") {
             self.local.path = value.to_string();
+        }
+        if let Some(value) = map.get("DUNNO_DEV_URL") {
+            self.dev.url = value.to_string();
+        }
+        if let Some(value) = map.get("DUNNO_DEV_NS") {
+            self.dev.namespace = value.to_string();
+        }
+        if let Some(value) = map.get("DUNNO_DEV_DB") {
+            self.dev.database = value.to_string();
+        }
+        if let Some(value) = map.get("DUNNO_DEV_USER") {
+            self.dev.username = value.to_string();
+        }
+        if let Some(value) = map.get("DUNNO_DEV_PASS") {
+            self.dev.password = value.to_string();
         }
         if let Some(value) = map.get("DUNNO_CLOUD_URL") {
             self.cloud.url = value.to_string();
@@ -357,6 +388,23 @@ impl Config {
             && let Some(path) = local.path
         {
             self.local.path = path;
+        }
+        if let Some(dev) = partial.dev {
+            if let Some(url) = dev.url {
+                self.dev.url = url;
+            }
+            if let Some(namespace) = dev.namespace {
+                self.dev.namespace = namespace;
+            }
+            if let Some(database) = dev.database {
+                self.dev.database = database;
+            }
+            if let Some(username) = dev.username {
+                self.dev.username = username;
+            }
+            if let Some(password) = dev.password {
+                self.dev.password = password;
+            }
         }
         if let Some(cloud) = partial.cloud {
             if let Some(url) = cloud.url {

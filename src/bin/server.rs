@@ -1,19 +1,46 @@
 use axum::Json;
-use axum::http::{Method, header::CONTENT_TYPE};
+use axum::body::Body;
+use axum::http::{Method, Response, header, header::CONTENT_TYPE};
 use axum::{
     Router,
     extract::{Path, Query, State},
     http::StatusCode,
-    response::{Html, IntoResponse},
+    response::IntoResponse,
     routing::{get, patch, post},
 };
 use clap::Parser;
 use dunno::{config::Config, db::surreal::DB};
+use rust_embed::RustEmbed;
 use serde::Deserialize;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 
-const INDEX_HTML: &str = include_str!("../../static/index.html");
+#[derive(RustEmbed)]
+#[folder = "static/dist/"]
+struct StaticFiles;
+
+fn serve_embedded(path: &str) -> Option<Response<Body>> {
+    let file = StaticFiles::get(path)?;
+    let mime = mime_guess::from_path(path).first_or_octet_stream();
+    Response::builder()
+        .header(header::CONTENT_TYPE, mime.as_ref())
+        .body(Body::from(file.data.into_owned()))
+        .ok()
+}
+
+async fn static_handler(uri: axum::http::Uri) -> Response<Body> {
+    let path = uri.path().trim_start_matches('/');
+    let path = if path.is_empty() { "index.html" } else { path };
+    serve_embedded(path).unwrap_or_else(|| {
+        // SPA fallback — serve index.html for client-side routes
+        serve_embedded("index.html").unwrap_or_else(|| {
+            Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::from("UI not built — run `make ui-build`"))
+                .unwrap()
+        })
+    })
+}
 
 #[derive(Parser)]
 struct Args {
@@ -217,10 +244,6 @@ struct LinkBody {
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
-
-async fn serve_index() -> impl IntoResponse {
-    Html(INDEX_HTML)
-}
 
 // Projects
 async fn list_projects(State(state): State<Arc<AppState>>) -> ApiResult<serde_json::Value> {
@@ -912,8 +935,7 @@ fn build_router(state: Arc<AppState>) -> Router {
         // Graph
         .route("/api/graph", get(get_graph))
         .route("/api/projects/:pid/graph", get(get_project_graph))
-        // SPA fallback
-        .fallback(serve_index)
+        .fallback(static_handler)
         .with_state(state)
         .layer(cors)
 }
@@ -993,16 +1015,16 @@ async fn main() -> anyhow::Result<()> {
                             "surreal server did not start within 10 seconds"
                         ));
                     }
-                    Config::write_ui_server_marker(surreal_port)?;
                     let ws_url = format!("ws://127.0.0.1:{}/rpc", surreal_port);
                     let db = DB::new(&ws_url).await?;
                     (db, Some(child))
                 }
                 Err(e) => {
                     eprintln!("Warning: {e}");
-                    eprintln!("dn-ui started, but the dn command-line tool will not be available while dn-ui is running.");
-                    eprintln!("To use both at the same time, install the surreal binary and restart dn-ui:");
-                    eprintln!("  curl -sSf https://install.surrealdb.com | sh");
+                    eprintln!("dn-server started, but the dn CLI will not be available concurrently.");
+                    eprintln!("To use both at the same time, either:");
+                    eprintln!("  - Install surreal and restart dn-server: curl -sSf https://install.surrealdb.com | sh");
+                    eprintln!("  - Or set backend = \"dev\" in your config and run SurrealDB separately");
                     let db = DB::from_config(&config).await?;
                     (db, None)
                 }
@@ -1017,7 +1039,7 @@ async fn main() -> anyhow::Result<()> {
     let addr = format!("127.0.0.1:{}", args.port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     let url = format!("http://{}", addr);
-    println!("dn-ui running at {}", url);
+    println!("dn-server running at {}", url);
 
     if !args.no_open {
         open::that(&url).ok();
@@ -1030,7 +1052,6 @@ async fn main() -> anyhow::Result<()> {
     if let Some(mut child) = surreal_child {
         let _ = child.kill();
     }
-    Config::remove_ui_server_marker();
 
     Ok(())
 }

@@ -41,14 +41,31 @@ impl DB {
                 Self::new_local(&url, "dunno", "dunno").await.map_err(|e| {
                     if e.to_string().contains("already locked by another process") {
                         anyhow::anyhow!(
-                            "Cannot access the database — dn-ui appears to be running and has it locked.\n\
-                             To use dn and dn-ui at the same time, install the surreal binary and restart dn-ui:\n\
-                             \n  curl -sSf https://install.surrealdb.com | sh"
+                            "Cannot access the database — dn-server appears to be running and has it locked.\n\
+                             To use dn and dn-server concurrently, set backend = \"dev\" in your config\n\
+                             and point both tools at a running SurrealDB instance."
                         )
                     } else {
                         e
                     }
                 })
+            }
+            crate::config::StorageBackend::Dev => {
+                let dev = &config.dev;
+                if dev.url.trim().is_empty() {
+                    return Err(anyhow::anyhow!(
+                        "Dev backend requires `dev.url` (or DUNNO_DEV_URL)"
+                    ));
+                }
+                let cloud_config = crate::config::CloudConfig {
+                    url: dev.url.clone(),
+                    namespace: dev.namespace.clone(),
+                    database: dev.database.clone(),
+                    username: dev.username.clone(),
+                    password: dev.password.clone(),
+                    auth_type: "root".to_string(),
+                };
+                Self::connect_cloud(&cloud_config).await
             }
             crate::config::StorageBackend::Cloud => {
                 let cloud = &config.cloud;
