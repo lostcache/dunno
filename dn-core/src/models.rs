@@ -166,6 +166,25 @@ pub struct ProjectContext {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct SubmoduleStructure {
+    pub submodule: Submodule,
+    pub files: Vec<File>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct ModuleStructure {
+    pub module: Module,
+    pub submodules: Vec<SubmoduleStructure>,
+    pub files: Vec<File>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct ProjectStructure {
+    pub project: Project,
+    pub modules: Vec<ModuleStructure>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct ModuleContext {
     pub module: Module,
     pub contexts: Vec<Context>,

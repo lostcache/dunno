@@ -149,24 +149,33 @@ pub enum Commands {
         name = "ctx",
         about = "Retrieve coding context for a task, file, or subtask.",
         long_about = "Find context directly linked to a task or file.",
-        after_help = "Example:\n  dn ctx --task-id task:123\n  dn ctx --file-id file:456"
+        after_help = "Example:\n  dn ctx --task-id task:123\n  dn ctx --file-id file:456\n  dn ctx --general -p MyProject"
     )]
     Context {
         /// The Task ID to retrieve context for.
-        #[arg(long, visible_alias = "tid", value_name = "TASK_ID", conflicts_with_all = ["file_id", "epic_id"])]
+        #[arg(long, visible_alias = "tid", value_name = "TASK_ID", conflicts_with_all = ["file_id", "epic_id", "general", "project"])]
         task_id: Option<String>,
 
         /// The File ID to retrieve context for.
-        #[arg(long, visible_alias = "fid", value_name = "FILE_ID", conflicts_with_all = ["task_id", "epic_id"])]
+        #[arg(long, visible_alias = "fid", value_name = "FILE_ID", conflicts_with_all = ["task_id", "epic_id", "general", "project"])]
         file_id: Option<String>,
 
         /// The Epic ID to retrieve context for.
-        #[arg(long, visible_alias = "eid", value_name = "EPIC_ID", conflicts_with_all = ["task_id", "file_id"])]
+        #[arg(long, visible_alias = "eid", value_name = "EPIC_ID", conflicts_with_all = ["task_id", "file_id", "general", "project"])]
         epic_id: Option<String>,
 
         /// Retrieve full inherited context from parent nodes (Project, Module, Submodule).
         #[arg(long)]
         full: bool,
+
+        /// Retrieve the project structure: all modules, submodules, and files with descriptions.
+        /// Requires --project / -p.
+        #[arg(long, conflicts_with_all = ["task_id", "file_id", "epic_id"])]
+        general: bool,
+
+        /// Project name or ID for use with --general.
+        #[arg(short = 'p', long, value_name = "PROJECT", requires = "general")]
+        project: Option<String>,
     },
 
     #[command(

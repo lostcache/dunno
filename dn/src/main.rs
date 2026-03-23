@@ -95,7 +95,9 @@ async fn dispatch_command(
             file_id,
             epic_id,
             full,
-        } => handle_context(task_id, file_id, epic_id, full, db, pretty).await,
+            general,
+            project,
+        } => handle_context(task_id, file_id, epic_id, full, general, project, db, pretty).await,
         args::Commands::Purge => handle_purge(db, pretty).await,
         args::Commands::Config { .. } => {
             unreachable!("config command handled before db init")
@@ -930,9 +932,31 @@ async fn handle_context(
     file_id: Option<String>,
     epic_id: Option<String>,
     full: bool,
+    general: bool,
+    project: Option<String>,
     db: &dn_core::db::DB,
     pretty: bool,
 ) -> anyhow::Result<()> {
+    if general {
+        let proj = project
+            .ok_or_else(|| anyhow::anyhow!("--project / -p is required with --general"))?;
+        let project_id = if proj.contains(':') {
+            proj.clone()
+        } else {
+            db.get_project_by_name(&proj, true)
+                .await?
+                .ok_or_else(|| anyhow::anyhow!("Project not found: {}", proj))?
+                .id
+                .ok_or_else(|| anyhow::anyhow!("Project has no ID"))?
+        };
+        let results = dn_core::context::get_project_structure(&project_id, db).await?;
+        print_json(
+            serde_json::json!({ "results": serde_json::to_value(results)? }),
+            pretty,
+        );
+        return Ok(());
+    }
+
     match (task_id, file_id, epic_id) {
         (Some(t_id), _, _) => {
             let results = dn_core::context::get_task_context(&t_id, full, db).await?;
@@ -957,7 +981,7 @@ async fn handle_context(
         }
         (None, None, None) => {
             return Err(anyhow::anyhow!(
-                "One of --task-id, --file-id, or --epic-id must be provided"
+                "One of --task-id, --file-id, --epic-id, or --general must be provided"
             ));
         }
     };

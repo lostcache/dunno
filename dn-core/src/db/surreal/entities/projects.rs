@@ -142,6 +142,54 @@ impl DB {
         }
     }
 
+    /// Returns the structural hierarchy of a project: all modules, their submodules, and files.
+    pub async fn get_project_structure(
+        &self,
+        project_id: &str,
+    ) -> anyhow::Result<crate::models::ProjectStructure> {
+        let project = self
+            .get_project(project_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Project not found: {}", project_id))?;
+
+        let modules = self.list_modules_by_project(project_id).await?;
+        let mut module_structures = Vec::new();
+
+        for module in modules {
+            let module_id = module
+                .id
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("Module has no ID"))?;
+
+            let files = self.list_files_by_module(module_id).await?;
+            let raw_submodules = self.list_submodules_by_module(module_id).await?;
+
+            let mut submodule_structures = Vec::new();
+            for submodule in raw_submodules {
+                let submodule_id = submodule
+                    .id
+                    .as_ref()
+                    .ok_or_else(|| anyhow::anyhow!("Submodule has no ID"))?;
+                let sub_files = self.list_files_by_submodule(submodule_id).await?;
+                submodule_structures.push(crate::models::SubmoduleStructure {
+                    submodule,
+                    files: sub_files,
+                });
+            }
+
+            module_structures.push(crate::models::ModuleStructure {
+                module,
+                submodules: submodule_structures,
+                files,
+            });
+        }
+
+        Ok(crate::models::ProjectStructure {
+            project,
+            modules: module_structures,
+        })
+    }
+
     /// Deletes a project by id.
     pub async fn delete_project(&self, project_id: &str) -> anyhow::Result<bool> {
         let key = project_id
@@ -152,6 +200,13 @@ impl DB {
         let deleted: Option<surrealdb::types::Value> = self.client.delete(("project", key)).await?;
         Ok(deleted.is_some())
     }
+}
+
+pub async fn get_project_structure_json(
+    project_id: &str,
+    db: &crate::db::DB,
+) -> anyhow::Result<crate::models::ProjectStructure> {
+    db.get_project_structure(project_id).await
 }
 
 #[cfg(test)]

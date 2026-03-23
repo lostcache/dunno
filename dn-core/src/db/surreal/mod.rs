@@ -291,4 +291,5 @@ mod tests;
 
 pub use entities::epics::get_epic_context_json;
 pub use entities::files::get_file_context_json;
+pub use entities::projects::get_project_structure_json;
 pub use entities::tasks::get_task_context_json;
