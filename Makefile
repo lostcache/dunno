@@ -15,7 +15,7 @@ build: ui-build
 
 # Development workflow:
 #   surreal start --bind 127.0.0.1:8000 --username root --password root surrealkv://~/.local/share/dunno/data.db
-#   Set backend = "dev" in dunno.toml (points at a running SurrealDB instance)
+#   Set backend = "local-server" in dunno.toml (points at a running SurrealDB instance)
 #   terminal 1: cargo run --bin dn-server -- --no-open
 #   terminal 2: make dev  (Vite on :5173, proxies /api to :7700)
 dev:

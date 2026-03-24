@@ -1,6 +1,6 @@
 //! Integration tests for SurrealDB backend.
 use super::*;
-use crate::config::{CloudConfig, LocalConfig};
+use crate::config::Config;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[tokio::test]
@@ -231,13 +231,10 @@ async fn test_from_config_local_embedded_crud() {
         .join(format!("dunno-db-{ts}"))
         .join("data.db");
 
-    let config = crate::config::Config {
+    let config = Config {
         backend: crate::config::StorageBackend::Local,
-        local: LocalConfig {
-            path: db_path.to_string_lossy().to_string(),
-        },
-        cloud: CloudConfig::default(),
-        qdrant_url: "mem://".to_string(),
+        local_path: db_path.to_string_lossy().to_string(),
+        ..Config::default()
     };
 
     let db = DB::from_config(&config)
@@ -258,17 +255,15 @@ async fn test_from_config_local_embedded_crud() {
 
 #[tokio::test]
 async fn test_from_config_cloud_validation() {
-    let config = crate::config::Config {
+    let config = Config {
         backend: crate::config::StorageBackend::Cloud,
-        local: LocalConfig::default(),
-        cloud: CloudConfig::default(),
-        qdrant_url: "mem://".to_string(),
+        ..Config::default()
     };
     let err = match DB::from_config(&config).await {
         Ok(_) => panic!("missing cloud fields should fail"),
         Err(err) => err,
     };
-    assert!(err.to_string().contains("cloud.url"));
+    assert!(err.to_string().contains("url"));
 }
 
 fn cleanup_temp_db(db_path: std::path::PathBuf) -> anyhow::Result<()> {
@@ -1682,18 +1677,12 @@ async fn test_list_files_by_submodule() {
 
 #[tokio::test]
 async fn test_from_config_cloud_missing_namespace() {
-    let config = crate::config::Config {
+    let config = Config {
         backend: crate::config::StorageBackend::Cloud,
-        local: crate::config::LocalConfig::default(),
-        cloud: crate::config::CloudConfig {
-            url: "wss://test.surrealdb.com".to_string(),
-            namespace: "".to_string(),
-            database: "test".to_string(),
-            username: "root".to_string(),
-            password: "root".to_string(),
-            auth_type: "root".to_string(),
-        },
-        qdrant_url: "mem://".to_string(),
+        url: "wss://test.surrealdb.com".to_string(),
+        namespace: "".to_string(),
+        database: "test".to_string(),
+        ..Config::default()
     };
 
     let err = DB::from_config(&config)
@@ -1704,18 +1693,12 @@ async fn test_from_config_cloud_missing_namespace() {
 
 #[tokio::test]
 async fn test_from_config_cloud_missing_database() {
-    let config = crate::config::Config {
+    let config = Config {
         backend: crate::config::StorageBackend::Cloud,
-        local: crate::config::LocalConfig::default(),
-        cloud: crate::config::CloudConfig {
-            url: "wss://test.surrealdb.com".to_string(),
-            namespace: "test".to_string(),
-            database: "".to_string(),
-            username: "root".to_string(),
-            password: "root".to_string(),
-            auth_type: "root".to_string(),
-        },
-        qdrant_url: "mem://".to_string(),
+        url: "wss://test.surrealdb.com".to_string(),
+        namespace: "test".to_string(),
+        database: "".to_string(),
+        ..Config::default()
     };
 
     let err = DB::from_config(&config)
@@ -1726,18 +1709,13 @@ async fn test_from_config_cloud_missing_database() {
 
 #[tokio::test]
 async fn test_from_config_cloud_missing_username() {
-    let config = crate::config::Config {
+    let config = Config {
         backend: crate::config::StorageBackend::Cloud,
-        local: crate::config::LocalConfig::default(),
-        cloud: crate::config::CloudConfig {
-            url: "wss://test.surrealdb.com".to_string(),
-            namespace: "test".to_string(),
-            database: "test".to_string(),
-            username: "".to_string(),
-            password: "root".to_string(),
-            auth_type: "root".to_string(),
-        },
-        qdrant_url: "mem://".to_string(),
+        url: "wss://test.surrealdb.com".to_string(),
+        namespace: "test".to_string(),
+        database: "test".to_string(),
+        username: "".to_string(),
+        ..Config::default()
     };
 
     let err = DB::from_config(&config)
@@ -1748,18 +1726,13 @@ async fn test_from_config_cloud_missing_username() {
 
 #[tokio::test]
 async fn test_from_config_cloud_missing_password() {
-    let config = crate::config::Config {
+    let config = Config {
         backend: crate::config::StorageBackend::Cloud,
-        local: crate::config::LocalConfig::default(),
-        cloud: crate::config::CloudConfig {
-            url: "wss://test.surrealdb.com".to_string(),
-            namespace: "test".to_string(),
-            database: "test".to_string(),
-            username: "root".to_string(),
-            password: "".to_string(),
-            auth_type: "root".to_string(),
-        },
-        qdrant_url: "mem://".to_string(),
+        url: "wss://test.surrealdb.com".to_string(),
+        namespace: "test".to_string(),
+        database: "test".to_string(),
+        password: "".to_string(),
+        ..Config::default()
     };
 
     let err = DB::from_config(&config)
@@ -1770,18 +1743,12 @@ async fn test_from_config_cloud_missing_password() {
 
 #[tokio::test]
 async fn test_from_config_cloud_valid() {
-    let config = crate::config::Config {
+    let config = Config {
         backend: crate::config::StorageBackend::Cloud,
-        local: crate::config::LocalConfig::default(),
-        cloud: crate::config::CloudConfig {
-            url: "wss://test.surrealdb.com".to_string(),
-            namespace: "test".to_string(),
-            database: "test".to_string(),
-            username: "root".to_string(),
-            password: "root".to_string(),
-            auth_type: "root".to_string(),
-        },
-        qdrant_url: "mem://".to_string(),
+        url: "wss://test.surrealdb.com".to_string(),
+        namespace: "test".to_string(),
+        database: "test".to_string(),
+        ..Config::default()
     };
 
     // This will fail to connect but should pass validation

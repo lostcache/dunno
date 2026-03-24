@@ -2,7 +2,8 @@
 #[serde(rename_all = "lowercase")]
 pub enum StorageBackend {
     Local,
-    Dev,
+    #[serde(rename = "local-server")]
+    LocalServer,
     Cloud,
 }
 
@@ -10,10 +11,10 @@ impl StorageBackend {
     fn parse(value: &str) -> anyhow::Result<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "local" => Ok(Self::Local),
-            "dev" => Ok(Self::Dev),
+            "local-server" => Ok(Self::LocalServer),
             "cloud" => Ok(Self::Cloud),
             other => Err(anyhow::anyhow!(
-                "Invalid backend '{}'. Expected one of: local, dev, cloud",
+                "Invalid backend '{}'. Expected one of: local, local-server, cloud",
                 other
             )),
         }
@@ -21,68 +22,15 @@ impl StorageBackend {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct LocalConfig {
-    pub path: String,
-}
-
-impl Default for LocalConfig {
-    fn default() -> Self {
-        Self {
-            path: "~/.local/share/dunno/data.db".to_string(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct DevConfig {
-    pub url: String,
-    pub namespace: String,
-    pub database: String,
-    pub username: String,
-    pub password: String,
-}
-
-impl Default for DevConfig {
-    fn default() -> Self {
-        Self {
-            url: "ws://127.0.0.1:8000/rpc".to_string(),
-            namespace: "dunno".to_string(),
-            database: "dunno".to_string(),
-            username: "root".to_string(),
-            password: "root".to_string(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct CloudConfig {
+pub struct Config {
+    pub backend: StorageBackend,
+    pub local_path: String,
     pub url: String,
     pub namespace: String,
     pub database: String,
     pub username: String,
     pub password: String,
     pub auth_type: String,
-}
-
-impl Default for CloudConfig {
-    fn default() -> Self {
-        Self {
-            url: String::new(),
-            namespace: String::new(),
-            database: String::new(),
-            username: "root".to_string(),
-            password: "root".to_string(),
-            auth_type: "root".to_string(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct Config {
-    pub backend: StorageBackend,
-    pub local: LocalConfig,
-    pub dev: DevConfig,
-    pub cloud: CloudConfig,
     pub qdrant_url: String,
 }
 
@@ -90,45 +38,29 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             backend: StorageBackend::Local,
-            local: LocalConfig::default(),
-            dev: DevConfig::default(),
-            cloud: CloudConfig::default(),
+            local_path: "~/.local/share/dunno/data.db".to_string(),
+            url: String::new(),
+            namespace: "dunno".to_string(),
+            database: "dunno".to_string(),
+            username: "root".to_string(),
+            password: "root".to_string(),
+            auth_type: "root".to_string(),
             qdrant_url: "mem://".to_string(),
         }
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
 struct PartialConfig {
     backend: Option<String>,
-    local: Option<PartialLocalConfig>,
-    dev: Option<PartialDevConfig>,
-    cloud: Option<PartialCloudConfig>,
-    qdrant_url: Option<String>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-struct PartialLocalConfig {
-    path: Option<String>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-struct PartialDevConfig {
-    url: Option<String>,
-    namespace: Option<String>,
-    database: Option<String>,
-    username: Option<String>,
-    password: Option<String>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-struct PartialCloudConfig {
+    local_path: Option<String>,
     url: Option<String>,
     namespace: Option<String>,
     database: Option<String>,
     username: Option<String>,
     password: Option<String>,
     auth_type: Option<String>,
+    qdrant_url: Option<String>,
 }
 
 impl Config {
@@ -190,34 +122,23 @@ impl Config {
     }
 
     pub fn local_data_path(&self) -> std::path::PathBuf {
-        expand_tilde_path(&self.local.path)
+        expand_tilde_path(&self.local_path)
     }
 
     pub fn redacted_json(&self) -> serde_json::Value {
         serde_json::json!({
             "backend": match self.backend {
                 StorageBackend::Local => "local",
-                StorageBackend::Dev => "dev",
+                StorageBackend::LocalServer => "local-server",
                 StorageBackend::Cloud => "cloud",
             },
-            "local": {
-                "path": self.local.path,
-            },
-            "dev": {
-                "url": self.dev.url,
-                "namespace": self.dev.namespace,
-                "database": self.dev.database,
-                "username": self.dev.username,
-                "password": if self.dev.password.is_empty() { "" } else { "***redacted***" },
-            },
-            "cloud": {
-                "url": self.cloud.url,
-                "namespace": self.cloud.namespace,
-                "database": self.cloud.database,
-                "username": self.cloud.username,
-                "password": if self.cloud.password.is_empty() { "" } else { "***redacted***" },
-                "auth_type": self.cloud.auth_type,
-            },
+            "local_path": self.local_path,
+            "url": self.url,
+            "namespace": self.namespace,
+            "database": self.database,
+            "username": self.username,
+            "password": if self.password.is_empty() { "" } else { "***redacted***" },
+            "auth_type": self.auth_type,
             "qdrant_url": self.qdrant_url,
             "global_config_path": Self::global_config_path(),
             "local_config_path": Self::local_config_path(),
@@ -227,7 +148,7 @@ impl Config {
     pub fn formatted(&self) -> String {
         let backend_str = match self.backend {
             StorageBackend::Local => "local",
-            StorageBackend::Dev => "dev",
+            StorageBackend::LocalServer => "local-server",
             StorageBackend::Cloud => "cloud",
         };
 
@@ -238,34 +159,22 @@ impl Config {
         match self.backend {
             StorageBackend::Local => {
                 output.push_str("--- Local Storage ---\n");
-                output.push_str(&format!("Database Path: {}\n", self.local.path));
+                output.push_str(&format!("Database Path: {}\n", self.local_path));
             }
-            StorageBackend::Dev => {
-                output.push_str("--- Dev Settings ---\n");
-                output.push_str(&format!("URL: {}\n", self.dev.url));
-                output.push_str(&format!("Namespace: {}\n", self.dev.namespace));
-                output.push_str(&format!("Database: {}\n", self.dev.database));
-                output.push_str(&format!("Username: {}\n", self.dev.username));
-                let password_display = if self.dev.password.is_empty() {
+            StorageBackend::LocalServer | StorageBackend::Cloud => {
+                output.push_str(&format!("URL: {}\n", self.url));
+                output.push_str(&format!("Namespace: {}\n", self.namespace));
+                output.push_str(&format!("Database: {}\n", self.database));
+                output.push_str(&format!("Username: {}\n", self.username));
+                let password_display = if self.password.is_empty() {
                     "(not set)".to_string()
                 } else {
                     "***redacted***".to_string()
                 };
                 output.push_str(&format!("Password: {}\n", password_display));
-            }
-            StorageBackend::Cloud => {
-                output.push_str("--- Cloud Settings ---\n");
-                output.push_str(&format!("URL: {}\n", self.cloud.url));
-                output.push_str(&format!("Namespace: {}\n", self.cloud.namespace));
-                output.push_str(&format!("Database: {}\n", self.cloud.database));
-                output.push_str(&format!("Username: {}\n", self.cloud.username));
-                let password_display = if self.cloud.password.is_empty() {
-                    "(not set)".to_string()
-                } else {
-                    "***redacted***".to_string()
-                };
-                output.push_str(&format!("Password: {}\n", password_display));
-                output.push_str(&format!("Auth Type: {}\n", self.cloud.auth_type));
+                if matches!(self.backend, StorageBackend::Cloud) {
+                    output.push_str(&format!("Auth Type: {}\n", self.auth_type));
+                }
             }
         }
 
@@ -302,20 +211,12 @@ impl Config {
         let pairs = [
             ("DUNNO_BACKEND", std::env::var("DUNNO_BACKEND").ok()),
             ("DUNNO_LOCAL_PATH", std::env::var("DUNNO_LOCAL_PATH").ok()),
-            ("DUNNO_DEV_URL", std::env::var("DUNNO_DEV_URL").ok()),
-            ("DUNNO_DEV_NS", std::env::var("DUNNO_DEV_NS").ok()),
-            ("DUNNO_DEV_DB", std::env::var("DUNNO_DEV_DB").ok()),
-            ("DUNNO_DEV_USER", std::env::var("DUNNO_DEV_USER").ok()),
-            ("DUNNO_DEV_PASS", std::env::var("DUNNO_DEV_PASS").ok()),
-            ("DUNNO_CLOUD_URL", std::env::var("DUNNO_CLOUD_URL").ok()),
-            ("DUNNO_CLOUD_NS", std::env::var("DUNNO_CLOUD_NS").ok()),
-            ("DUNNO_CLOUD_DB", std::env::var("DUNNO_CLOUD_DB").ok()),
-            ("DUNNO_CLOUD_USER", std::env::var("DUNNO_CLOUD_USER").ok()),
-            ("DUNNO_CLOUD_PASS", std::env::var("DUNNO_CLOUD_PASS").ok()),
-            (
-                "DUNNO_CLOUD_AUTH_TYPE",
-                std::env::var("DUNNO_CLOUD_AUTH_TYPE").ok(),
-            ),
+            ("DUNNO_URL", std::env::var("DUNNO_URL").ok()),
+            ("DUNNO_NS", std::env::var("DUNNO_NS").ok()),
+            ("DUNNO_DB", std::env::var("DUNNO_DB").ok()),
+            ("DUNNO_USER", std::env::var("DUNNO_USER").ok()),
+            ("DUNNO_PASS", std::env::var("DUNNO_PASS").ok()),
+            ("DUNNO_AUTH_TYPE", std::env::var("DUNNO_AUTH_TYPE").ok()),
         ];
         self.apply_env_override_pairs(pairs)
     }
@@ -335,40 +236,25 @@ impl Config {
             self.backend = StorageBackend::parse(value)?;
         }
         if let Some(value) = map.get("DUNNO_LOCAL_PATH") {
-            self.local.path = value.to_string();
+            self.local_path = value.to_string();
         }
-        if let Some(value) = map.get("DUNNO_DEV_URL") {
-            self.dev.url = value.to_string();
+        if let Some(value) = map.get("DUNNO_URL") {
+            self.url = value.to_string();
         }
-        if let Some(value) = map.get("DUNNO_DEV_NS") {
-            self.dev.namespace = value.to_string();
+        if let Some(value) = map.get("DUNNO_NS") {
+            self.namespace = value.to_string();
         }
-        if let Some(value) = map.get("DUNNO_DEV_DB") {
-            self.dev.database = value.to_string();
+        if let Some(value) = map.get("DUNNO_DB") {
+            self.database = value.to_string();
         }
-        if let Some(value) = map.get("DUNNO_DEV_USER") {
-            self.dev.username = value.to_string();
+        if let Some(value) = map.get("DUNNO_USER") {
+            self.username = value.to_string();
         }
-        if let Some(value) = map.get("DUNNO_DEV_PASS") {
-            self.dev.password = value.to_string();
+        if let Some(value) = map.get("DUNNO_PASS") {
+            self.password = value.to_string();
         }
-        if let Some(value) = map.get("DUNNO_CLOUD_URL") {
-            self.cloud.url = value.to_string();
-        }
-        if let Some(value) = map.get("DUNNO_CLOUD_NS") {
-            self.cloud.namespace = value.to_string();
-        }
-        if let Some(value) = map.get("DUNNO_CLOUD_DB") {
-            self.cloud.database = value.to_string();
-        }
-        if let Some(value) = map.get("DUNNO_CLOUD_USER") {
-            self.cloud.username = value.to_string();
-        }
-        if let Some(value) = map.get("DUNNO_CLOUD_PASS") {
-            self.cloud.password = value.to_string();
-        }
-        if let Some(value) = map.get("DUNNO_CLOUD_AUTH_TYPE") {
-            self.cloud.auth_type = value.to_string();
+        if let Some(value) = map.get("DUNNO_AUTH_TYPE") {
+            self.auth_type = value.to_string();
         }
         Ok(())
     }
@@ -384,51 +270,14 @@ impl Config {
         if let Some(backend) = partial.backend {
             self.backend = StorageBackend::parse(&backend)?;
         }
-        if let Some(local) = partial.local
-            && let Some(path) = local.path
-        {
-            self.local.path = path;
-        }
-        if let Some(dev) = partial.dev {
-            if let Some(url) = dev.url {
-                self.dev.url = url;
-            }
-            if let Some(namespace) = dev.namespace {
-                self.dev.namespace = namespace;
-            }
-            if let Some(database) = dev.database {
-                self.dev.database = database;
-            }
-            if let Some(username) = dev.username {
-                self.dev.username = username;
-            }
-            if let Some(password) = dev.password {
-                self.dev.password = password;
-            }
-        }
-        if let Some(cloud) = partial.cloud {
-            if let Some(url) = cloud.url {
-                self.cloud.url = url;
-            }
-            if let Some(namespace) = cloud.namespace {
-                self.cloud.namespace = namespace;
-            }
-            if let Some(database) = cloud.database {
-                self.cloud.database = database;
-            }
-            if let Some(username) = cloud.username {
-                self.cloud.username = username;
-            }
-            if let Some(password) = cloud.password {
-                self.cloud.password = password;
-            }
-            if let Some(auth_type) = cloud.auth_type {
-                self.cloud.auth_type = auth_type;
-            }
-        }
-        if let Some(qdrant_url) = partial.qdrant_url {
-            self.qdrant_url = qdrant_url;
-        }
+        if let Some(v) = partial.local_path { self.local_path = v; }
+        if let Some(v) = partial.url { self.url = v; }
+        if let Some(v) = partial.namespace { self.namespace = v; }
+        if let Some(v) = partial.database { self.database = v; }
+        if let Some(v) = partial.username { self.username = v; }
+        if let Some(v) = partial.password { self.password = v; }
+        if let Some(v) = partial.auth_type { self.auth_type = v; }
+        if let Some(v) = partial.qdrant_url { self.qdrant_url = v; }
         Ok(())
     }
 }
@@ -455,9 +304,7 @@ mod tests {
         let toml_str = r#"
             backend = "cloud"
             qdrant_url = "http://localhost:6333"
-            [local]
-            path = "~/.local/share/dunno/data.db"
-            [cloud]
+            local_path = "~/.local/share/dunno/data.db"
             url = "wss://example.surrealdb.com"
             namespace = "dunno"
             database = "dunno"
@@ -472,9 +319,9 @@ mod tests {
             .expect("Failed to merge partial config");
 
         assert!(matches!(config.backend, StorageBackend::Cloud));
-        assert_eq!(config.local.path, "~/.local/share/dunno/data.db");
-        assert_eq!(config.cloud.url, "wss://example.surrealdb.com");
-        assert_eq!(config.cloud.username, "user");
+        assert_eq!(config.local_path, "~/.local/share/dunno/data.db");
+        assert_eq!(config.url, "wss://example.surrealdb.com");
+        assert_eq!(config.username, "user");
     }
 
     #[test]
@@ -499,18 +346,18 @@ mod tests {
         config
             .apply_env_override_pairs([
                 ("DUNNO_BACKEND", Some("cloud".to_string())),
-                ("DUNNO_CLOUD_URL", Some("wss://example.com/rpc".to_string())),
-                ("DUNNO_CLOUD_NS", Some("ns1".to_string())),
-                ("DUNNO_CLOUD_DB", Some("db1".to_string())),
-                ("DUNNO_CLOUD_USER", Some("u1".to_string())),
-                ("DUNNO_CLOUD_PASS", Some("p1".to_string())),
+                ("DUNNO_URL", Some("wss://example.com/rpc".to_string())),
+                ("DUNNO_NS", Some("ns1".to_string())),
+                ("DUNNO_DB", Some("db1".to_string())),
+                ("DUNNO_USER", Some("u1".to_string())),
+                ("DUNNO_PASS", Some("p1".to_string())),
                 ("DUNNO_LOCAL_PATH", Some("/tmp/override.db".to_string())),
             ])
             .expect("env overrides should apply");
 
         assert!(matches!(config.backend, StorageBackend::Cloud));
-        assert_eq!(config.cloud.url, "wss://example.com/rpc");
-        assert_eq!(config.local.path, "/tmp/override.db");
+        assert_eq!(config.url, "wss://example.com/rpc");
+        assert_eq!(config.local_path, "/tmp/override.db");
     }
 
     #[test]
@@ -522,7 +369,6 @@ mod tests {
         let local_path = std::env::temp_dir().join(format!("dunno-local-config-{ts}.toml"));
         let local_raw = r#"
 backend = "cloud"
-[cloud]
 url = "wss://local.example.surrealdb.com"
 namespace = "local"
 database = "local"
@@ -560,7 +406,6 @@ password = "local"
 
         let global_raw = r#"
 backend = "cloud"
-[cloud]
 url = "wss://global.example.surrealdb.com"
 namespace = "global"
 database = "global"
@@ -570,8 +415,7 @@ password = "global"
 
         let local_raw = r#"
 backend = "local"
-[local]
-path = "/tmp/local-override.db"
+local_path = "/tmp/local-override.db"
 "#;
 
         std::fs::write(&global_path, global_raw).expect("should write temp global config");
@@ -582,27 +426,27 @@ path = "/tmp/local-override.db"
             Config::load_from_optional_paths(None, Some(&global_path), Some(&local_path), true)
                 .expect("load should succeed");
         assert!(matches!(loaded.backend, StorageBackend::Local));
-        assert_eq!(loaded.local.path, "/tmp/local-override.db");
+        assert_eq!(loaded.local_path, "/tmp/local-override.db");
 
         let _ = std::fs::remove_file(global_path);
         let _ = std::fs::remove_file(local_path);
     }
 
     #[test]
-    fn test_cloud_defaults_match_surrealdb() {
+    fn test_defaults() {
         let config = Config::default();
-        assert_eq!(config.cloud.url, "");
-        assert_eq!(config.cloud.namespace, "");
-        assert_eq!(config.cloud.database, "");
-        assert_eq!(config.cloud.username, "root");
-        assert_eq!(config.cloud.password, "root");
+        assert_eq!(config.url, "");
+        assert_eq!(config.namespace, "dunno");
+        assert_eq!(config.database, "dunno");
+        assert_eq!(config.username, "root");
+        assert_eq!(config.password, "root");
+        assert_eq!(config.local_path, "~/.local/share/dunno/data.db");
     }
 
     #[test]
-    fn test_cloud_config_partial_override() {
+    fn test_config_partial_override() {
         let toml_str = r#"
             backend = "cloud"
-            [cloud]
             url = "wss://my-instance.surreal.cloud"
             namespace = "dunno"
             database = "dunno"
@@ -613,11 +457,11 @@ path = "/tmp/local-override.db"
         config.merge_partial(parsed).expect("Failed to merge");
 
         assert!(matches!(config.backend, StorageBackend::Cloud));
-        assert_eq!(config.cloud.url, "wss://my-instance.surreal.cloud");
-        assert_eq!(config.cloud.namespace, "dunno");
-        assert_eq!(config.cloud.database, "dunno");
-        assert_eq!(config.cloud.username, "root");
-        assert_eq!(config.cloud.password, "root");
+        assert_eq!(config.url, "wss://my-instance.surreal.cloud");
+        assert_eq!(config.namespace, "dunno");
+        assert_eq!(config.database, "dunno");
+        assert_eq!(config.username, "root");
+        assert_eq!(config.password, "root");
     }
 
     #[test]
@@ -653,7 +497,7 @@ path = "/tmp/local-override.db"
 
         // Should have defaults since no files exist and env is skipped
         assert!(matches!(loaded.backend, StorageBackend::Local));
-        assert_eq!(loaded.local.path, "~/.local/share/dunno/data.db");
+        assert_eq!(loaded.local_path, "~/.local/share/dunno/data.db");
     }
 
     #[test]
@@ -667,7 +511,6 @@ path = "/tmp/local-override.db"
 
         let global_raw = r#"
 backend = "cloud"
-[cloud]
 url = "wss://global-only.example.com"
 namespace = "global-ns"
 database = "global-db"
@@ -682,8 +525,8 @@ password = "global-pass"
                 .expect("load should succeed");
 
         assert!(matches!(loaded.backend, StorageBackend::Cloud));
-        assert_eq!(loaded.cloud.url, "wss://global-only.example.com");
-        assert_eq!(loaded.cloud.namespace, "global-ns");
+        assert_eq!(loaded.url, "wss://global-only.example.com");
+        assert_eq!(loaded.namespace, "global-ns");
 
         let _ = std::fs::remove_file(global_path);
     }
@@ -699,7 +542,6 @@ password = "global-pass"
 
         let global_raw = r#"
 backend = "cloud"
-[cloud]
 url = "wss://global.example.com"
 namespace = "global-ns"
 database = "global-db"
@@ -708,7 +550,6 @@ password = "global-pass"
 "#;
 
         let local_raw = r#"
-[cloud]
 url = "wss://local.example.com"
 namespace = "local-ns"
 "#;
@@ -722,10 +563,10 @@ namespace = "local-ns"
 
         // Local should override specific fields
         assert!(matches!(loaded.backend, StorageBackend::Cloud)); // From global
-        assert_eq!(loaded.cloud.url, "wss://local.example.com"); // Overridden by local
-        assert_eq!(loaded.cloud.namespace, "local-ns"); // Overridden by local
-        assert_eq!(loaded.cloud.database, "global-db"); // From global (not in local)
-        assert_eq!(loaded.cloud.username, "global-user"); // From global (not in local)
+        assert_eq!(loaded.url, "wss://local.example.com"); // Overridden by local
+        assert_eq!(loaded.namespace, "local-ns"); // Overridden by local
+        assert_eq!(loaded.database, "global-db"); // From global (not in local)
+        assert_eq!(loaded.username, "global-user"); // From global (not in local)
 
         let _ = std::fs::remove_file(global_path);
         let _ = std::fs::remove_file(local_path);
@@ -741,14 +582,12 @@ namespace = "local-ns"
 
         let local_raw = r#"
 backend = "cloud"
-[cloud]
 url = "wss://cli-test.example.com"
 namespace = "cli-ns"
 database = "cli-db"
 username = "cli-user"
 password = "cli-pass"
-[local]
-path = "/tmp/cli-test.db"
+local_path = "/tmp/cli-test.db"
 "#;
 
         std::fs::write(&local_path, local_raw).expect("should write local config");
@@ -758,8 +597,8 @@ path = "/tmp/cli-test.db"
             .expect("load should succeed");
 
         assert!(matches!(loaded.backend, StorageBackend::Local)); // CLI override
-        assert_eq!(loaded.cloud.url, "wss://cli-test.example.com"); // From local config
-        assert_eq!(loaded.local.path, "/tmp/cli-test.db"); // From local config
+        assert_eq!(loaded.url, "wss://cli-test.example.com"); // From local config
+        assert_eq!(loaded.local_path, "/tmp/cli-test.db"); // From local config
 
         let _ = std::fs::remove_file(local_path);
     }
@@ -809,7 +648,7 @@ url = "wss://example.com"
 
         // Should use defaults
         assert!(matches!(loaded.backend, StorageBackend::Local));
-        assert_eq!(loaded.local.path, "~/.local/share/dunno/data.db");
+        assert_eq!(loaded.local_path, "~/.local/share/dunno/data.db");
 
         let _ = std::fs::remove_file(empty_path);
     }
@@ -825,14 +664,12 @@ url = "wss://example.com"
 
         let global_raw = r#"
 backend = "cloud"
-[cloud]
 url = "wss://cloud.example.com"
 "#;
 
         let local_raw = r#"
 backend = "local"
-[local]
-path = "/tmp/mixed.db"
+local_path = "/tmp/mixed.db"
 "#;
 
         std::fs::write(&global_path, global_raw).expect("should write global config");
@@ -844,9 +681,9 @@ path = "/tmp/mixed.db"
 
         // Local backend setting should win
         assert!(matches!(loaded.backend, StorageBackend::Local));
-        assert_eq!(loaded.local.path, "/tmp/mixed.db");
-        // Cloud config from global should not be present since we're local
-        assert_eq!(loaded.cloud.url, "wss://cloud.example.com"); // But cloud values are still loaded
+        assert_eq!(loaded.local_path, "/tmp/mixed.db");
+        // Connection values from global are still loaded even when backend = local
+        assert_eq!(loaded.url, "wss://cloud.example.com");
 
         let _ = std::fs::remove_file(global_path);
         let _ = std::fs::remove_file(local_path);
@@ -944,7 +781,6 @@ qdrant_url = "not-a-valid-url"
 
         let config_raw = r#"
 backend = "cloud"
-[cloud]
 url = "wss://partial.example.com"
 "#;
 
@@ -954,12 +790,12 @@ url = "wss://partial.example.com"
             .expect("load should succeed");
 
         assert!(matches!(loaded.backend, StorageBackend::Cloud));
-        assert_eq!(loaded.cloud.url, "wss://partial.example.com");
-        // Other cloud fields should use defaults
-        assert_eq!(loaded.cloud.username, "root");
-        assert_eq!(loaded.cloud.password, "root");
-        assert_eq!(loaded.cloud.namespace, "");
-        assert_eq!(loaded.cloud.database, "");
+        assert_eq!(loaded.url, "wss://partial.example.com");
+        // Other fields should use defaults
+        assert_eq!(loaded.username, "root");
+        assert_eq!(loaded.password, "root");
+        assert_eq!(loaded.namespace, "dunno");
+        assert_eq!(loaded.database, "dunno");
 
         let _ = std::fs::remove_file(config_path);
     }
@@ -979,16 +815,15 @@ url = "wss://partial.example.com"
     fn test_formatted_output_cloud_backend() {
         let mut config = Config::default();
         config.backend = StorageBackend::Cloud;
-        config.cloud.url = "wss://test.surrealdb.com".to_string();
-        config.cloud.namespace = "test_ns".to_string();
-        config.cloud.database = "test_db".to_string();
-        config.cloud.username = "test_user".to_string();
-        config.cloud.password = "secret_password".to_string();
+        config.url = "wss://test.surrealdb.com".to_string();
+        config.namespace = "test_ns".to_string();
+        config.database = "test_db".to_string();
+        config.username = "test_user".to_string();
+        config.password = "secret_password".to_string();
 
         let formatted = config.formatted();
 
         assert!(formatted.contains("Backend: cloud"));
-        assert!(formatted.contains("Cloud Settings"));
         assert!(formatted.contains("wss://test.surrealdb.com"));
         assert!(formatted.contains("test_ns"));
         assert!(formatted.contains("test_db"));

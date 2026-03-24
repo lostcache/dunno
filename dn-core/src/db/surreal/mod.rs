@@ -42,7 +42,7 @@ impl DB {
                     if e.to_string().contains("already locked by another process") {
                         anyhow::anyhow!(
                             "Cannot access the database — dn-server appears to be running and has it locked.\n\
-                             To use dn and dn-server concurrently, set backend = \"dev\" in your config\n\
+                             To use dn and dn-server concurrently, set backend = \"local-server\" in your config\n\
                              and point both tools at a running SurrealDB instance."
                         )
                     } else {
@@ -50,51 +50,41 @@ impl DB {
                     }
                 })
             }
-            crate::config::StorageBackend::Dev => {
-                let dev = &config.dev;
-                if dev.url.trim().is_empty() {
+            crate::config::StorageBackend::LocalServer => {
+                if config.url.trim().is_empty() {
                     return Err(anyhow::anyhow!(
-                        "Dev backend requires `dev.url` (or DUNNO_DEV_URL)"
+                        "local-server backend requires `url` (or DUNNO_URL)"
                     ));
                 }
-                let cloud_config = crate::config::CloudConfig {
-                    url: dev.url.clone(),
-                    namespace: dev.namespace.clone(),
-                    database: dev.database.clone(),
-                    username: dev.username.clone(),
-                    password: dev.password.clone(),
-                    auth_type: "root".to_string(),
-                };
-                Self::connect_cloud(&cloud_config).await
+                Self::connect_remote(config).await
             }
             crate::config::StorageBackend::Cloud => {
-                let cloud = &config.cloud;
-                if cloud.url.trim().is_empty() {
+                if config.url.trim().is_empty() {
                     return Err(anyhow::anyhow!(
-                        "Cloud backend requires `cloud.url` (or DUNNO_CLOUD_URL)"
+                        "cloud backend requires `url` (or DUNNO_URL)"
                     ));
                 }
-                if cloud.namespace.trim().is_empty() {
+                if config.namespace.trim().is_empty() {
                     return Err(anyhow::anyhow!(
-                        "Cloud backend requires `cloud.namespace` (or DUNNO_CLOUD_NS)"
+                        "cloud backend requires `namespace` (or DUNNO_NS)"
                     ));
                 }
-                if cloud.database.trim().is_empty() {
+                if config.database.trim().is_empty() {
                     return Err(anyhow::anyhow!(
-                        "Cloud backend requires `cloud.database` (or DUNNO_CLOUD_DB)"
+                        "cloud backend requires `database` (or DUNNO_DB)"
                     ));
                 }
-                if cloud.username.trim().is_empty() {
+                if config.username.trim().is_empty() {
                     return Err(anyhow::anyhow!(
-                        "Cloud backend requires `cloud.username` (or DUNNO_CLOUD_USER)"
+                        "cloud backend requires `username` (or DUNNO_USER)"
                     ));
                 }
-                if cloud.password.trim().is_empty() {
+                if config.password.trim().is_empty() {
                     return Err(anyhow::anyhow!(
-                        "Cloud backend requires `cloud.password` (or DUNNO_CLOUD_PASS)"
+                        "cloud backend requires `password` (or DUNNO_PASS)"
                     ));
                 }
-                Self::connect_cloud(cloud).await
+                Self::connect_remote(config).await
             }
         }
     }
@@ -119,38 +109,38 @@ impl DB {
         Ok(db)
     }
 
-    async fn connect_cloud(cloud: &crate::config::CloudConfig) -> anyhow::Result<Self> {
-        let client = surrealdb::engine::any::connect(&cloud.url).await?;
+    async fn connect_remote(config: &crate::config::Config) -> anyhow::Result<Self> {
+        let client = surrealdb::engine::any::connect(&config.url).await?;
         client
-            .use_ns(&cloud.namespace)
-            .use_db(&cloud.database)
+            .use_ns(&config.namespace)
+            .use_db(&config.database)
             .await?;
 
-        match cloud.auth_type.as_str() {
+        match config.auth_type.as_str() {
             "namespace" => {
                 client
                     .signin(surrealdb::opt::auth::Namespace {
-                        namespace: cloud.namespace.clone(),
-                        username: cloud.username.clone(),
-                        password: cloud.password.clone(),
+                        namespace: config.namespace.clone(),
+                        username: config.username.clone(),
+                        password: config.password.clone(),
                     })
                     .await?;
             }
             "database" => {
                 client
                     .signin(surrealdb::opt::auth::Database {
-                        namespace: cloud.namespace.clone(),
-                        database: cloud.database.clone(),
-                        username: cloud.username.clone(),
-                        password: cloud.password.clone(),
+                        namespace: config.namespace.clone(),
+                        database: config.database.clone(),
+                        username: config.username.clone(),
+                        password: config.password.clone(),
                     })
                     .await?;
             }
             _ => {
                 client
                     .signin(surrealdb::opt::auth::Root {
-                        username: cloud.username.clone(),
-                        password: cloud.password.clone(),
+                        username: config.username.clone(),
+                        password: config.password.clone(),
                     })
                     .await?;
             }

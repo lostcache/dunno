@@ -1024,7 +1024,7 @@ async fn main() -> anyhow::Result<()> {
                     eprintln!("dn-server started, but the dn CLI will not be available concurrently.");
                     eprintln!("To use both at the same time, either:");
                     eprintln!("  - Install surreal and restart dn-server: curl -sSf https://install.surrealdb.com | sh");
-                    eprintln!("  - Or set backend = \"dev\" in your config and run SurrealDB separately");
+                    eprintln!("  - Or set backend = \"local-server\" in your config and run SurrealDB separately");
                     let db = DB::from_config(&config).await?;
                     (db, None)
                 }

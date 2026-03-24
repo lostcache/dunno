@@ -56,8 +56,7 @@ For project-specific settings, create a local config file:
 ```bash
 # Create local config
 cat > dn.toml << 'EOF'
-[local]
-path = "./.dn/data.db"
+local_path = "./.dn/data.db"
 EOF
 
 # Create data directory
@@ -132,7 +131,7 @@ dn uses a layered configuration system on a **per-field basis** (highest to lowe
 
 #### Global CLI Flags
 
-- `{--backend|--b} <BACKEND>` - Override storage backend (`local` or `cloud`)
+- `{--backend|--b} <BACKEND>` - Override storage backend (`local`, `local-server`, or `cloud`)
 - `{--pretty|--pp}` - Format output with indentation for better readability (applies to **all** JSON output)
 - `-i, --ignore-case` - Ignore case when matching project names (use with `--project`)
 
@@ -159,12 +158,10 @@ dn module add {--project|-p} "my project" -i "Auth" "Auth module"
 
 #### Example Configuration
 
-**Global config** (`~/.config/dn/dn.toml`):
+**Cloud** (`~/.config/dn/dn.toml`):
 
 ```toml
 backend = "cloud"
-
-[cloud]
 url = "wss://my-instance.surrealdb.com"
 namespace = "my-namespace"
 database = "dn"
@@ -173,26 +170,36 @@ password = "root"
 auth_type = "root"
 ```
 
-**Local config** (`./dn.toml`):
+**Local server** (connecting to a running SurrealDB instance):
 
 ```toml
-# Override only the database path for this project
-[local]
-path = "./.dn/data.db"
+backend = "local-server"
+url = "ws://127.0.0.1:8000/rpc"
+namespace = "dunno"
+database = "dunno"
+username = "root"
+password = "root"
+```
+
+**Local** (embedded file DB, project-specific):
+
+```toml
+backend = "local"
+local_path = "./.dn/data.db"
 ```
 
 #### Environment Variables
 
 All config fields can be set via environment:
 
-- `DUNNO_BACKEND` - Backend type (`local` or `cloud`)
+- `DUNNO_BACKEND` - Backend type (`local`, `local-server`, or `cloud`)
 - `DUNNO_LOCAL_PATH` - Local database file path
-- `DUNNO_CLOUD_URL` - Cloud instance URL
-- `DUNNO_CLOUD_NS` - Namespace
-- `DUNNO_CLOUD_DB` - Database name
-- `DUNNO_CLOUD_USER` - Username
-- `DUNNO_CLOUD_PASS` - Password
-- `DUNNO_CLOUD_AUTH_TYPE` - Auth type (`root`, `namespace`, `database`)
+- `DUNNO_URL` - SurrealDB instance URL (local-server or cloud)
+- `DUNNO_NS` - Namespace
+- `DUNNO_DB` - Database name
+- `DUNNO_USER` - Username
+- `DUNNO_PASS` - Password
+- `DUNNO_AUTH_TYPE` - Auth type (`root`, `namespace`, `database`) — cloud only
 
 ### Core Concepts
 
@@ -236,7 +243,7 @@ Link knowledge to any structural node:
 dn [GLOBAL FLAGS] <COMMAND>
 
 Global Flags:
-  --backend <BACKEND>    # Override storage backend (local or cloud)
+  --backend <BACKEND>    # Override storage backend (local, local-server, or cloud)
   --pretty               # Format output with indentation
   -i, --ignore-case      # Ignore case when matching project names
 ```
