@@ -2,6 +2,8 @@
   import { projectId, mainView, filterPanelOpen } from '../stores/appStore'
   import { api } from '../lib/api'
   import { setStatus } from '../stores/statusStore'
+  import { Button } from '$lib/components/ui/button'
+  import * as Select from '$lib/components/ui/select'
 
   interface Project { id: string; name: string }
 
@@ -19,66 +21,54 @@
     }
   }
 
-  function onProjectChange(e: Event) {
-    const val = (e.target as HTMLSelectElement).value
-    projectId.set(val || null)
-  }
+  let selectedProjectName = $derived(
+    $projectId
+      ? (projects.find(p => p.id === $projectId)?.name ?? $projectId)
+      : '— select project —'
+  )
 </script>
 
-<nav>
-  <h1>Dunno UI</h1>
-  <select onchange={onProjectChange} value={$projectId ?? ''}>
-    <option value="">— select project —</option>
-    {#each projects as p}
-      <option value={p.id}>{p.name}</option>
-    {/each}
-  </select>
-  <button onclick={() => document.dispatchEvent(new CustomEvent('dunno:refresh'))} title="Refresh">↻</button>
-  <button
-    id="btn-filter"
-    class={$filterPanelOpen ? 'active' : ''}
+<nav class="flex items-center gap-3 px-4 py-2 bg-[#1a1d27] border-b border-[#2d3148] flex-shrink-0">
+  <h1 class="text-base font-bold text-[#a78bfa] mr-2">Dunno UI</h1>
+
+  <Select.Root type="single" value={$projectId ?? ''} onValueChange={(v) => projectId.set(v || null)}>
+    <Select.Trigger class="h-8 bg-[#252840] border-[#3d4165] text-[#e2e8f0] hover:bg-[#3d4165] text-xs w-48">
+      {selectedProjectName}
+    </Select.Trigger>
+    <Select.Content>
+      {#each projects as p}
+        <Select.Item value={p.id} label={p.name} />
+      {/each}
+    </Select.Content>
+  </Select.Root>
+
+  <Button
+    variant="ghost"
+    size="sm"
+    class="h-8 px-3 bg-[#252840] border border-[#3d4165] text-[#e2e8f0] hover:bg-[#3d4165] text-base"
+    onclick={() => document.dispatchEvent(new CustomEvent('dunno:refresh'))}
+    title="Refresh"
+  >↻</Button>
+
+  <Button
+    variant="ghost"
+    size="sm"
+    class="h-8 px-3 border border-[#3d4165] text-[#e2e8f0] hover:bg-[#3d4165] text-xs {$filterPanelOpen ? 'bg-[#5b45d6] border-[#7c6df0]' : 'bg-[#252840]'}"
     onclick={() => filterPanelOpen.update(v => !v)}
-  >Filter</button>
-  <div class="view-btns">
-    <button
-      class={$mainView === 'graph' ? 'active' : ''}
+  >Filter</Button>
+
+  <div class="ml-auto flex gap-1.5">
+    <Button
+      variant={$mainView === 'graph' ? 'default' : 'outline'}
+      size="sm"
+      class="h-8 px-3 text-xs {$mainView !== 'graph' ? 'border-[#3d4165] text-[#e2e8f0] bg-[#252840] hover:bg-[#3d4165]' : ''}"
       onclick={() => mainView.set('graph')}
-    >Graph</button>
-    <button
-      class={$mainView === 'ctx' ? 'active' : ''}
+    >Graph</Button>
+    <Button
+      variant={$mainView === 'ctx' ? 'default' : 'outline'}
+      size="sm"
+      class="h-8 px-3 text-xs {$mainView !== 'ctx' ? 'border-[#3d4165] text-[#e2e8f0] bg-[#252840] hover:bg-[#3d4165]' : ''}"
       onclick={() => mainView.set('ctx')}
-    >Context</button>
+    >Context</Button>
   </div>
 </nav>
-
-<style>
-  nav {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 16px;
-    background: #1a1d27;
-    border-bottom: 1px solid #2d3148;
-    flex-shrink: 0;
-  }
-  nav h1 { font-size: 16px; font-weight: 700; color: #a78bfa; margin-right: 8px; }
-  nav select {
-    background: #252840;
-    color: #e2e8f0;
-    border: 1px solid #3d4165;
-    padding: 4px 8px;
-    border-radius: 4px;
-  }
-  nav button {
-    background: #252840;
-    color: #e2e8f0;
-    border: 1px solid #3d4165;
-    padding: 4px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  nav button:hover { background: #3d4165; }
-  .view-btns { margin-left: auto; display: flex; gap: 6px; }
-  .view-btns button.active,
-  #btn-filter.active { background: #5b45d6; border-color: #7c6df0; }
-</style>

@@ -4,6 +4,7 @@
   import { api } from '../lib/api'
   import { setStatus } from '../stores/statusStore'
   import { ENTITY_TABS } from '../lib/constants'
+  import { Button } from '$lib/components/ui/button'
   import ItemList from './ItemList.svelte'
 
   let { onRefresh }: { onRefresh: () => void } = $props()
@@ -43,68 +44,29 @@
   export { loadItems }
 </script>
 
-<aside>
-  <div class="entity-tabs">
+<aside class="w-[220px] shrink-0 bg-[#14172a] border-r border-[#2d3148] flex flex-col overflow-hidden">
+  <div class="flex flex-col overflow-y-auto flex-1 py-2">
     {#each ENTITY_TABS as tab}
-      <div
-        class="entity-tab {tab === $activeTab ? 'active' : ''}"
-        role="button"
-        tabindex="0"
+      <button
+        class="px-4 py-1.5 cursor-pointer text-[13px] border-l-[3px] text-left transition-colors
+          {tab === $activeTab
+            ? 'border-[#7c6df0] text-[#a78bfa] bg-[#1e2135]'
+            : 'border-transparent text-[#94a3b8] hover:bg-[#1e2135] hover:text-[#e2e8f0]'}"
         onclick={() => activeTab.set(tab)}
-        onkeydown={(e) => e.key === 'Enter' && activeTab.set(tab)}
-      >{tab}</div>
+      >{tab}</button>
     {/each}
   </div>
-  <div class="item-list">
+  <div class="px-2 pb-2 overflow-y-auto max-h-[280px]">
     {#if !$projectId && $activeTab !== 'projects'}
-      <div class="no-project">Select a project</div>
+      <div class="px-2 py-2 text-[#64748b] text-xs">Select a project</div>
     {:else}
       <ItemList items={items as any[]} tab={$activeTab} {onRefresh} />
     {/if}
   </div>
-  <div class="sidebar-actions">
-    <button onclick={() => openCreate($activeTab)}>+ Create</button>
+  <div class="px-3 py-2.5 border-t border-[#2d3148]">
+    <Button
+      class="w-full text-xs h-8"
+      onclick={() => openCreate($activeTab)}
+    >+ Create</Button>
   </div>
 </aside>
-
-<style>
-  aside {
-    width: 220px;
-    flex-shrink: 0;
-    background: #14172a;
-    border-right: 1px solid #2d3148;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .entity-tabs {
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    flex: 1;
-    padding: 8px 0;
-  }
-  .entity-tab {
-    padding: 6px 16px;
-    cursor: pointer;
-    color: #94a3b8;
-    font-size: 13px;
-    border-left: 3px solid transparent;
-  }
-  .entity-tab:hover { background: #1e2135; color: #e2e8f0; }
-  .entity-tab.active { border-left-color: #7c6df0; color: #a78bfa; background: #1e2135; }
-  .item-list { padding: 0 8px 8px; overflow-y: auto; max-height: 280px; }
-  .no-project { padding: 8px; color: #64748b; font-size: 12px; }
-  .sidebar-actions { padding: 10px 12px; border-top: 1px solid #2d3148; display: flex; gap: 6px; }
-  .sidebar-actions button {
-    flex: 1;
-    padding: 6px;
-    background: #5b45d6;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-  }
-  .sidebar-actions button:hover { background: #7c6df0; }
-</style>

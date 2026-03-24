@@ -3,6 +3,7 @@
   import { cyInstance, editingNode, hoverNode } from '../stores/graphStore'
   import { apiDel } from '../lib/api'
   import { setStatus } from '../stores/statusStore'
+  import { Button } from '$lib/components/ui/button'
 
   interface Item { id: string; name?: string; title?: string; content?: string }
 
@@ -63,11 +64,11 @@
 </script>
 
 {#if items.length === 0}
-  <div class="empty">No items</div>
+  <div class="px-2 py-2 text-[#64748b] text-xs">No items</div>
 {:else}
   {#each items as item}
     <div
-      class="item-row"
+      class="group flex items-center justify-between px-2 py-[5px] rounded cursor-pointer text-[#cbd5e1] text-xs hover:bg-[#1e2135]"
       role="button"
       tabindex="0"
       onmouseenter={() => onMouseEnter(item.id)}
@@ -76,31 +77,12 @@
       onkeydown={(e) => e.key === 'Enter' && onSelect(item.id)}
     >
       <span title={item.id}>{getLabel(item)}</span>
-      <button class="del-btn" onclick={(e) => deleteItem(item.id, e)}>✕</button>
+      <Button
+        variant="ghost"
+        size="icon"
+        class="h-5 w-5 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-400 hover:bg-transparent"
+        onclick={(e: MouseEvent) => deleteItem(item.id, e)}
+      >✕</Button>
     </div>
   {/each}
 {/if}
-
-<style>
-  .empty { padding: 8px; color: #64748b; font-size: 12px; }
-  .item-row {
-    padding: 5px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: #cbd5e1;
-    font-size: 12px;
-  }
-  .item-row:hover { background: #1e2135; }
-  .del-btn {
-    opacity: 0;
-    color: #f87171;
-    font-size: 11px;
-    border: none;
-    background: none;
-    cursor: pointer;
-  }
-  .item-row:hover .del-btn { opacity: 1; }
-</style>

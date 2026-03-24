@@ -5,6 +5,7 @@
   import { setStatus } from '../stores/statusStore'
   import { findEdgePair } from '../lib/constants'
   import type { NodeData } from '../lib/types'
+  import { Button } from '$lib/components/ui/button'
 
   let { nodes, onRefresh }: { nodes: NodeData[]; onRefresh: () => void } = $props()
 
@@ -77,14 +78,14 @@
 </script>
 
 {#if nodes.length >= 2}
-  <div id="multi-select-panel">
-    <div class="msp-header">
-      <h3>{nodes.length} nodes selected</h3>
-      <button onclick={linkSelected}>Link</button>
+  <div class="absolute bottom-0 inset-x-0 px-4 py-[10px] bg-[#14172a] border-t border-[#2d3148] max-h-[200px] overflow-y-auto text-xs z-10">
+    <div class="flex items-center justify-between mb-1">
+      <h3 class="text-[#a78bfa]">{nodes.length} nodes selected</h3>
+      <Button size="sm" class="bg-green-700 hover:bg-green-600 text-white h-6 px-2.5 text-xs" onclick={linkSelected}>Link</Button>
     </div>
-    <div class="msp-pairs">
+    <div class="mt-2">
       {#each pairs as row}
-        <div class="pair-row {row.noPair ? 'no-pair' : ''}">
+        <div class="py-1 border-b border-[#2d3148] last:border-b-0 text-[11px] {row.noPair ? 'text-[#475569]' : 'text-[#94a3b8]'}">
           {#each row.lines as line}
             <div>{line}</div>
           {/each}
@@ -93,26 +94,3 @@
     </div>
   </div>
 {/if}
-
-<style>
-  #multi-select-panel {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 10px 16px;
-    background: #14172a;
-    border-top: 1px solid #2d3148;
-    max-height: 200px;
-    overflow-y: auto;
-    font-size: 12px;
-    z-index: 10;
-  }
-  #multi-select-panel h3 { color: #a78bfa; }
-  .msp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-  .msp-header button { padding: 3px 10px; background: #16a34a; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
-  .msp-pairs { margin-top: 8px; }
-  .pair-row { padding: 4px 0; border-bottom: 1px solid #2d3148; color: #94a3b8; font-size: 11px; }
-  .pair-row:last-child { border-bottom: none; }
-  .pair-row.no-pair { color: #475569; }
-</style>

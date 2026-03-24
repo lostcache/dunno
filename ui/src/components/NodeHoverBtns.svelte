@@ -4,6 +4,7 @@
   import { apiDel } from '../lib/api'
   import { setStatus } from '../stores/statusStore'
   import { EDIT_ENDPOINTS } from '../lib/constants'
+  import { Button } from '$lib/components/ui/button'
 
   let { cyContainer, graphView, onRefresh }: {
     cyContainer: HTMLDivElement | null
@@ -63,8 +64,8 @@
     role="toolbar"
     tabindex="0"
   >
-    <button class="nhb-edit" onclick={() => { if ($hoverNode) openEdit($hoverNode) }}>Edit</button>
-    <button class="nhb-delete" onclick={deleteNode}>Delete</button>
+    <Button size="sm" onclick={() => { if ($hoverNode) openEdit($hoverNode) }}>Edit</Button>
+    <Button size="sm" variant="destructive" onclick={deleteNode}>Delete</Button>
   </div>
 {/if}
 
@@ -77,8 +78,4 @@
     pointer-events: auto;
     transform: translate(-50%, calc(-100% - 8px));
   }
-  #node-hover-btns button { padding: 3px 10px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; color: #fff; }
-  .nhb-edit { background: #5b45d6; }
-  .nhb-delete { background: #dc2626; }
-  #node-hover-btns button:hover { opacity: 0.85; }
 </style>

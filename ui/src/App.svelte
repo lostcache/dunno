@@ -49,17 +49,6 @@
 <Modal onRefresh={refresh} />
 
 <style>
-  :global(*) { box-sizing: border-box; margin: 0; padding: 0; }
-  :global(body) {
-    font-family: system-ui, sans-serif;
-    font-size: 14px;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background: #0f1117;
-    color: #e2e8f0;
-  }
-  :global(#app) { display: flex; flex-direction: column; height: 100vh; }
   .main-area { display: flex; flex: 1; overflow: hidden; }
   main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 </style>

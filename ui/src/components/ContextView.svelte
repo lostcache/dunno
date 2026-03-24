@@ -2,6 +2,11 @@
   import { projectId } from '../stores/appStore'
   import { api } from '../lib/api'
   import { setStatus } from '../stores/statusStore'
+  import { Button } from '$lib/components/ui/button'
+  import { Input } from '$lib/components/ui/input'
+  import { Checkbox } from '$lib/components/ui/checkbox'
+  import { Label } from '$lib/components/ui/label'
+  import * as Select from '$lib/components/ui/select'
 
   interface Task { id: string; name?: string; title?: string }
 
@@ -35,6 +40,12 @@
     }
   })
 
+  let selectedTaskName = $derived(
+    ctxId
+      ? (tasks.find(t => t.id === ctxId)?.title ?? tasks.find(t => t.id === ctxId)?.name ?? ctxId)
+      : '— select task —'
+  )
+
   async function fetchCtx() {
     if (!ctxId) { setStatus('Enter an ID', 'err'); return }
     try {
@@ -47,73 +58,53 @@
   }
 </script>
 
-<div id="ctx-view">
-  <div class="ctx-controls">
-    <select bind:value={ctxType} onchange={() => { ctxId = '' }}>
-      <option value="task">Task</option>
-      <option value="file">File</option>
-      <option value="epic">Epic</option>
-    </select>
-    <div id="ctx-id-container">
+<div class="flex-1 p-5 flex flex-col gap-3 min-h-0 overflow-hidden">
+  <div class="flex gap-2 items-center">
+    <Select.Root
+      type="single"
+      value={ctxType}
+      onValueChange={(v) => { ctxType = v as 'task' | 'file' | 'epic'; ctxId = '' }}
+    >
+      <Select.Trigger class="h-8 w-28 bg-[#252840] border-[#3d4165] text-[#e2e8f0] hover:bg-[#3d4165] text-xs">
+        {ctxType.charAt(0).toUpperCase() + ctxType.slice(1)}
+      </Select.Trigger>
+      <Select.Content>
+        <Select.Item value="task" label="Task" />
+        <Select.Item value="file" label="File" />
+        <Select.Item value="epic" label="Epic" />
+      </Select.Content>
+    </Select.Root>
+
+    <div class="flex-1 flex">
       {#if ctxType === 'task' && tasks.length > 0}
-        <select bind:value={ctxId}>
-          {#each tasks as t}
-            <option value={t.id}>{t.title || t.name || t.id}</option>
-          {/each}
-        </select>
+        <Select.Root type="single" value={ctxId} onValueChange={(v) => { ctxId = v }}>
+          <Select.Trigger class="flex-1 h-8 bg-[#252840] border-[#3d4165] text-[#e2e8f0] hover:bg-[#3d4165] text-xs">
+            {selectedTaskName}
+          </Select.Trigger>
+          <Select.Content>
+            {#each tasks as t}
+              <Select.Item value={t.id} label={t.title || t.name || t.id} />
+            {/each}
+          </Select.Content>
+        </Select.Root>
       {:else}
-        <input bind:value={ctxId} placeholder={ctxType === 'task' ? 'No tasks found' : 'record id e.g. task:abc123'} />
+        <Input
+          bind:value={ctxId}
+          placeholder={ctxType === 'task' ? 'No tasks found' : 'record id e.g. task:abc123'}
+          class="flex-1 h-8 bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-xs placeholder:text-[#64748b]"
+        />
       {/if}
     </div>
-    <label><input type="checkbox" bind:checked={ctxFull} /> Full</label>
-    <button onclick={fetchCtx}>Fetch</button>
+
+    <Label class="flex items-center gap-1.5 text-[#94a3b8] text-xs cursor-pointer font-normal">
+      <Checkbox bind:checked={ctxFull} class="size-3.5" />
+      Full
+    </Label>
+
+    <Button size="sm" class="h-8 px-3.5 text-xs" onclick={fetchCtx}>Fetch</Button>
   </div>
-  <div id="ctx-output">
-    <pre>{ctxOutput}</pre>
+
+  <div class="flex-1 overflow-y-auto min-h-0">
+    <pre class="bg-[#14172a] border border-[#2d3148] p-3 rounded-md whitespace-pre-wrap break-all text-[#94a3b8] text-xs">{ctxOutput}</pre>
   </div>
 </div>
-
-<style>
-  #ctx-view {
-    flex: 1;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-height: 0;
-    overflow: hidden;
-  }
-  .ctx-controls { display: flex; gap: 8px; align-items: center; }
-  .ctx-controls select,
-  .ctx-controls input {
-    background: #252840;
-    color: #e2e8f0;
-    border: 1px solid #3d4165;
-    padding: 6px 10px;
-    border-radius: 4px;
-  }
-  #ctx-id-container { flex: 1; display: flex; }
-  #ctx-id-container input,
-  #ctx-id-container select {
-    flex: 1;
-    background: #252840;
-    color: #e2e8f0;
-    border: 1px solid #3d4165;
-    padding: 6px 10px;
-    border-radius: 4px;
-  }
-  .ctx-controls button { padding: 6px 14px; background: #5b45d6; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-  .ctx-controls button:hover { background: #7c6df0; }
-  .ctx-controls label { display: flex; align-items: center; gap: 4px; color: #94a3b8; }
-  #ctx-output { flex: 1; overflow-y: auto; min-height: 0; }
-  #ctx-output pre {
-    background: #14172a;
-    border: 1px solid #2d3148;
-    padding: 12px;
-    border-radius: 6px;
-    white-space: pre-wrap;
-    word-break: break-all;
-    color: #94a3b8;
-    font-size: 12px;
-  }
-</style>

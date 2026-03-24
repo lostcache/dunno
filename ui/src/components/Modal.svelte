@@ -10,6 +10,12 @@
     ALL_EDGE_TYPES, findEdgePair,
   } from '../lib/constants'
   import type { SchemaField } from '../lib/types'
+  import * as Dialog from '$lib/components/ui/dialog'
+  import { Button } from '$lib/components/ui/button'
+  import { Input } from '$lib/components/ui/input'
+  import { Textarea } from '$lib/components/ui/textarea'
+  import { Label } from '$lib/components/ui/label'
+  import * as Select from '$lib/components/ui/select'
 
   let { onRefresh }: { onRefresh: () => void } = $props()
 
@@ -180,143 +186,158 @@
       setStatus('Create & link failed: ' + (e as Error).message, 'err')
     }
   }
-
-  function onOverlayClick(e: MouseEvent) {
-    if ((e.target as HTMLElement).id === 'modal') closeModal()
-  }
 </script>
 
-{#if $modalState.open}
-  <div id="modal" class="modal-overlay" onclick={onOverlayClick} onkeydown={(e) => e.key === 'Escape' && closeModal()} role="dialog" aria-modal="true" tabindex="-1">
-    <div class="modal">
-      {#if $modalState.mode === 'create'}
-        <h2>Create {$modalState.tab?.slice(0, -1)}</h2>
-        <form>
-          {#each SCHEMAS[$modalState.tab!] ?? [] as f}
-            <label>
-              <span>{f.label}{f.required ? ' *' : ''}</span>
-              {#if f.type === 'textarea'}
-                <textarea name={f.name} required={f.required} bind:value={fieldValues[f.name]}></textarea>
-              {:else}
-                <input type="text" name={f.name} required={f.required} bind:value={fieldValues[f.name]} />
-              {/if}
-            </label>
-          {/each}
-        </form>
-        <div class="modal-btns">
-          <button type="button" class="cancel" onclick={closeModal}>Cancel</button>
-          <button type="button" class="submit" onclick={submitCreate}>Create</button>
-        </div>
+<Dialog.Root open={$modalState.open} onOpenChange={(v) => { if (!v) closeModal() }}>
+  <Dialog.Content class="bg-[#1a1d27] border-[#3d4165] min-w-[360px] max-w-[500px] w-[90%] sm:max-w-[500px]">
+    {#if $modalState.mode === 'create'}
+      <Dialog.Header>
+        <Dialog.Title class="text-[#a78bfa]">Create {$modalState.tab?.slice(0, -1)}</Dialog.Title>
+      </Dialog.Header>
+      <div class="flex flex-col gap-2.5 max-h-[60vh] overflow-y-auto py-1 pr-1">
+        {#each SCHEMAS[$modalState.tab!] ?? [] as f}
+          <div>
+            <Label class="text-[#94a3b8] text-xs mb-1 block">{f.label}{f.required ? ' *' : ''}</Label>
+            {#if f.type === 'textarea'}
+              <Textarea
+                name={f.name}
+                required={f.required}
+                bind:value={fieldValues[f.name]}
+                class="bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px] min-h-20"
+              />
+            {:else}
+              <Input
+                type="text"
+                name={f.name}
+                required={f.required}
+                bind:value={fieldValues[f.name]}
+                class="bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px] h-8"
+              />
+            {/if}
+          </div>
+        {/each}
+      </div>
+      <Dialog.Footer>
+        <Button variant="ghost" class="text-[#94a3b8]" onclick={closeModal}>Cancel</Button>
+        <Button onclick={submitCreate}>Create</Button>
+      </Dialog.Footer>
 
-      {:else if $modalState.mode === 'edit' && $modalState.editingNode}
-        <h2>Edit {$modalState.editingNode.node_type}: {$modalState.editingNode.label}</h2>
-        <form>
-          {#each EDIT_SCHEMAS[$modalState.editingNode.node_type] ?? [] as f}
-            <label>
-              <span>{f.label}</span>
-              {#if f.type === 'textarea'}
-                <textarea name={f.name} bind:value={fieldValues[f.name]}></textarea>
-              {:else if f.type === 'select'}
-                <select name={f.name} bind:value={fieldValues[f.name]}>
+    {:else if $modalState.mode === 'edit' && $modalState.editingNode}
+      <Dialog.Header>
+        <Dialog.Title class="text-[#a78bfa]">Edit {$modalState.editingNode.node_type}: {$modalState.editingNode.label}</Dialog.Title>
+      </Dialog.Header>
+      <div class="flex flex-col gap-2.5 max-h-[60vh] overflow-y-auto py-1 pr-1">
+        {#each EDIT_SCHEMAS[$modalState.editingNode.node_type] ?? [] as f}
+          <div>
+            <Label class="text-[#94a3b8] text-xs mb-1 block">{f.label}</Label>
+            {#if f.type === 'textarea'}
+              <Textarea
+                name={f.name}
+                bind:value={fieldValues[f.name]}
+                class="bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px] min-h-20"
+              />
+            {:else if f.type === 'select'}
+              <Select.Root
+                type="single"
+                value={fieldValues[f.name]}
+                onValueChange={(v) => { fieldValues[f.name] = v }}
+              >
+                <Select.Trigger class="w-full h-8 bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px]">
+                  {fieldValues[f.name] || '— select —'}
+                </Select.Trigger>
+                <Select.Content>
                   {#each f.options ?? [] as opt}
-                    <option value={opt}>{opt}</option>
+                    <Select.Item value={opt} label={opt} />
                   {/each}
-                </select>
-              {:else}
-                <input type="text" name={f.name} bind:value={fieldValues[f.name]} />
-              {/if}
-            </label>
-          {/each}
-        </form>
-        <div class="modal-btns">
-          <button type="button" class="cancel" onclick={closeModal}>Cancel</button>
-          <button type="button" class="submit" onclick={submitEdit}>Save</button>
-        </div>
+                </Select.Content>
+              </Select.Root>
+            {:else}
+              <Input
+                type="text"
+                name={f.name}
+                bind:value={fieldValues[f.name]}
+                class="bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px] h-8"
+              />
+            {/if}
+          </div>
+        {/each}
+      </div>
+      <Dialog.Footer>
+        <Button variant="ghost" class="text-[#94a3b8]" onclick={closeModal}>Cancel</Button>
+        <Button onclick={submitEdit}>Save</Button>
+      </Dialog.Footer>
 
-      {:else if $modalState.mode === 'add-link' && $modalState.editingNode}
-        <h2>Add &amp; Link to: {$modalState.editingNode.label}</h2>
-        <form>
-          <label>
-            <span>Node Type *</span>
-            <select bind:value={addLinkType}>
+    {:else if $modalState.mode === 'add-link' && $modalState.editingNode}
+      <Dialog.Header>
+        <Dialog.Title class="text-[#a78bfa]">Add &amp; Link to: {$modalState.editingNode.label}</Dialog.Title>
+      </Dialog.Header>
+      <div class="flex flex-col gap-2.5 max-h-[60vh] overflow-y-auto py-1 pr-1">
+        <div>
+          <Label class="text-[#94a3b8] text-xs mb-1 block">Node Type *</Label>
+          <Select.Root
+            type="single"
+            value={addLinkType}
+            onValueChange={(v) => { addLinkType = v }}
+          >
+            <Select.Trigger class="w-full h-8 bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px]">
+              {addLinkType}
+            </Select.Trigger>
+            <Select.Content>
               {#each Object.keys(CREATE_ENDPOINTS) as t}
-                <option value={t}>{t}</option>
+                <Select.Item value={t} label={t} />
               {/each}
-            </select>
-          </label>
-          {#each addLinkSchema as f}
-            <label>
-              <span>{f.label}{f.required ? ' *' : ''}</span>
-              {#if f.type === 'textarea'}
-                <textarea name={'field_' + f.name} required={f.required} bind:value={fieldValues['field_' + f.name]}></textarea>
-              {:else}
-                <input type="text" name={'field_' + f.name} required={f.required} bind:value={fieldValues['field_' + f.name]} />
-              {/if}
-            </label>
-          {/each}
-          {#if addLinkEdgeInfo && !('manual' in addLinkEdgeInfo)}
-            <div class="edge-info">
-              Edges: this → <em>{addLinkEdgeInfo.fwd}</em> → new &nbsp;|&nbsp; new → <em>{addLinkEdgeInfo.rev}</em> → this
-            </div>
-          {:else if addLinkEdgeInfo && 'manual' in addLinkEdgeInfo}
-            <label>
-              <span>Edge (this → new)</span>
-              <select bind:value={manualEdgeFwd}>
-                {#each ALL_EDGE_TYPES as e}
-                  <option value={e}>{e}</option>
-                {/each}
-              </select>
-            </label>
-          {/if}
-        </form>
-        <div class="modal-btns">
-          <button type="button" class="cancel" onclick={closeModal}>Cancel</button>
-          <button type="button" class="submit" onclick={submitAddLink}>Create &amp; Link</button>
+            </Select.Content>
+          </Select.Root>
         </div>
-      {/if}
-    </div>
-  </div>
-{/if}
-
-<style>
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal {
-    background: #1a1d27;
-    border: 1px solid #3d4165;
-    border-radius: 8px;
-    padding: 20px;
-    min-width: 360px;
-    max-width: 500px;
-    width: 90%;
-  }
-  .modal h2 { color: #a78bfa; margin-bottom: 14px; font-size: 16px; }
-  .modal label { display: block; margin-bottom: 10px; }
-  .modal label span { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
-  .modal :global(input),
-  .modal :global(textarea),
-  .modal :global(select) {
-    width: 100%;
-    background: #252840;
-    color: #e2e8f0;
-    border: 1px solid #3d4165;
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-size: 13px;
-    font-family: inherit;
-  }
-  .modal :global(textarea) { height: 80px; resize: vertical; }
-  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-  .modal-btns button { padding: 6px 16px; border-radius: 4px; cursor: pointer; border: none; font-size: 13px; }
-  .cancel { background: #252840; color: #94a3b8; }
-  .submit { background: #5b45d6; color: #fff; }
-  .submit:hover { background: #7c6df0; }
-  .edge-info { margin-top: 8px; padding: 6px; background: #0f1117; border-radius: 4px; font-size: 11px; color: #94a3b8; }
-</style>
+        {#each addLinkSchema as f}
+          <div>
+            <Label class="text-[#94a3b8] text-xs mb-1 block">{f.label}{f.required ? ' *' : ''}</Label>
+            {#if f.type === 'textarea'}
+              <Textarea
+                name={'field_' + f.name}
+                required={f.required}
+                bind:value={fieldValues['field_' + f.name]}
+                class="bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px] min-h-20"
+              />
+            {:else}
+              <Input
+                type="text"
+                name={'field_' + f.name}
+                required={f.required}
+                bind:value={fieldValues['field_' + f.name]}
+                class="bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px] h-8"
+              />
+            {/if}
+          </div>
+        {/each}
+        {#if addLinkEdgeInfo && !('manual' in addLinkEdgeInfo)}
+          <div class="mt-1 px-3 py-1.5 bg-[#0f1117] rounded text-[11px] text-[#94a3b8]">
+            Edges: this → <em>{addLinkEdgeInfo.fwd}</em> → new &nbsp;|&nbsp; new → <em>{addLinkEdgeInfo.rev}</em> → this
+          </div>
+        {:else if addLinkEdgeInfo && 'manual' in addLinkEdgeInfo}
+          <div>
+            <Label class="text-[#94a3b8] text-xs mb-1 block">Edge (this → new)</Label>
+            <Select.Root
+              type="single"
+              value={manualEdgeFwd}
+              onValueChange={(v) => { manualEdgeFwd = v }}
+            >
+              <Select.Trigger class="w-full h-8 bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px]">
+                {manualEdgeFwd}
+              </Select.Trigger>
+              <Select.Content>
+                {#each ALL_EDGE_TYPES as e}
+                  <Select.Item value={e} label={e} />
+                {/each}
+              </Select.Content>
+            </Select.Root>
+          </div>
+        {/if}
+      </div>
+      <Dialog.Footer>
+        <Button variant="ghost" class="text-[#94a3b8]" onclick={closeModal}>Cancel</Button>
+        <Button onclick={submitAddLink}>Create &amp; Link</Button>
+      </Dialog.Footer>
+    {/if}
+  </Dialog.Content>
+</Dialog.Root>
