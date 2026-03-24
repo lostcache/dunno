@@ -17,14 +17,14 @@
   let addLinkType = $state(Object.keys(CREATE_ENDPOINTS)[0])
 
   // Reactive schema for add-link sub-form
-  let addLinkSchema = $derived<SchemaField[]>(() => {
+  let addLinkSchema = $derived.by<SchemaField[]>(() => {
     const schema = SCHEMAS[addLinkType]
     if (!schema) return []
     if (addLinkType === 'contexts') return schema.filter(f => f.name !== 'link_to')
     return schema
   })
 
-  let addLinkEdgeInfo = $derived<{ fwd: string; rev: string } | { manual: true } | null>(() => {
+  let addLinkEdgeInfo = $derived.by<{ fwd: string; rev: string } | { manual: true } | null>(() => {
     const node = $modalState.editingNode
     if (!node || addLinkType === 'contexts') return null
     const newNodeType = TYPE_MAP[addLinkType] || addLinkType
@@ -45,18 +45,20 @@
 
   function initFields() {
     const ms = get(modalState)
-    fieldValues = {}
+    const newValues: Record<string, string> = {}
     if (ms.mode === 'edit' && ms.editingNode) {
       const schema = EDIT_SCHEMAS[ms.editingNode.node_type] || []
       for (const f of schema) {
-        fieldValues[f.name] = String(ms.editingNode[f.name] ?? '')
+        newValues[f.name] = String(ms.editingNode[f.name] ?? '')
       }
+      fieldValues = newValues
     } else if (ms.mode === 'create' && ms.tab) {
       const schema = SCHEMAS[ms.tab] || []
       const pid = get(projectId) || ''
       for (const f of schema) {
-        fieldValues[f.name] = f.fill === 'projectId' ? pid : ''
+        newValues[f.name] = f.fill === 'projectId' ? pid : ''
       }
+      fieldValues = newValues
     } else if (ms.mode === 'add-link') {
       addLinkType = Object.keys(CREATE_ENDPOINTS)[0]
       initAddLinkFields()
@@ -64,13 +66,14 @@
   }
 
   function initAddLinkFields() {
-    fieldValues = {}
     const pid = get(projectId) || ''
     const schema = addLinkSchema
+    const newValues: Record<string, string> = {}
     for (const f of schema) {
       const key = 'field_' + f.name
-      fieldValues[key] = f.fill === 'projectId' ? pid : ''
+      newValues[key] = f.fill === 'projectId' ? pid : ''
     }
+    fieldValues = newValues
   }
 
   $effect(() => {
@@ -201,8 +204,8 @@
           {/each}
         </form>
         <div class="modal-btns">
-          <button class="cancel" onclick={closeModal}>Cancel</button>
-          <button class="submit" onclick={submitCreate}>Create</button>
+          <button type="button" class="cancel" onclick={closeModal}>Cancel</button>
+          <button type="button" class="submit" onclick={submitCreate}>Create</button>
         </div>
 
       {:else if $modalState.mode === 'edit' && $modalState.editingNode}
@@ -226,8 +229,8 @@
           {/each}
         </form>
         <div class="modal-btns">
-          <button class="cancel" onclick={closeModal}>Cancel</button>
-          <button class="submit" onclick={submitEdit}>Save</button>
+          <button type="button" class="cancel" onclick={closeModal}>Cancel</button>
+          <button type="button" class="submit" onclick={submitEdit}>Save</button>
         </div>
 
       {:else if $modalState.mode === 'add-link' && $modalState.editingNode}
@@ -267,8 +270,8 @@
           {/if}
         </form>
         <div class="modal-btns">
-          <button class="cancel" onclick={closeModal}>Cancel</button>
-          <button class="submit" onclick={submitAddLink}>Create &amp; Link</button>
+          <button type="button" class="cancel" onclick={closeModal}>Cancel</button>
+          <button type="button" class="submit" onclick={submitAddLink}>Create &amp; Link</button>
         </div>
       {/if}
     </div>

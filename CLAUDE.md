@@ -82,15 +82,16 @@ Knowledge can be attached to any structural node:
    - `dn todo list --project-id <project_id>`
    - `dn user-story list --project-id <project_id>`
 2. If you have access to shell tool in Plan Mode switch to Plan Mode (if available) or remain in Agent Mode, but **DO NOT** create the task yet.
-3. **MANDATORY:** Do complete research on the task. This includes:
+3. **MANDATORY:** use the `dn ctx --general -p <project>` commmand to get the project structure.
+4. **MANDATORY:** Do complete research on the task. This includes:
    - Identifying the specific files that need to be modified or created.
    - Understanding the necessary schema or logic changes.
    - Formulating a step-by-step implementation plan.
-4. **MANDATORY:** Present your research and implementation plan to the user and ask for
+5. **MANDATORY:** Present your research and implementation plan to the user and ask for
    their approval **to create the task** (not to implement it).
    - _CRITICAL:_ Even if the user explicitly says "create a task for X", you MUST present your research and get approval first. NEVER run the `dn task add` command without
      explicit user confirmation of your plan.
-5. **After explicit approval**, create a task node and link to the relevant project, module/submodule and files.
+6. **After explicit approval**, create a task node and link to the relevant project, module/submodule and files.
    - `dn task add --project-ids <project_id> "Task Name" "<THE_ENTIRE_MULTILINE_APPROVED_PLAN_VERBATIM>"`
    - _CRITICAL:_ Do NOT summarize the plan. You MUST pass the full, multi-line implementation plan that was approved by the user as the description argument.
    - _CRITICAL:_ "Making a task" or "creating a task" means running `dn task add` ONLY.
