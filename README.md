@@ -71,6 +71,7 @@ dn-server
 This opens the web UI at `http://127.0.0.1:7700`. If you have the `surreal` binary installed, `dn-server` manages SurrealDB automatically for the `local` backend.
 
 > To use both `dn` CLI and `dn-server` concurrently against the same local database, install the `surreal` binary:
+>
 > ```bash
 > curl -sSf https://install.surrealdb.com | sh
 > ```
@@ -184,16 +185,16 @@ auth_type = "root"
 
 #### Environment Variables
 
-| Variable          | Description                                      |
-| ----------------- | ------------------------------------------------ |
-| `DUNNO_BACKEND`   | Backend type: `local`, `local-server`, `cloud`   |
-| `DUNNO_LOCAL_PATH`| Local database file path                         |
-| `DUNNO_URL`       | SurrealDB instance URL                           |
-| `DUNNO_NS`        | Namespace                                        |
-| `DUNNO_DB`        | Database name                                    |
-| `DUNNO_USER`      | Username                                         |
-| `DUNNO_PASS`      | Password                                         |
-| `DUNNO_AUTH_TYPE` | Auth type: `root`, `namespace`, `database`       |
+| Variable           | Description                                    |
+| ------------------ | ---------------------------------------------- |
+| `DUNNO_BACKEND`    | Backend type: `local`, `local-server`, `cloud` |
+| `DUNNO_LOCAL_PATH` | Local database file path                       |
+| `DUNNO_URL`        | SurrealDB instance URL                         |
+| `DUNNO_NS`         | Namespace                                      |
+| `DUNNO_DB`         | Database name                                  |
+| `DUNNO_USER`       | Username                                       |
+| `DUNNO_PASS`       | Password                                       |
+| `DUNNO_AUTH_TYPE`  | Auth type: `root`, `namespace`, `database`     |
 
 #### Global CLI Flags
 
@@ -223,12 +224,12 @@ Knowledge can be attached to any node. When retrieving context with `--full`, kn
 
 Knowledge entries are schemaless key-value maps. Common conventions:
 
-| `type` value     | Purpose                      |
-| ---------------- | ---------------------------- |
-| `mistake`        | Known pitfalls and errors    |
-| `style`          | Coding conventions           |
-| `security`       | Security constraints         |
-| _(any string)_   | Custom knowledge types       |
+| `type` value   | Purpose                   |
+| -------------- | ------------------------- |
+| `mistake`      | Known pitfalls and errors |
+| `style`        | Coding conventions        |
+| `security`     | Security constraints      |
+| _(any string)_ | Custom knowledge types    |
 
 ---
 
@@ -460,6 +461,7 @@ The shared library consumed by both `dn` and `dn-server`. Contains:
 #### `dn-server`
 
 An axum HTTP server that:
+
 - Serves a REST API under `/api/*` (full CRUD for all entities, context queries, graph endpoints)
 - Embeds the built Svelte UI via `rust-embed` (served as SPA with client-side routing fallback)
 - For the `local` backend, auto-spawns a `surreal` server process on a random port and tears it down on exit
@@ -473,18 +475,18 @@ A Svelte 5 SPA built with Vite. Communicates with `dn-server` via the REST API. 
 
 ### Tech Stack
 
-| Layer        | Technology                                      |
-| ------------ | ----------------------------------------------- |
-| Language     | Rust (Edition 2024)                             |
-| CLI          | clap v4.5 (derive macros)                       |
-| HTTP server  | axum 0.7 + tower-http                           |
-| Database     | SurrealDB v3.0.0 (embedded kv-surrealkv or WS)  |
-| Async        | tokio                                           |
-| Serialization| serde (JSON + TOML)                             |
-| UI framework | Svelte 5 + Vite 8                               |
-| UI components| bits-ui (shadcn-svelte) + Tailwind CSS v4       |
-| Graph viz    | Cytoscape.js                                    |
-| UI embedding | rust-embed                                      |
+| Layer         | Technology                                     |
+| ------------- | ---------------------------------------------- |
+| Language      | Rust (Edition 2024)                            |
+| CLI           | clap v4.5 (derive macros)                      |
+| HTTP server   | axum 0.7 + tower-http                          |
+| Database      | SurrealDB v3.0.0 (embedded kv-surrealkv or WS) |
+| Async         | tokio                                          |
+| Serialization | serde (JSON + TOML)                            |
+| UI framework  | Svelte 5 + Vite 8                              |
+| UI components | bits-ui (shadcn-svelte) + Tailwind CSS v4      |
+| Graph viz     | Cytoscape.js                                   |
+| UI embedding  | rust-embed                                     |
 
 ---
 
@@ -564,19 +566,19 @@ Unit tests use in-memory SurrealDB (`mem://`) and don't require a running server
 
 #### Entities
 
-| Entity      | Record ID Pattern  | Description                  |
-| ----------- | ------------------ | ---------------------------- |
-| Project     | `project:<id>`     | Top-level container          |
-| Module      | `module:<id>`      | Code organization unit       |
-| Submodule   | `submodule:<id>`   | Nested code unit             |
-| File        | `file:<id>`        | Source file reference        |
-| Task        | `task:<id>`        | Work item                    |
-| Epic        | `epic:<id>`        | Large feature group          |
-| UserStory   | `user_story:<id>`  | User-centric feature         |
-| Context     | `context:<id>`     | Schemaless knowledge entry   |
-| Todo        | `todo_item:<id>`   | Work queue item              |
-| Persona     | `persona:<id>`     | AI agent persona definition  |
-| Workflow    | `workflow:<id>`    | Workflow definition          |
+| Entity    | Record ID Pattern | Description                 |
+| --------- | ----------------- | --------------------------- |
+| Project   | `project:<id>`    | Top-level container         |
+| Module    | `module:<id>`     | Code organization unit      |
+| Submodule | `submodule:<id>`  | Nested code unit            |
+| File      | `file:<id>`       | Source file reference       |
+| Task      | `task:<id>`       | Work item                   |
+| Epic      | `epic:<id>`       | Large feature group         |
+| UserStory | `user_story:<id>` | User-centric feature        |
+| Context   | `context:<id>`    | Schemaless knowledge entry  |
+| Todo      | `todo_item:<id>`  | Work queue item             |
+| Persona   | `persona:<id>`    | AI agent persona definition |
+| Workflow  | `workflow:<id>`   | Workflow definition         |
 
 #### Graph Relations
 

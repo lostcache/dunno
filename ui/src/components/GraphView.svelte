@@ -8,7 +8,6 @@
   import { buildCyStyles, applyFilters } from '../lib/cytoscapeHelpers'
   import { api } from '../lib/api'
   import { setStatus } from '../stores/statusStore'
-  import NodeDetail from './NodeDetail.svelte'
   import MultiSelectPanel from './MultiSelectPanel.svelte'
   import NodeHoverBtns from './NodeHoverBtns.svelte'
   import type { NodeData } from '../lib/types'
@@ -122,8 +121,6 @@
 
   {#if selectedNodes.length >= 2}
     <MultiSelectPanel nodes={selectedNodes} {onRefresh} />
-  {:else if $editingNode}
-    <NodeDetail />
   {/if}
 </div>
 

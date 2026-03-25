@@ -9,6 +9,7 @@
   import ContextView from './components/ContextView.svelte'
   import StatusBar from './components/StatusBar.svelte'
   import Modal from './components/Modal.svelte'
+  import NodeDetailPanel from './components/NodeDetailPanel.svelte'
 
   let navbar = $state<ReturnType<typeof NavBar> | null>(null)
   let sidebar = $state<ReturnType<typeof Sidebar> | null>(null)
@@ -43,6 +44,7 @@
       <ContextView />
     {/if}
   </main>
+  <NodeDetailPanel />
 </div>
 
 <StatusBar />
