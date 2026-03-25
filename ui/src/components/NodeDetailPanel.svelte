@@ -1,11 +1,18 @@
 <script lang="ts">
   import { editingNode } from '../stores/graphStore'
-  import { openEdit, openAddLink } from '../stores/modalStore'
+  import { openEdit } from '../stores/modalStore'
+  import { apiDel } from '../lib/api'
+  import { setStatus } from '../stores/statusStore'
+  import { EDIT_ENDPOINTS } from '../lib/constants'
   import { Button } from '$lib/components/ui/button'
   import { Badge } from '$lib/components/ui/badge'
   import { Separator } from '$lib/components/ui/separator'
   import { ScrollArea } from '$lib/components/ui/scroll-area'
   import { Card, CardHeader, CardTitle, CardContent } from '$lib/components/ui/card'
+
+  let { onRefresh }: { onRefresh: () => void } = $props()
+
+  let confirmingDelete = $state(false)
 
   function toTitleCase(key: string): string {
     return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
@@ -13,6 +20,22 @@
 
   function getDisplayFields(node: Record<string, unknown>): [string, unknown][] {
     return Object.entries(node).filter(([k, v]) => k !== 'id' && k !== 'label' && k !== 'node_type' && v !== node.label)
+  }
+
+  async function deleteNode() {
+    const data = $editingNode
+    if (!data) return
+    const base = EDIT_ENDPOINTS[data.node_type]
+    if (!base) { setStatus('No delete endpoint for ' + data.node_type, 'err'); return }
+    try {
+      await apiDel(`${base}/${encodeURIComponent(data.id)}`)
+      editingNode.set(null)
+      confirmingDelete = false
+      setStatus('Deleted ' + data.label, 'ok')
+      onRefresh()
+    } catch (e: unknown) {
+      setStatus('Delete failed: ' + (e as Error).message, 'err')
+    }
   }
 </script>
 
@@ -27,7 +50,14 @@
           </div>
           <div class="flex flex-col gap-1 shrink-0">
             <Button size="sm" class="h-6 px-2 text-xs" onclick={() => openEdit($editingNode!)}>Edit</Button>
-            <Button size="sm" class="h-6 px-2 text-xs bg-green-700 hover:bg-green-600 text-white" onclick={() => openAddLink($editingNode!)}>Add &amp; Link</Button>
+            {#if confirmingDelete}
+              <div class="flex flex-col gap-1">
+                <Button size="sm" variant="destructive" class="h-6 px-2 text-xs" onclick={deleteNode}>Confirm</Button>
+                <Button size="sm" variant="ghost" class="h-6 px-2 text-xs" onclick={() => confirmingDelete = false}>Cancel</Button>
+              </div>
+            {:else}
+              <Button size="sm" variant="destructive" class="h-6 px-2 text-xs" onclick={() => confirmingDelete = true}>Delete</Button>
+            {/if}
           </div>
         </div>
       </CardHeader>

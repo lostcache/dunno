@@ -44,7 +44,7 @@
       <ContextView />
     {/if}
   </main>
-  <NodeDetailPanel />
+  <NodeDetailPanel onRefresh={refresh} />
 </div>
 
 <StatusBar />
