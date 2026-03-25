@@ -1,6 +1,7 @@
 pub mod epics;
 pub mod files;
 pub mod graph;
+pub mod issues;
 pub mod knowledge;
 pub mod modules;
 pub mod personas;

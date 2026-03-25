@@ -325,6 +325,16 @@ dn todo ls {--pid|--project-id} <id>
 dn todo rm <id>
 ```
 
+#### Issue
+
+```bash
+dn issue add "<title>" "<description>"
+dn issue add --task-id <task_id> "<title>" "<description>"
+dn issue ls
+dn issue ls --task-id <task_id>
+dn issue rm <id> [<id> ...]
+```
+
 #### Knowledge
 
 ```bash
@@ -581,6 +591,7 @@ Unit tests use in-memory SurrealDB (`mem://`) and don't require a running server
 | Todo      | `todo_item:<id>`  | Work queue item             |
 | Persona   | `persona:<id>`    | AI agent persona definition |
 | Workflow  | `workflow:<id>`   | Workflow definition         |
+| Issue     | `issue:<id>`      | Bug or problem linked to a task |
 
 #### Graph Relations
 
@@ -600,6 +611,8 @@ Unit tests use in-memory SurrealDB (`mem://`) and don't require a running server
 | `belongs_to_story`      | task                                                     | user_story              | Reverse link           |
 | `belongs_to_user_story` | module, submodule                                        | user_story              | Reverse link           |
 | `belongs_to_epic`       | user_story, task                                         | epic                    | Reverse link           |
+| `has_issue`             | task                                                     | issue                   | Issue tracking         |
+| `belongs_to_task`       | file, context, issue                                     | task                    | Reverse link           |
 
 ---
 

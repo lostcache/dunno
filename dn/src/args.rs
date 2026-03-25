@@ -135,6 +135,12 @@ pub enum Commands {
         command: TodoCommands,
     },
 
+    #[command(about = "Manage issues.", visible_alias = "iss")]
+    Issue {
+        #[command(subcommand)]
+        command: IssueCommands,
+    },
+
     #[command(
         about = "Inspect resolved runtime configuration.",
         visible_alias = "cfg",
@@ -643,6 +649,29 @@ pub enum TodoCommands {
     Delete {
         #[arg(required = true)]
         todo_ids: Vec<String>,
+    },
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum IssueCommands {
+    #[command(name = "add")]
+    Create {
+        /// Task ID to link this issue to. Optional.
+        #[arg(long, visible_alias = "tid", value_name = "TASK_ID")]
+        task_id: Option<String>,
+        title: String,
+        description: String,
+    },
+    #[command(name = "list", visible_alias = "ls")]
+    List {
+        /// Task ID to filter issues by. Optional.
+        #[arg(long, visible_alias = "tid", value_name = "TASK_ID")]
+        task_id: Option<String>,
+    },
+    #[command(name = "rm")]
+    Remove {
+        #[arg(required = true)]
+        issue_ids: Vec<String>,
     },
 }
 
@@ -2348,6 +2377,114 @@ mod tests {
             assert_eq!(link_to.len(), 1);
         } else {
             panic!("expected Add command");
+        }
+    }
+
+    #[test]
+    fn issue_add_parses_title_and_description() {
+        let args = Args::try_parse_from(["dn", "issue", "add", "Login broken", "Users cannot log in"]);
+        assert!(args.is_ok(), "should parse issue add");
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::Create { task_id, title, description } = command {
+                assert_eq!(task_id, None);
+                assert_eq!(title, "Login broken");
+                assert_eq!(description, "Users cannot log in");
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
+
+    #[test]
+    fn issue_add_accepts_task_id() {
+        let args = Args::try_parse_from([
+            "dn", "issue", "add", "--task-id", "task:abc123", "Title", "Desc",
+        ]);
+        assert!(args.is_ok(), "should parse issue add with --task-id");
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::Create { task_id, .. } = command {
+                assert_eq!(task_id, Some("task:abc123".to_string()));
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
+
+    #[test]
+    fn issue_add_accepts_tid_alias() {
+        let args = Args::try_parse_from([
+            "dn", "issue", "add", "--tid", "task:abc123", "Title", "Desc",
+        ]);
+        assert!(args.is_ok(), "should parse issue add with --tid alias");
+    }
+
+    #[test]
+    fn issue_list_parses_without_filter() {
+        let args = Args::try_parse_from(["dn", "issue", "ls"]);
+        assert!(args.is_ok(), "should parse issue list");
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::List { task_id } = command {
+                assert_eq!(task_id, None);
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
+
+    #[test]
+    fn issue_list_accepts_task_id() {
+        let args = Args::try_parse_from(["dn", "issue", "ls", "--task-id", "task:abc"]);
+        assert!(args.is_ok(), "should parse issue list with --task-id");
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::List { task_id } = command {
+                assert_eq!(task_id, Some("task:abc".to_string()));
+            } else {
+                panic!("expected List command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
+
+    #[test]
+    fn issue_rm_requires_at_least_one_id() {
+        let args = Args::try_parse_from(["dn", "issue", "rm"]);
+        assert!(args.is_err(), "should reject issue rm with no ids");
+    }
+
+    #[test]
+    fn issue_rm_accepts_single_id() {
+        let args = Args::try_parse_from(["dn", "issue", "rm", "issue:abc123"]);
+        assert!(args.is_ok(), "should parse issue rm with one id");
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::Remove { issue_ids } = command {
+                assert_eq!(issue_ids, vec!["issue:abc123"]);
+            } else {
+                panic!("expected Remove command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
+
+    #[test]
+    fn issue_rm_accepts_multiple_ids() {
+        let args = Args::try_parse_from(["dn", "issue", "rm", "issue:abc", "issue:def"]);
+        assert!(args.is_ok(), "should parse issue rm with multiple ids");
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::Remove { issue_ids } = command {
+                assert_eq!(issue_ids, vec!["issue:abc", "issue:def"]);
+            } else {
+                panic!("expected Remove command");
+            }
+        } else {
+            panic!("expected Issue command");
         }
     }
 }

@@ -105,6 +105,32 @@ pub struct TodoItem {
     pub content: String,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum IssueStatus {
+    Open,
+    Closed,
+}
+
+impl IssueStatus {
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "open" => Some(Self::Open),
+            "closed" => Some(Self::Closed),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct Issue {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub title: String,
+    pub description: String,
+    pub status: IssueStatus,
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Default)]
 pub struct Context {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -208,6 +234,32 @@ pub struct FileContext {
 mod tests {
     use super::*;
     use serde_json::to_string;
+
+    #[test]
+    fn issue_status_parse_accepts_known_values() {
+        assert_eq!(IssueStatus::parse("open"), Some(IssueStatus::Open));
+        assert_eq!(IssueStatus::parse("closed"), Some(IssueStatus::Closed));
+    }
+
+    #[test]
+    fn issue_status_parse_rejects_unknown_values() {
+        assert_eq!(IssueStatus::parse("pending"), None);
+        assert_eq!(IssueStatus::parse(""), None);
+        assert_eq!(IssueStatus::parse("OPEN"), None);
+    }
+
+    #[test]
+    fn test_issue_model() {
+        let issue = Issue {
+            id: None,
+            title: "Login broken".to_string(),
+            description: "Users cannot log in".to_string(),
+            status: IssueStatus::Open,
+        };
+        let json = to_string(&issue).expect("Failed to serialize Issue");
+        assert!(json.contains("Login broken"));
+        assert!(json.contains("\"status\":\"open\""));
+    }
 
     #[test]
     fn task_status_parse_accepts_known_values() {

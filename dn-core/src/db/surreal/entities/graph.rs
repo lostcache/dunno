@@ -19,6 +19,7 @@ impl DB {
             ("epic", "title"),
             ("persona", "name"),
             ("workflow", "name"),
+            ("issue", "title"),
         ];
 
         for (table, label_field) in node_tables {
@@ -81,6 +82,7 @@ impl DB {
             "has_persona",
             "has_workflow",
             "belongs_to_task",
+            "has_issue",
         ];
 
         for edge_table in &edge_tables {
@@ -290,6 +292,30 @@ impl DB {
             }
         }
 
+        // has_issue WHERE in IN [task_ids] → out values (issues linked to project tasks)
+        let task_ids: Vec<String> = relevant_ids
+            .iter()
+            .filter(|id| id.starts_with("task:"))
+            .cloned()
+            .collect();
+        if !task_ids.is_empty() {
+            let ids_list = task_ids
+                .iter()
+                .map(|id| id.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            let sql = format!("SELECT out FROM has_issue WHERE in IN [{}]", ids_list);
+            if let Ok(mut res) = self.client.query(&sql).await {
+                let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
+                for row in rows {
+                    let json = surreal_to_json(row);
+                    if let Some(id) = json.get("out").and_then(|v| v.as_str()) {
+                        relevant_ids.insert(id.to_string());
+                    }
+                }
+            }
+        }
+
         let node_tables: &[(&str, &str)] = &[
             ("project", "name"),
             ("module", "name"),
@@ -302,6 +328,7 @@ impl DB {
             ("epic", "title"),
             ("persona", "name"),
             ("workflow", "name"),
+            ("issue", "title"),
         ];
 
         let mut elements: Vec<serde_json::Value> = Vec::new();
@@ -369,6 +396,7 @@ impl DB {
             "has_persona",
             "has_workflow",
             "belongs_to_task",
+            "has_issue",
         ];
 
         for edge_table in &edge_tables {

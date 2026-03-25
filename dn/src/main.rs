@@ -78,6 +78,7 @@ async fn dispatch_command(
         args::Commands::Todo { command } => {
             handle_todo_command(command, db, pretty, ignore_case).await
         }
+        args::Commands::Issue { command } => handle_issue_command(command, db, pretty).await,
         args::Commands::UserStory { command } => {
             handle_user_story_command(command, db, pretty, ignore_case).await
         }
@@ -190,6 +191,7 @@ async fn handle_link(
         "has_module",
         "has_submodule",
         "has_epic",
+        "has_issue",
         "belongs_to_project",
         "belongs_to_module",
         "belongs_to_task",
@@ -623,6 +625,53 @@ fn parse_optional_status(
             }),
         None => Ok(None),
     }
+}
+
+/// Issue management with optional task linking.
+async fn handle_issue_command(
+    command: args::IssueCommands,
+    db: &dn_core::db::DB,
+    pretty: bool,
+) -> anyhow::Result<()> {
+    match command {
+        args::IssueCommands::Create {
+            task_id,
+            title,
+            description,
+        } => {
+            let created = db
+                .create_issue(&title, &description, task_id.as_deref())
+                .await?;
+            print_json(serde_json::json!(created), pretty);
+        }
+        args::IssueCommands::List { task_id } => {
+            let issues = match task_id {
+                Some(tid) => db.list_issues_by_task(&tid).await?,
+                None => db.list_issues().await?,
+            };
+            print_json(serde_json::json!(issues), pretty);
+        }
+        args::IssueCommands::Remove { issue_ids } => {
+            let mut deleted = Vec::new();
+            let mut not_found = Vec::new();
+            for id in issue_ids {
+                if db.delete_issue(&id).await? {
+                    deleted.push(id);
+                } else {
+                    not_found.push(id);
+                }
+            }
+            print_json(
+                serde_json::json!({
+                    "status": "ok",
+                    "deleted": deleted,
+                    "not_found": not_found,
+                }),
+                pretty,
+            );
+        }
+    }
+    Ok(())
 }
 
 /// Todo management with project association.
