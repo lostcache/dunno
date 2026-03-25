@@ -2374,12 +2374,22 @@ async fn test_get_task_context_with_files_and_linked_context() {
         .await
         .expect("link task context");
 
-    // Verify file was created and linked
+    // Verify file was created and linked to module
     let files_in_module = db
         .list_files_by_module(&module_id)
         .await
         .expect("list files");
     assert_eq!(files_in_module.len(), 1, "Should have 1 file in module");
+
+    // Link a different file directly to the task
+    let task_file = db
+        .create_file("task.rs", "src/task.rs", Some("Task-specific file"), None, &project_id, None)
+        .await
+        .expect("create task file");
+    let task_file_id = task_file.id.as_ref().unwrap().clone();
+    db.link(&task_file_id, "belongs_to_task", &task_id)
+        .await
+        .expect("link file to task");
 
     // Get task context
     let context = db
@@ -2414,15 +2424,12 @@ async fn test_get_task_context_with_files_and_linked_context() {
         "Should NOT include file context"
     );
 
-    // But files should be listed (files in the module)
+    // Files should be the ones directly linked to the task, not module files
     assert_eq!(context.files.len(), 1);
-    assert_eq!(context.files[0].id.as_deref().unwrap(), file_id);
-    assert_eq!(context.files[0].name, "auth.rs");
-    assert_eq!(context.files[0].path, "src/auth.rs");
-    assert_eq!(
-        context.files[0].description,
-        Some("Auth implementation".to_string())
-    );
+    assert_eq!(context.files[0].id.as_deref().unwrap(), task_file_id);
+    assert_eq!(context.files[0].name, "task.rs");
+    // The module file must NOT appear
+    assert!(!context.files.iter().any(|f| f.id.as_deref() == Some(file_id.as_str())));
 
     // Verify hierarchy is correct
     assert_eq!(context.hierarchy.project_id, project_id);

@@ -125,6 +125,20 @@ impl DB {
         .await
     }
 
+    /// Lists files directly linked to a task via belongs_to_task edge.
+    pub async fn list_files_by_task(
+        &self,
+        task_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::File>> {
+        self.query_graph_list(
+            "SELECT <-belongs_to_task<-file.* AS items FROM ONLY type::record($tid)",
+            "tid",
+            task_id.to_string(),
+            "items",
+        )
+        .await
+    }
+
     /// Lists files under a project via belongs_to_project edge.
     pub async fn list_files_by_project(
         &self,
@@ -296,6 +310,74 @@ mod tests {
         let err =
             ensure_one_of_record_ids(&["module"], "1").expect_err("should reject missing prefix");
         assert!(err.to_string().contains("Expected record id"));
+    }
+
+    #[tokio::test]
+    async fn test_list_files_by_task_returns_linked_files() {
+        let db = DB::new("mem://").await.expect("init db");
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "proj".to_string(),
+                description: "desc".to_string(),
+            })
+            .await
+            .expect("create project");
+        let project_id = project.id.unwrap();
+
+        let task = db
+            .create_task("My Task", "desc", None, Some(&project_id))
+            .await
+            .expect("create task");
+        let task_id = task.id.unwrap();
+
+        let f1 = db
+            .create_file("a.rs", "src/a.rs", None, None, &project_id, None)
+            .await
+            .expect("create file a");
+        let f2 = db
+            .create_file("b.rs", "src/b.rs", None, None, &project_id, None)
+            .await
+            .expect("create file b");
+        let f1_id = f1.id.as_ref().unwrap().clone();
+        let f2_id = f2.id.as_ref().unwrap().clone();
+
+        db.link(&f1_id, "belongs_to_task", &task_id).await.expect("link f1");
+        db.link(&f2_id, "belongs_to_task", &task_id).await.expect("link f2");
+
+        let files = db.list_files_by_task(&task_id).await.expect("list files by task");
+        assert_eq!(files.len(), 2);
+        let ids: Vec<_> = files.iter().map(|f| f.id.as_deref().unwrap()).collect();
+        assert!(ids.contains(&f1_id.as_str()));
+        assert!(ids.contains(&f2_id.as_str()));
+    }
+
+    #[tokio::test]
+    async fn test_list_files_by_task_returns_empty_when_no_links() {
+        let db = DB::new("mem://").await.expect("init db");
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "proj".to_string(),
+                description: "desc".to_string(),
+            })
+            .await
+            .expect("create project");
+        let project_id = project.id.unwrap();
+
+        let task = db
+            .create_task("Empty Task", "desc", None, Some(&project_id))
+            .await
+            .expect("create task");
+        let task_id = task.id.unwrap();
+
+        // Create a file but do NOT link it to the task
+        db.create_file("unlinked.rs", "src/unlinked.rs", None, None, &project_id, None)
+            .await
+            .expect("create file");
+
+        let files = db.list_files_by_task(&task_id).await.expect("list files by task");
+        assert!(files.is_empty());
     }
 
     #[tokio::test]

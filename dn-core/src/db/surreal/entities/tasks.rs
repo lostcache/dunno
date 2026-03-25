@@ -164,7 +164,7 @@ impl DB {
             .ok_or_else(|| anyhow::anyhow!("Task not found: {}", task_id))?;
 
         let hierarchy = self.get_task_hierarchy(task_id).await?;
-        let files = self.get_files_from_hierarchy(&hierarchy).await?;
+        let files = self.list_files_by_task(task_id).await?;
         let contexts = self.get_linked_context(task_id).await?;
 
         Ok(crate::models::TaskContext {
@@ -319,22 +319,6 @@ impl DB {
             }
         }
         Ok(None)
-    }
-
-    /// Gets files from the parent module or submodule in the hierarchy.
-    pub(crate) async fn get_files_from_hierarchy(
-        &self,
-        hierarchy: &crate::models::TaskHierarchy,
-    ) -> anyhow::Result<Vec<crate::models::File>> {
-        if let Some(ref submodule) = hierarchy.submodule {
-            let files = self.list_files_by_submodule(&submodule.id).await?;
-            return Ok(files);
-        }
-
-        if let Some(ref mid) = hierarchy.module_id {
-            return Ok(self.list_files_by_module(mid).await?);
-        }
-        Ok(vec![])
     }
 
     /// Fetches all context records linked to a structural node (project, task, module, submodule).
@@ -552,5 +536,88 @@ mod tests {
         // Verify task is deleted
         let after_delete = db.get_task(&task_id).await.expect("Failed to check task");
         assert!(after_delete.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_task_context_files_come_from_direct_links() {
+        let db = DB::new("mem://").await.expect("init db");
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "proj".to_string(),
+                description: "desc".to_string(),
+            })
+            .await
+            .expect("create project");
+        let project_id = project.id.unwrap();
+
+        let module = db
+            .create_module("core", "core module", None, &project_id)
+            .await
+            .expect("create module");
+        let module_id = module.id.unwrap();
+
+        // File attached to the module (should NOT appear in task context)
+        let module_file = db
+            .create_file("module.rs", "src/module.rs", None, None, &project_id, Some(&module_id))
+            .await
+            .expect("create module file");
+
+        let task = db
+            .create_task("My Task", "desc", Some(&module_id), Some(&project_id))
+            .await
+            .expect("create task");
+        let task_id = task.id.unwrap();
+
+        // File linked directly to the task
+        let task_file = db
+            .create_file("task.rs", "src/task.rs", None, None, &project_id, None)
+            .await
+            .expect("create task file");
+        let task_file_id = task_file.id.as_ref().unwrap().clone();
+        db.link(&task_file_id, "belongs_to_task", &task_id)
+            .await
+            .expect("link file to task");
+
+        let ctx = db.get_task_context(&task_id, false).await.expect("get context");
+
+        assert_eq!(ctx.files.len(), 1);
+        assert_eq!(ctx.files[0].id.as_deref(), Some(task_file_id.as_str()));
+        // module file must not appear
+        assert!(!ctx.files.iter().any(|f| f.id == module_file.id));
+    }
+
+    #[tokio::test]
+    async fn test_task_context_files_empty_when_no_direct_links() {
+        let db = DB::new("mem://").await.expect("init db");
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "proj".to_string(),
+                description: "desc".to_string(),
+            })
+            .await
+            .expect("create project");
+        let project_id = project.id.unwrap();
+
+        let module = db
+            .create_module("core", "core module", None, &project_id)
+            .await
+            .expect("create module");
+        let module_id = module.id.unwrap();
+
+        // File attached to the module only
+        db.create_file("module.rs", "src/module.rs", None, None, &project_id, Some(&module_id))
+            .await
+            .expect("create module file");
+
+        let task = db
+            .create_task("My Task", "desc", Some(&module_id), Some(&project_id))
+            .await
+            .expect("create task");
+        let task_id = task.id.unwrap();
+
+        let ctx = db.get_task_context(&task_id, false).await.expect("get context");
+        assert!(ctx.files.is_empty(), "no files should appear without direct task link");
     }
 }
