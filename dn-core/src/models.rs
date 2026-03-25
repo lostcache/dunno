@@ -136,8 +136,8 @@ pub struct SubmoduleInfo {
 pub struct TaskHierarchy {
     pub project_id: String,
     pub project_name: String,
-    pub module_id: String,
-    pub module_name: String,
+    pub module_id: Option<String>,
+    pub module_name: Option<String>,
     pub submodule: Option<SubmoduleInfo>,
 }
 
@@ -386,8 +386,8 @@ mod tests {
             hierarchy: TaskHierarchy {
                 project_id: "project:1".to_string(),
                 project_name: "proj".to_string(),
-                module_id: "module:1".to_string(),
-                module_name: "mod".to_string(),
+                module_id: Some("module:1".to_string()),
+                module_name: Some("mod".to_string()),
                 submodule: None,
             },
         };

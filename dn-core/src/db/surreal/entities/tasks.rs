@@ -48,10 +48,12 @@ impl DB {
         };
         let result = self.create_task_record(&task).await?;
 
-        if let (Some(mid), Some(pid), Some(tid)) = (module_id, project_id, result.id.as_ref()) {
+        if let (Some(pid), Some(tid)) = (project_id, result.id.as_ref()) {
             self.link(pid, "has_task", tid).await?;
             self.link(tid, "belongs_to_project", pid).await?;
-            self.link(tid, "belongs_to_module", mid).await?;
+            if let Some(mid) = module_id {
+                self.link(tid, "belongs_to_module", mid).await?;
+            }
         }
 
         Ok(result)
@@ -185,8 +187,9 @@ impl DB {
         if let Some(sub) = &ctx.hierarchy.submodule {
             ctx.contexts.extend(self.get_linked_context(&sub.id).await?);
         }
-        ctx.contexts
-            .extend(self.get_linked_context(&ctx.hierarchy.module_id).await?);
+        if let Some(mid) = &ctx.hierarchy.module_id.clone() {
+            ctx.contexts.extend(self.get_linked_context(mid).await?);
+        }
         ctx.contexts
             .extend(self.get_linked_context(&ctx.hierarchy.project_id).await?);
 
@@ -261,31 +264,26 @@ impl DB {
             .await?;
         let module_record: Option<surrealdb::types::Value> = response.take(0)?;
 
-        let module_json = surreal_to_json(
-            module_record.ok_or_else(|| anyhow::anyhow!("No module linked to task"))?,
-        );
-        let module_obj = module_json
-            .get("module")
-            .and_then(|v| v.as_array())
-            .and_then(|arr| arr.first())
-            .ok_or_else(|| anyhow::anyhow!("Failed to parse module from graph query"))?;
-
-        let module_id = module_obj
-            .get("id")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow::anyhow!("Module missing id"))?;
-        let module_name = module_obj
-            .get("name")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
+        let (module_id, module_name) = module_record
+            .map(surreal_to_json)
+            .and_then(|json| {
+                let obj = json.get("module")?.as_array()?.first()?.clone();
+                let mid = obj.get("id")?.as_str().map(|s| s.to_string())?;
+                let mname = obj
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                Some((Some(mid), Some(mname)))
+            })
+            .unwrap_or((None, None));
 
         let submodule = self.get_submodule_under_module(task_id).await?;
 
         Ok(crate::models::TaskHierarchy {
             project_id: project_id.to_string(),
             project_name,
-            module_id: module_id.to_string(),
+            module_id,
             module_name,
             submodule,
         })
@@ -333,8 +331,10 @@ impl DB {
             return Ok(files);
         }
 
-        let files = self.list_files_by_module(&hierarchy.module_id).await?;
-        Ok(files)
+        if let Some(ref mid) = hierarchy.module_id {
+            return Ok(self.list_files_by_module(mid).await?);
+        }
+        Ok(vec![])
     }
 
     /// Fetches all context records linked to a structural node (project, task, module, submodule).

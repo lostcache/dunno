@@ -334,7 +334,7 @@ async fn test_get_task_context() {
     assert_eq!(context.task.name, "Login");
     assert_eq!(context.contexts.len(), 1);
     assert_eq!(context.hierarchy.project_name, "Testcrate::models::Project");
-    assert_eq!(context.hierarchy.module_name, "Auth");
+    assert_eq!(context.hierarchy.module_name.as_deref(), Some("Auth"));
 }
 
 #[tokio::test]
@@ -614,7 +614,7 @@ async fn test_get_task_context_under_submodule() {
         .get_task_context(&task_id, false)
         .await
         .expect("get_task_context failed");
-    assert_eq!(context.hierarchy.module_name, "Auth");
+    assert_eq!(context.hierarchy.module_name.as_deref(), Some("Auth"));
     assert!(context.hierarchy.submodule.is_none());
 }
 
@@ -1151,7 +1151,7 @@ async fn test_link_after_create_task_hierarchy() {
         .await
         .expect("get_task_hierarchy");
     assert_eq!(hierarchy.project_id, project_id);
-    assert_eq!(hierarchy.module_id, module_id);
+    assert_eq!(hierarchy.module_id.as_deref(), Some(module_id.as_str()));
 }
 
 #[tokio::test]
@@ -1182,7 +1182,7 @@ async fn test_create_with_link_ids_preserves_hierarchy() {
         .await
         .expect("get_task_hierarchy");
     assert_eq!(hierarchy.project_id, project_id);
-    assert_eq!(hierarchy.module_id, module_id);
+    assert_eq!(hierarchy.module_id.as_deref(), Some(module_id.as_str()));
     let by_project = db
         .list_tasks_by_project(&project_id)
         .await
@@ -2426,7 +2426,7 @@ async fn test_get_task_context_with_files_and_linked_context() {
 
     // Verify hierarchy is correct
     assert_eq!(context.hierarchy.project_id, project_id);
-    assert_eq!(context.hierarchy.module_id, module_id);
+    assert_eq!(context.hierarchy.module_id.as_deref(), Some(module_id.as_str()));
     assert!(context.hierarchy.submodule.is_none());
 }
 
