@@ -7,6 +7,10 @@
 ## Command Policy
 
 - **ALWAYS** use the `dn` binary directly. It is the only approved interface for project operations.
+- **ALWAYS** run the `dn` command from the project root.
+- **ONLY** use the exact `dn` subcommands documented in this file. Do NOT invent or guess subcommands.
+- If a step requires a `--project-id` you don't have, first run `dn project list` to get it.
+- When in doubt, use `--help` on the parent command and only use subcommands that appear in the output. Never chain made-up fallbacks.
 
 ---
 
@@ -101,6 +105,7 @@ Knowledge can be attached to any structural node:
    - **MANDATORY follow-up:** `dn task add` does NOT support `--file-ids`. You MUST separately link each relevant file using:
      `dn link --from-id <file_id> --edge belongs_to_task --to-ids <task_id>`
    - Do not consider the task fully created until all relevant files are linked.
+7. **MANDATORY:** After creating the task, delete the todo item.
 
 ## Starting Work
 

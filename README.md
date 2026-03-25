@@ -264,7 +264,9 @@ dn submodule ls {--pid|--project-id} <id>
 #### Task
 
 ```bash
-dn task add --mids <mid> --pids <pid> "<name>" "<desc>"
+dn task add --project-id <pid> "<name>" "<desc>"
+dn task add -p "<project_name>" "<name>" "<desc>"
+dn task add --mids <mid> --project-id <pid> "<name>" "<desc>"
 dn task add --mids <mid> -p "<project_name>" "<name>" "<desc>"
 dn task ls
 dn task ls {--pid|--project-id} <id>

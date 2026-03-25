@@ -374,23 +374,25 @@ pub enum FileCommands {
 pub enum TaskCommands {
     #[command(name = "add")]
     Create {
-        /// Module ID (single). Use with one project_id to link task.
+        /// Module ID(s) to link task to. Optional. Repeat for multiple.
         #[arg(long, visible_alias = "mids", value_name = "MODULE_ID")]
         module_ids: Vec<String>,
-        /// Project ID (single). Use with one module_id to link task.
+        /// Project ID (single, required). Alternative to --project.
         #[arg(
             long,
-            visible_alias = "pids",
+            visible_alias = "pid",
             value_name = "PROJECT_ID",
-            conflicts_with = "project"
+            conflicts_with = "project",
+            required_unless_present = "project"
         )]
-        project_ids: Vec<String>,
-        /// Project name (single). Use with one module_id to link task (alternative to --project-ids).
+        project_id: Option<String>,
+        /// Project name (single, required). Alternative to --project-id.
         #[arg(
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
-            conflicts_with = "project_ids"
+            conflicts_with = "project_id",
+            required_unless_present = "project_id"
         )]
         project: Option<String>,
         /// User Story ID(s) to link this task to. Optional.
@@ -1249,6 +1251,19 @@ mod tests {
     }
 
     #[test]
+    fn task_create_requires_project() {
+        // No --project or --project-ids should be rejected at parse time.
+        let args = Args::try_parse_from(["dn", "task", "add", "Task Name", "Description"]);
+        assert!(args.is_err(), "task add without a project should be rejected");
+
+        // Project-only (no module) should be accepted.
+        let args = Args::try_parse_from([
+            "dn", "task", "add", "--project-id", "project:abc", "Task Name", "Description",
+        ]);
+        assert!(args.is_ok(), "task add with only --project-id should be accepted");
+    }
+
+    #[test]
     fn task_create_accepts_project_name() {
         let args = Args::try_parse_from([
             "dn",
@@ -2028,7 +2043,7 @@ mod tests {
 
     #[test]
     fn task_commands_accepts_short_flags() {
-        // Test task add with -p, --pids, --mids, --usids, and --eids aliases
+        // Test task add with -p, --mids, --usids, and --eids aliases
         let args = Args::try_parse_from([
             "dn",
             "task",

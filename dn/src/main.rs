@@ -519,24 +519,18 @@ async fn handle_task_command(
     match command {
         args::TaskCommands::Create {
             module_ids,
-            project_ids,
+            project_id,
             project,
             user_story_ids,
             epic_ids,
             name,
             description,
         } => {
-            // Resolve project name to ID if provided
             let resolved_project_id =
-                resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
+                resolve_project_id(db, project_id, project, ignore_case).await?;
 
-            // Convert resolved ID back to Vec<String> for compatibility
-            let effective_project_ids: Vec<String> = match resolved_project_id {
-                Some(id) => vec![id],
-                None => project_ids,
-            };
-
-            let (mid, pid) = validate_task_parents(&module_ids, &effective_project_ids)?;
+            let project_ids: Vec<String> = resolved_project_id.into_iter().collect();
+            let (mid, pid) = validate_task_parents(&module_ids, &project_ids)?;
             let created = db.create_task(&name, &description, mid, pid).await?;
 
             if let Some(task_id) = &created.id {
@@ -598,17 +592,16 @@ async fn handle_task_command(
     Ok(())
 }
 
-/// Validates task parent constraints: either freestanding (no parents) or
-/// exactly one module and one project.
+/// Validates task parent constraints: exactly one project (required), with an optional module.
 fn validate_task_parents<'a>(
     module_ids: &'a [String],
     project_ids: &'a [String],
 ) -> anyhow::Result<(Option<&'a str>, Option<&'a str>)> {
     match (module_ids.len(), project_ids.len()) {
-        (0, 0) => Ok((None, None)),
+        (0, 1) => Ok((None, Some(&project_ids[0]))),
         (1, 1) => Ok((Some(&module_ids[0]), Some(&project_ids[0]))),
         _ => Err(anyhow::anyhow!(
-            "Task create: provide either no module/project IDs (freestanding) or exactly one of each (linked). Got {} module_ids and {} project_ids",
+            "Task create: provide exactly one project ID (with an optional module ID). Got {} module_ids and {} project_ids",
             module_ids.len(),
             project_ids.len()
         )),
