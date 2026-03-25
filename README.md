@@ -1,43 +1,81 @@
 # dn
 
-`dn` is a Rust CLI that captures coding knowledge and retrieves deterministic context for AI agents.
-
-Currently it just supports SurrealDB as a backend, but the architecture is designed to allow adding more backends in the future (e.g. SQLite, Postgres, etc.) without changing the core logic.
+`dn` is a Rust CLI and web UI that captures coding knowledge (mistakes, style guides, security details, custom fields) in a graph database and retrieves deterministic context for AI agents. Unlike natural language search, dn uses a strict graph hierarchy where knowledge is linked to nodes and inherited down the tree.
 
 ---
 
-## User Guide
+## For Users
 
 ### Installation
 
-#### Option 1: Build from Source (Current Method)
+#### Build from Source
 
 ```bash
-# Clone the repository
 git clone <repo-url>
-cd dn
+cd dunno
 
-# Build release binary
-cargo build --release
+# Build everything (UI then Rust binaries)
+make build
 
-# The binary is now available at:
+# The binaries are now at:
 ./target/release/dn
+./target/release/dn-server
 
-# Optional: Install to system PATH
+# Optional: install to PATH
 sudo cp target/release/dn /usr/local/bin/
+sudo cp target/release/dn-server /usr/local/bin/
 ```
 
-#### Option 2: Install via Cargo
+**Prerequisites for `make build`:** Node.js (for the UI build) and Rust stable toolchain.
 
-Coming soon - not yet published to crates.io.
+> `cargo publish` / pre-built binaries: not yet available.
 
-#### Option 3: Download Binary
+---
 
-Coming soon - pre-built binaries not yet available in releases.
+### Interfaces
+
+dn has two interfaces that share the same database.
+
+#### CLI (`dn`)
+
+A command-line tool for all CRUD operations and context retrieval. Outputs JSON.
+
+```bash
+dn --version
+dn --help
+```
+
+#### Web UI (`dn-server`)
+
+An HTTP server that serves a browser UI and a REST API. Launches a browser tab automatically.
+
+```bash
+dn-server                   # starts on :7700, opens browser
+dn-server --port 8080       # custom port
+dn-server --no-open         # suppress auto-open
+dn-server --backend cloud   # override backend
+```
+
+The UI provides full CRUD for all entities and an interactive graph visualization of the knowledge hierarchy.
+
+---
 
 ### Quick Start
 
-#### 1. Initial Setup
+#### 1. Start the server (recommended for new users)
+
+```bash
+dn-server
+```
+
+This opens the web UI at `http://127.0.0.1:7700`. If you have the `surreal` binary installed, `dn-server` manages SurrealDB automatically for the `local` backend.
+
+> To use both `dn` CLI and `dn-server` concurrently against the same local database, install the `surreal` binary:
+> ```bash
+> curl -sSf https://install.surrealdb.com | sh
+> ```
+
+#### 2. Or use the CLI directly
 
 ```bash
 # Verify installation
@@ -47,127 +85,78 @@ dn --version
 dn config show
 ```
 
-By default, dn uses local embedded storage at `~/.local/share/dn/data.db`. No configuration is required to get started.
+By default, dn uses local embedded storage at `~/.local/share/dn/data.db`. No configuration is required.
 
-#### 2. Project Setup (Recommended)
-
-For project-specific settings, create a local config file:
+#### 3. Create a project
 
 ```bash
-# Create local config
-cat > dn.toml << 'EOF'
-local_path = "./.dn/data.db"
-EOF
-
-# Create data directory
-mkdir -p .dn
-```
-
-#### 3. Create Your First Project
-
-```bash
-# Create a project
 dn project add "My App" "A web application"
 # Returns: {"id":"project:abc","name":"My App","description":"A web application"}
-
-# Create a module using project ID
-dn module add {--project-ids|--pids} project:abc "Auth" "Authentication system"
-# Returns: {"id":"module:def", ...}
-
-# Create a module using project name (alternative)
-dn module add {--project|-p} "My App" "Auth" "Authentication system"
-
-# Create a submodule — both project and module are required
-dn submodule add {--project-ids|--pids} project:abc {--module-ids|--mids} module:def "JWT" "JWT handling"
-
-# Create a task using project name with case-insensitive matching
-dn task add {--module-ids|--mids} module:def {--project|-p} "my app" -i "Implement login" "Add JWT authentication"
-# Returns: {"id":"task:ghi", ...}
 ```
 
-**Note:** Project names are unique in the system. You can use either `--project-ids` (for IDs) or `--project` (for names), but not both.
-
-#### 4. Add Knowledge
+#### 4. Add structure
 
 ```bash
-# Add a coding mistake to remember
-dn add {--field|-f} type {--value|-v} mistake {--field|-f} content {--value|-v} "Don't use unwrap() in production" {--link-to|--ln} task:ghi
+# Create a module (using project ID)
+dn module add --pids project:abc "Auth" "Authentication system"
 
-# Add a style rule
-dn add {--field|-f} type {--value|-v} style {--field|-f} content {--value|-v} "Use Result for error handling" {--link-to|--ln} module:def
+# Or using project name
+dn module add -p "My App" "Auth" "Authentication system"
 
-# Add security note
-dn add {--field|-f} type {--value|-v} security {--field|-f} content {--value|-v} "Validate all JWT tokens" {--link-to|--ln} project:abc
+# Create a submodule (both project and module required)
+dn submodule add --pids project:abc --mids module:def "JWT" "JWT handling"
+
+# Create a task
+dn task add --mids module:def -p "My App" "Implement login" "Add JWT authentication"
 ```
 
-#### 5. Retrieve Context
-
-Retrieve context for a task to get the task details, related files, hierarchy, and directly linked knowledge. Use the `--full` flag to include inherited context from parent nodes (Project, Module, Submodule):
+#### 5. Add knowledge
 
 ```bash
-# Get context for a task (returns task, files, hierarchy, and directly linked context)
-dn ctx --task-id task:ghi
+# Link a mistake to a task
+dn add -f type -v mistake -f content -v "Don't use unwrap() in production" --ln task:ghi
 
-# Get full inherited context (includes project and module rules)
-dn ctx --task-id task:ghi --full
+# Link a style rule to a module
+dn add -f type -v style -f content -v "Use Result for error handling" --ln module:def
+
+# Add a security note to the project
+dn add -f type -v security -f content -v "Validate all JWT tokens" --ln project:abc
 ```
 
-Returns:
+#### 6. Retrieve context
 
-- **Task** - The task object with id, name, description, status
-- **Files** - File objects (with path and description) related to the task (files in the parent module/submodule)
-- **Hierarchy** - Project, module, and optional submodule info
-- **Contexts** - Knowledge linked to the task. If `--full` is used, includes knowledge inherited from the parent hierarchy.
+```bash
+# Context for a task (task + directly linked knowledge)
+dn ctx --tid task:ghi
+
+# Full inherited context (includes project and module rules)
+dn ctx --tid task:ghi --full
+```
+
+---
 
 ### Configuration
 
-dn uses a layered configuration system on a **per-field basis** (highest to lowest priority):
+dn uses a layered config (highest priority first):
 
-1. **CLI flags** (`--backend`, `--pretty`)
-2. **Local project config** (`./dn.toml`)
-3. **Global user config** (`~/.config/dn/dn.toml`)
-4. **Environment variables**
-5. **Built-in defaults**
+1. CLI flags (`--backend`, `--pretty`)
+2. Local project config (`./dn.toml`)
+3. Global user config (`~/.config/dn/dn.toml`)
+4. Environment variables
+5. Built-in defaults
 
-#### Global CLI Flags
+#### Config Files
 
-- `{--backend|--b} <BACKEND>` - Override storage backend (`local`, `local-server`, or `cloud`)
-- `{--pretty|--pp}` - Format output with indentation for better readability (applies to **all** JSON output)
-- `-i, --ignore-case` - Ignore case when matching project names (use with `--project`)
+- **Local:** `./dn.toml` — project-specific, typically not committed
+- **Global:** `~/.config/dn/dn.toml` — user-wide settings
 
-```bash
-# View config in JSON format (default)
-dn config show
+#### Example Configurations
 
-# View config in human-readable format
-dn config show {--pretty|--pp}
-
-# Pretty output works with all commands
-dn project ls {--pretty|--pp}
-dn task ls {--pretty|--pp}
-dn ctx {--task-id|--tid} task:abc {--pretty|--pp}
-
-# Use project name with case-insensitive matching
-dn module add {--project|-p} "my project" -i "Auth" "Auth module"
-```
-
-#### Config File Locations
-
-- **Local:** `./dn.toml` (project-specific, not committed to git)
-- **Global:** `~/.config/dn/dn.toml` (user-wide settings)
-
-#### Example Configuration
-
-**Cloud** (`~/.config/dn/dn.toml`):
+**Local embedded (default):**
 
 ```toml
-backend = "cloud"
-url = "wss://my-instance.surrealdb.com"
-namespace = "my-namespace"
-database = "dn"
-username = "root"
-password = "root"
-auth_type = "root"
+backend = "local"
+local_path = "./.dn/data.db"
 ```
 
 **Local server** (connecting to a running SurrealDB instance):
@@ -181,258 +170,189 @@ username = "root"
 password = "root"
 ```
 
-**Local** (embedded file DB, project-specific):
+**Cloud:**
 
 ```toml
-backend = "local"
-local_path = "./.dn/data.db"
+backend = "cloud"
+url = "wss://my-instance.surrealdb.com"
+namespace = "my-namespace"
+database = "dn"
+username = "root"
+password = "root"
+auth_type = "root"
 ```
 
 #### Environment Variables
 
-All config fields can be set via environment:
+| Variable          | Description                                      |
+| ----------------- | ------------------------------------------------ |
+| `DUNNO_BACKEND`   | Backend type: `local`, `local-server`, `cloud`   |
+| `DUNNO_LOCAL_PATH`| Local database file path                         |
+| `DUNNO_URL`       | SurrealDB instance URL                           |
+| `DUNNO_NS`        | Namespace                                        |
+| `DUNNO_DB`        | Database name                                    |
+| `DUNNO_USER`      | Username                                         |
+| `DUNNO_PASS`      | Password                                         |
+| `DUNNO_AUTH_TYPE` | Auth type: `root`, `namespace`, `database`       |
 
-- `DUNNO_BACKEND` - Backend type (`local`, `local-server`, or `cloud`)
-- `DUNNO_LOCAL_PATH` - Local database file path
-- `DUNNO_URL` - SurrealDB instance URL (local-server or cloud)
-- `DUNNO_NS` - Namespace
-- `DUNNO_DB` - Database name
-- `DUNNO_USER` - Username
-- `DUNNO_PASS` - Password
-- `DUNNO_AUTH_TYPE` - Auth type (`root`, `namespace`, `database`) — cloud only
+#### Global CLI Flags
+
+```bash
+dn [FLAGS] <COMMAND>
+
+--backend, --b <BACKEND>   Override storage backend
+--pretty, --pp             Pretty-print JSON output
+-i, --ignore-case          Case-insensitive project name matching
+```
+
+---
 
 ### Core Concepts
 
 #### Hierarchy
 
-dn organizes work into two parallel paths:
-
-**Code Structure:**
-
 ```
 Project → Module → Submodule (optional) → File
-```
-
-**Work Tracking:**
-
-```
 Project → Module → Task
+Project → Epic → User Story → Task
 ```
 
-**Optional Layers:**
-
-- **Epics** - Large feature groups
-- **User Stories** - User-centric feature descriptions
-- **Personas** - AI agent persona definitions
-- **Workflows** - Workflow definitions
+Knowledge can be attached to any node. When retrieving context with `--full`, knowledge is inherited from all ancestors.
 
 #### Knowledge Types
 
-Link knowledge to any structural node:
+Knowledge entries are schemaless key-value maps. Common conventions:
 
-- **Mistake** - Known pitfalls and errors
-- **StyleRule** - Coding conventions
-- **SecurityDetail** - Security constraints
-- **Custom** - Any key-value pairs you need
+| `type` value     | Purpose                      |
+| ---------------- | ---------------------------- |
+| `mistake`        | Known pitfalls and errors    |
+| `style`          | Coding conventions           |
+| `security`       | Security constraints         |
+| _(any string)_   | Custom knowledge types       |
+
+---
 
 ### CLI Reference
 
-#### Global Flags
+#### Project
 
 ```bash
-dn [GLOBAL FLAGS] <COMMAND>
-
-Global Flags:
-  --backend <BACKEND>    # Override storage backend (local, local-server, or cloud)
-  --pretty               # Format output with indentation
-  -i, --ignore-case      # Ignore case when matching project names
+dn project add "<name>" "<description>"
+dn project ls
 ```
 
-#### Project Management
+#### Module
 
 ```bash
-dn project add "<name>" "<description>"  # Create project
-dn project ls                              # List all projects
-```
-
-#### Module Management
-
-```bash
-# Using project ID (required)
-dn module add {--project-ids|--pids} <id> "<name>" "<description>" [--notes <notes>]
-
-# Using project name (alternative, required)
-dn module add {--project|-p} "<project_name>" "<name>" "<description>" [--notes <notes>]
-
-# List modules (all or filtered by project)
+dn module add {--pids|--project-ids} <pid> "<name>" "<desc>" [--notes <notes>]
+dn module add {-p|--project} "<project_name>" "<name>" "<desc>"
 dn module ls
-dn module ls {--project-id|--pid} <id>
-dn module ls {--project|-p} "<project_name>"
+dn module ls {--pid|--project-id} <id>
+dn module ls {-p|--project} "<project_name>"
 ```
 
-#### Submodule Management
+#### Submodule
 
 ```bash
-# Create submodule — both project and module are required
-dn submodule add {--project-ids|--pids} <project_id> {--module-ids|--mids} <module_id> "<name>" "<description>" [--notes <notes>]
-
-# Using project name instead of project ID
-dn submodule add {--project|-p} "<project_name>" {--module-ids|--mids} <module_id> "<name>" "<description>"
-
-# List submodules (all, by module, or by project)
+dn submodule add --pids <pid> --mids <mid> "<name>" "<desc>" [--notes <notes>]
 dn submodule ls
-dn submodule ls {--module-id|--mid} <id>
-dn submodule ls {--project-id|--pid} <id>
-dn submodule ls {--project|-p} "<project_name>"
+dn submodule ls {--mid|--module-id} <id>
+dn submodule ls {--pid|--project-id} <id>
 ```
 
-#### Task Management
+#### Task
 
 ```bash
-# Using IDs
-dn task add {--module-ids|--mids} <id> {--project-ids|--pids} <id> "<name>" "<description>"
-
-# Using project name (alternative)
-dn task add {--module-ids|--mids} <id> {--project|-p} "<project_name>" "<name>" "<description>"
-
-# List tasks (all or filtered by project)
+dn task add --mids <mid> --pids <pid> "<name>" "<desc>"
+dn task add --mids <mid> -p "<project_name>" "<name>" "<desc>"
 dn task ls
-dn task ls {--project-id|--pid} <id>
-dn task ls {--project|-p} "<project_name>"
-
+dn task ls {--pid|--project-id} <id>
 dn task update <id> --status started
-dn task rm <id>   # Delete a task by ID
+dn task rm <id>
 ```
 
-#### File Management
+#### File
 
 ```bash
-# Create file linked to a project (required) and optionally to a module or submodule
-dn file add {--project-ids|--pids} <project_id> "<name>" "<path>" ["<description>"] [--notes <notes>]
-dn file add {--project|-p} "<project_name>" "<name>" "<path>" ["<description>"] [--notes <notes>]
-
-# With optional module/submodule parent
-dn file add {--project-ids|--pids} <project_id> --parent-ids <module_id> "<name>" "<path>"
-dn file add {--project-ids|--pids} <project_id> --parent-ids <submodule_id> "<name>" "<path>"
-
-# List files (cascading filter priority: submodule > module > project)
+dn file add --pids <pid> "<name>" "<path>" ["<desc>"] [--notes <notes>]
+dn file add --pids <pid> --parent-ids <module_or_submodule_id> "<name>" "<path>"
 dn file ls
-dn file ls {--submodule-id|--smid} <id>   # Most specific
-dn file ls {--module-id|--mid} <id>       # Filter by module
-dn file ls {--project-id|--pid} <id>     # Filter by project (all files in project)
-dn file ls {--project|-p} "<project_name>"
+dn file ls {--pid|--project-id} <id>
+dn file ls {--mid|--module-id} <id>
+dn file ls {--smid|--submodule-id} <id>
 ```
 
-#### User Story Management
+#### User Story
 
 ```bash
-# Using project ID
-dn user-story add {--project-id|--pid} <id> [--eids <epic_id>] "<title>" "<description>"
-dn user-story ls {--project-id|--pid} <id>
-
-# Using project name (alternative)
-dn user-story add {--project|-p} "<project_name>" "<title>" "<description>"
-dn user-story ls {--project|-p} "<project_name>"
-
-# List with epic filter
-dn user-story ls {--project-id|--pid} <id> {--epic-id|--eid} <epic_id>
+dn user-story add {--pid|--project-id} <id> "<title>" "<desc>"
+dn user-story add -p "<project_name>" "<title>" "<desc>"
+dn user-story ls {--pid|--project-id} <id>
 ```
 
-#### Epic Management
+#### Epic
 
 ```bash
-# Using project ID
-dn epic add {--project-id|--pid} <id> "<title>" "<description>"
-dn epic ls {--project-id|--pid} <id>
-
-# Using project name (alternative)
-dn epic add {--project|-p} "<project_name>" "<title>" "<description>"
-dn epic ls {--project|-p} "<project_name>"
+dn epic add {--pid|--project-id} <id> "<title>" "<desc>"
+dn epic add -p "<project_name>" "<title>" "<desc>"
+dn epic ls {--pid|--project-id} <id>
 ```
 
-#### Persona Management
+#### Persona
 
 ```bash
-# Using project ID
-dn persona add {--project-ids|--pids} <project_id> "<name>" "<content>"
-
-# Using project name (alternative)
-dn persona add {--project|-p} "<project_name>" "<name>" "<content>"
-
-# List personas (all or filtered by project)
+dn persona add --pids <pid> "<name>" "<content>"
 dn persona ls
-dn persona ls {--project-id|--pid} <id>
-dn persona ls {--project|-p} "<project_name>"
-
-# Delete a persona
 dn persona rm <id>
 ```
 
-#### Workflow Management
+#### Workflow
 
 ```bash
-# Using project ID
-dn workflow add {--project-ids|--pids} <project_id> "<name>" "<content>"
-
-# Using project name (alternative)
-dn workflow add {--project|-p} "<project_name>" "<name>" "<content>"
-
-# List workflows (all or filtered by project)
+dn workflow add --pids <pid> "<name>" "<content>"
 dn workflow ls
-dn workflow ls {--project-id|--pid} <id>
-dn workflow ls {--project|-p} "<project_name>"
-
-# Delete a workflow
 dn workflow rm <id>
 ```
 
-#### Todo Management
+#### Todo
 
 ```bash
-# Using project ID
-dn todo add {--project-ids|--pids} <id> "<content>"
-dn todo ls {--project-id|--pid} <id>
-
-# Using project name (alternative)
-dn todo add {--project|-p} "<project_name>" "<content>"
-dn todo ls {--project|-p} "<project_name>"
-
-# Delete a todo item
+dn todo add --pids <pid> "<content>"
+dn todo ls {--pid|--project-id} <id>
 dn todo rm <id>
 ```
 
-#### Knowledge Management
+#### Knowledge
 
 ```bash
-# Add knowledge with arbitrary fields
-dn add {--field|-f} <key> {--value|-v} <val> [{--link-to|--ln} <id> ...]
+dn add {-f|--field} <key> {-v|--value} <val> [{--ln|--link-to} <id> ...]
 
-# Examples:
-dn add {--field|-f} type {--value|-v} mistake {--field|-f} content {--value|-v} "Avoid panic!" {--link-to|--ln} project:abc
-dn add {--field|-f} type {--value|-v} style {--field|-f} language {--value|-v} rust {--link-to|--ln} module:def
+# Example with multiple fields
+dn add -f type -v mistake \
+  -f content -v "MutexGuard across await causes deadlock" \
+  -f solution -v "Use tokio::sync::Mutex instead" \
+  -f severity -v high \
+  --ln task:ghi
 ```
 
-#### Context Retrieval
+#### Context
 
 ```bash
-dn ctx {--task-id|--tid} <id>
-dn ctx {--file-id|--fid} <id>
-dn ctx {--epic-id|--eid} <id>
+dn ctx {--tid|--task-id} <id> [--full]
+dn ctx {--fid|--file-id} <id> [--full]
+dn ctx {--eid|--epic-id} <id> [--full]
 ```
 
-#### Linking
+#### Link
 
 ```bash
-dn link {--from-id|-f} <id> {--edge|-e} <type> {--to-ids|-t} <id> [<id> ...]
+dn link {-f|--from-id} <id> {-e|--edge} <type> {-t|--to-ids} <id> [<id> ...]
 
-# Examples:
-dn link {--from-id|-f} project:abc {--edge|-e} contains {--to-ids|-t} module:def
-dn link {--from-id|-f} project:abc {--edge|-e} has_todo {--to-ids|-t} todo_item:1 {--to-ids|-t} todo_item:2
+# Example
+dn link -f file:abc -e belongs_to_task -t task:ghi
 ```
 
-#### Short Flags & Aliases Reference
-
-**Flag Shortcuts:**
+#### Short Flags & Aliases
 
 | Long               | Short     |
 | ------------------ | --------- |
@@ -457,8 +377,6 @@ dn link {--from-id|-f} project:abc {--edge|-e} has_todo {--to-ids|-t} todo_item:
 | `--edge`           | `-e`      |
 | `--to-ids`         | `-t`      |
 
-**Command Aliases:**
-
 | Command      | Aliases         |
 | ------------ | --------------- |
 | `project`    | `proj`, `prj`   |
@@ -475,116 +393,192 @@ dn link {--from-id|-f} project:abc {--edge|-e} has_todo {--to-ids|-t} todo_item:
 | `link`       | `ln`            |
 | `context`    | `ctx`           |
 
+---
+
 ### Common Workflows
 
-**1. Starting a New Feature:**
+**Starting a new feature:**
 
 ```bash
-# Create epic for the feature (using project name)
-dn epic add {--project|-p} "My App" "User Authentication" "Complete auth system"
-
-# Create user story (using project name with case-insensitive match)
-dn user-story add {--project|-p} "my app" -i {--epic-ids|--eids} epic:mno "As a user, I want to login" "Authentication feature"
-
-# Create implementation task
-dn task add {--module-ids|--mids} module:def {--project|-p} "My App" {--epic-ids|--eids} epic:mno "Implement JWT" "Add token support"
+dn epic add -p "My App" "User Authentication" "Complete auth system"
+dn user-story add -p "My App" --eids epic:mno "As a user, I want to login" "Auth feature"
+dn task add --mids module:def -p "My App" --eids epic:mno "Implement JWT" "Add token support"
 ```
 
-**2. Recording Mistakes:**
+**Recording a mistake after a bug fix:**
 
 ```bash
-# After fixing a bug, record it for future reference
-dn add {--field|-f} type {--value|-v} mistake \
-  {--field|-f} content {--value|-v} "MutexGuard across await causes deadlock" \
-  {--field|-f} solution {--value|-v} "Use tokio::sync::Mutex instead" \
-  {--field|-f} severity {--value|-v} high \
-  {--link-to|--ln} task:ghi
+dn add -f type -v mistake \
+  -f content -v "MutexGuard across await causes deadlock" \
+  -f solution -v "Use tokio::sync::Mutex instead" \
+  --ln task:ghi
 ```
 
-**3. Code Review Context:**
+**Getting context before a code review:**
 
 ```bash
-# Before reviewing, get all context for a task
-dn ctx {--task-id|--tid} task:ghi | jq '.[] | select(.fields.type == "mistake")'
+dn ctx --tid task:ghi --full | jq '.[] | select(.fields.type == "mistake")'
 ```
 
-**4. Cleaning Up:**
+**Resetting local database:**
 
 ```bash
-# List all tasks
-dn task ls
-
-# Delete a task that's no longer needed
-dn task rm task:abc123
-
-# Verify deletion
-dn task ls
+rm -rf ~/.local/share/dn/
+# or for project-specific:
+rm -rf ./.dn/
 ```
 
 ---
 
-## Developer Guide
+## For Developers
 
 ### Architecture Overview
 
-Dunno is built on a graph database (SurrealDB) with a hierarchical structure. The codebase follows a modular architecture:
+dn is a Cargo workspace with three crates:
 
 ```
-src/
-├── main.rs          # Entry point and CLI dispatch
-├── args.rs          # CLI argument definitions (clap)
-├── config.rs        # Configuration management
-├── context.rs       # Context retrieval logic
-├── ingest.rs        # Knowledge ingestion
-├── models.rs        # Data models/structs
-└── db/
-    ├── mod.rs       # DB module interface
-    └── surreal/     # SurrealDB implementation
-        ├── mod.rs   # Connection management
-        ├── context.rs   # Context queries
-        ├── ingest.rs    # Knowledge operations
-        └── entities/    # Entity CRUD operations
-            ├── projects.rs
-            ├── modules.rs
-            ├── tasks.rs
-            └── ...
+dunno/
+├── dn-core/        # Core library: DB abstraction, models, config, context queries
+├── dn/             # CLI binary (dn) — clap-based, calls dn-core
+├── dn-server/      # HTTP server binary (dn-server) — axum REST API + embedded Svelte UI
+├── ui/             # Svelte 5 frontend (built into static/dist/, embedded in dn-server)
+├── static/         # Build output directory (generated by make ui-build)
+├── tests/          # Shell integration tests
+└── Makefile        # Build orchestration
 ```
 
-### Core Design Principles
+#### `dn-core`
 
-1. **Graph-Based Hierarchy** - All data is stored as nodes and edges in a graph
-2. **Deterministic Retrieval** - No search algorithms; exact graph traversal only
-3. **Bidirectional Links** - Every link has a reverse edge for consistency
-4. **Schemaless Knowledge** - Knowledge entries use arbitrary key-value fields
-5. **Local-First** - Default embedded database; cloud is optional
+The shared library consumed by both `dn` and `dn-server`. Contains:
 
-### Technology Stack
+- `config.rs` — Layered config loading (defaults → env → global → local → CLI)
+- `models.rs` — All entity types (Project, Module, Submodule, File, Task, Epic, UserStory, Context, Todo, Persona, Workflow)
+- `db/surreal/` — SurrealDB implementation: connection, CRUD per entity, context queries, graph queries
+- `context.rs` — Context retrieval orchestration
+- `ingest.rs` — Schemaless knowledge ingestion
 
-- **Language:** Rust (Edition 2024)
-- **CLI Framework:** clap v4.5 with derive macros
-- **Database:** SurrealDB v3.0.0 (embedded or cloud)
-- **Serialization:** serde with JSON/TOML support
-- **Async Runtime:** tokio
+#### `dn-server`
+
+An axum HTTP server that:
+- Serves a REST API under `/api/*` (full CRUD for all entities, context queries, graph endpoints)
+- Embeds the built Svelte UI via `rust-embed` (served as SPA with client-side routing fallback)
+- For the `local` backend, auto-spawns a `surreal` server process on a random port and tears it down on exit
+- Defaults to port `7700`, auto-opens browser unless `--no-open` is passed
+
+#### `ui`
+
+A Svelte 5 SPA built with Vite. Communicates with `dn-server` via the REST API. Includes a graph visualization view powered by Cytoscape.js.
+
+---
+
+### Tech Stack
+
+| Layer        | Technology                                      |
+| ------------ | ----------------------------------------------- |
+| Language     | Rust (Edition 2024)                             |
+| CLI          | clap v4.5 (derive macros)                       |
+| HTTP server  | axum 0.7 + tower-http                           |
+| Database     | SurrealDB v3.0.0 (embedded kv-surrealkv or WS)  |
+| Async        | tokio                                           |
+| Serialization| serde (JSON + TOML)                             |
+| UI framework | Svelte 5 + Vite 8                               |
+| UI components| bits-ui (shadcn-svelte) + Tailwind CSS v4       |
+| Graph viz    | Cytoscape.js                                    |
+| UI embedding | rust-embed                                      |
+
+---
+
+### Development Setup
+
+#### Prerequisites
+
+- Rust stable toolchain
+- Node.js (for UI development)
+- `surreal` binary (required for `dn-server` local backend with concurrent CLI access)
+
+#### Build
+
+```bash
+# Full production build (UI then both Rust binaries)
+make build
+
+# Build only the CLI
+cargo build --release --bin dn
+
+# Build only the server (needs static/dist/ to already exist)
+cargo build --release --bin dn-server
+
+# Build only the UI
+make ui-build
+```
+
+#### Development Workflow
+
+Run the backend and UI dev server separately for hot-reload:
+
+```bash
+# Terminal 0: start SurrealDB (required for local-server backend)
+surreal start --bind 127.0.0.1:8000 --username root --password root surrealkv://~/.local/share/dunno/data.db
+
+# Set local-server backend in dunno.toml:
+# backend = "local-server"
+
+# Terminal 1: Rust server (no browser auto-open)
+cargo run --bin dn-server -- --no-open
+
+# Terminal 2: Vite dev server with HMR (proxies /api to :7700)
+make dev
+```
+
+The Vite dev server runs on `:5173` and proxies `/api` requests to the Rust server at `:7700`.
+
+---
+
+### Testing
+
+```bash
+# Run all unit tests
+cargo test
+
+# Run with output
+cargo test -- --nocapture
+
+# Run single-threaded (avoids file lock races with config tests)
+cargo test -- --test-threads=1
+
+# Specific module
+cargo test db::surreal
+
+# Shell integration tests (local backend)
+./tests/sh/run_all.sh
+
+# Shell integration tests (cloud backend — requires credentials)
+./tests/sh/run_cloud.sh
+```
+
+Unit tests use in-memory SurrealDB (`mem://`) and don't require a running server.
+
+---
 
 ### Database Schema
 
-#### Entities (Nodes)
+#### Entities
 
-| Entity    | Record ID Pattern | Description                 |
-| --------- | ----------------- | --------------------------- |
-| Project   | `project:<id>`    | Top-level container         |
-| Module    | `module:<id>`     | Code organization unit      |
-| Submodule | `submodule:<id>`  | Nested code unit            |
-| File      | `file:<id>`       | Source file reference       |
-| Task      | `task:<id>`       | Work item                   |
-| Epic      | `epic:<id>`       | Large feature group         |
-| UserStory | `user_story:<id>` | User-centric feature        |
-| Context   | `context:<id>`    | Knowledge entry             |
-| Todo      | `todo_item:<id>`  | Work queue item             |
-| Persona   | `persona:<id>`    | AI agent persona definition |
-| Workflow  | `workflow:<id>`   | Workflow definition         |
+| Entity      | Record ID Pattern  | Description                  |
+| ----------- | ------------------ | ---------------------------- |
+| Project     | `project:<id>`     | Top-level container          |
+| Module      | `module:<id>`      | Code organization unit       |
+| Submodule   | `submodule:<id>`   | Nested code unit             |
+| File        | `file:<id>`        | Source file reference        |
+| Task        | `task:<id>`        | Work item                    |
+| Epic        | `epic:<id>`        | Large feature group          |
+| UserStory   | `user_story:<id>`  | User-centric feature         |
+| Context     | `context:<id>`     | Schemaless knowledge entry   |
+| Todo        | `todo_item:<id>`   | Work queue item              |
+| Persona     | `persona:<id>`     | AI agent persona definition  |
+| Workflow    | `workflow:<id>`    | Workflow definition          |
 
-#### Graph Relations (Edges)
+#### Graph Relations
 
 | Edge                    | From                                                     | To                      | Purpose                |
 | ----------------------- | -------------------------------------------------------- | ----------------------- | ---------------------- |
@@ -603,135 +597,63 @@ src/
 | `belongs_to_user_story` | module, submodule                                        | user_story              | Reverse link           |
 | `belongs_to_epic`       | user_story, task                                         | epic                    | Reverse link           |
 
-### Development Setup
-
-#### Prerequisites
-
-- Rust toolchain (stable) with `cargo`
-- Optional: SurrealDB Cloud credentials for cloud backend testing
-
-#### Building
-
-```bash
-# Debug build
-cargo build
-
-# Release build
-cargo build --release
-
-# Run with cargo
-cargo run -- --help
-```
-
-#### Testing
-
-```bash
-# Run all tests
-cargo test
-
-# Run specific module tests
-cargo test config
-cargo test db::surreal
-
-# Run with output
-cargo test -- --nocapture
-```
-
-Tests use in-memory backends (`mem://`) and don't require a SurrealDB server.
-
-#### Shell Tests
-
-```bash
-# Run local integration tests
-./tests/sh/run_all.sh
-
-# Run cloud integration tests (requires cloud credentials)
-./tests/sh/run_cloud.sh
-```
-
-### Configuration Implementation
-
-Configuration is loaded in priority order (lowest to highest):
-
-1. **Defaults** - Hardcoded in `Config::default()`
-2. **ENV vars** - Applied via `apply_env_overrides()`
-3. **Global config** - `~/.config/dn/dn.toml`
-4. **Local config** - `./dn.toml`
-5. **CLI args** - Overrides passed to `Config::load()`
-
-Each source only overrides fields it explicitly defines (partial config support).
-
-### Context Retrieval Implementation
-
-Context queries are implemented in `src/context.rs` using SurrealQL:
-
-```rust
-// Task context query traverses:
-// Task -> belongs_to_module -> Module -> belongs_to_project -> Project
-// Collects has_context edges at each level
-```
-
-Results are:
-
-1. Flattened from nested graph structure
-2. Tagged with `node_type` for identification
-3. Deduplicated by record ID
+---
 
 ### Adding New Features
 
-#### 1. New Entity Type
+#### New Entity
 
-1. Add model to `src/models.rs`
-2. Create entity module in `src/db/surreal/entities/`
-3. Add CRUD operations
-4. Add CLI commands to `src/args.rs`
-5. Add dispatch in `src/main.rs`
+1. Add model to `dn-core/src/models.rs`
+2. Create entity file in `dn-core/src/db/surreal/entities/`
+3. Expose via `DB` in `dn-core/src/db/surreal/mod.rs`
+4. Add CLI commands to `dn/src/args.rs` and dispatch in `dn/src/main.rs`
+5. Add REST handlers and routes to `dn-server/src/main.rs`
 6. Add tests
 
-#### 2. New Knowledge Field
+#### New Config Option
 
-No code changes needed! Knowledge is schemaless. Users can add any fields:
-
-```bash
-dn add --field my_custom_field --value "anything" --link-to task:abc
-```
-
-#### 3. New Config Option
-
-1. Add field to `Config` struct in `src/config.rs`
+1. Add field to `Config` in `dn-core/src/config.rs`
 2. Add to `PartialConfig` for file loading
 3. Add env var in `apply_env_overrides()`
-4. Add CLI arg in `src/args.rs` if needed
-5. Update tests
+4. Add CLI arg in `dn/src/args.rs` if user-facing
+
+#### New Knowledge Field
+
+No code changes needed. Knowledge is schemaless:
+
+```bash
+dn add -f my_custom_field -v "anything" --ln task:abc
+```
+
+---
 
 ### Contribution Guidelines
 
-1. **Tests Required** - All new features must include tests
-2. **Test Isolation** - Tests must be thread-safe and use unique temp files
-3. **Error Handling** - Use `anyhow` for errors; provide meaningful messages
-4. **CLI Consistency** - Follow existing command patterns
-5. **Documentation** - Update README and inline docs
+- Tests required for all new features
+- Tests must be thread-safe; use unique temp files or `mem://` backends
+- Use `anyhow` for errors with meaningful messages
+- Follow existing CLI command patterns (names, flag aliases, output format)
+- Update this README when adding user-facing features
+
+---
 
 ### Troubleshooting
 
-**Test failures due to environment:**
+**Database locked / port conflict:**
 
 ```bash
-# Run single-threaded to avoid race conditions
+pkill -f dn-server
+pkill -f surreal
+```
+
+**`dn-server` says "UI not built":**
+
+```bash
+make ui-build
+```
+
+**Test failures due to concurrency:**
+
+```bash
 cargo test -- --test-threads=1
-```
-
-**Database locked:**
-
-```bash
-# Kill any hanging dn processes
-pkill -f dn
-```
-
-**Reset local database:**
-
-```bash
-rm -rf ~/.local/share/dn/
-# or for project-specific:
-rm -rf ./.dn/
 ```

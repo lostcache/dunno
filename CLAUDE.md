@@ -115,7 +115,8 @@ When asked to "fetch a task" or "work on a task":
 1. Before working on a task, query the context with `dn ctx --task-id <id> --full` to see the inherited context.
 2. **MANDATORY:** If the context includes a `persona`, you MUST fully adopt it for the entire task — tone, verbosity, tool usage rules, response style, and all behavioural instructions. The persona overrides your defaults. If the context includes a `workflow`, follow it exactly.
 3. Mark the task as in progress.
-4. When done, mark the task as completed.
+4. **MANDATORY**: After completing the task, if the code architecture requires updating the database, do so using `dn` cli tool wihtout fail.
+5. When done, mark it as completed.
 
 ## Context/Knowledge capture during working on a task
 
