@@ -12,8 +12,8 @@
   import * as Dialog from '$lib/components/ui/dialog'
   import { Button } from '$lib/components/ui/button'
   import { Input } from '$lib/components/ui/input'
-  import { Textarea } from '$lib/components/ui/textarea'
   import { Label } from '$lib/components/ui/label'
+  import MarkdownEditor from './MarkdownEditor.svelte'
   import * as Select from '$lib/components/ui/select'
 
   let { onRefresh }: { onRefresh: () => void } = $props()
@@ -54,7 +54,7 @@
     }
   }
 
-  $effect(() => {
+  $effect.pre(() => {
     if ($modalState.open) initFields()
   })
 
@@ -138,12 +138,7 @@
                 </Select.Content>
               </Select.Root>
             {:else if f.type === 'textarea'}
-              <Textarea
-                name={f.name}
-                required={f.required}
-                bind:value={fieldValues[f.name]}
-                class="bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px] min-h-20"
-              />
+              <MarkdownEditor bind:value={fieldValues[f.name]} />
             {:else}
               <Input
                 type="text"
@@ -170,11 +165,7 @@
           <div>
             <Label class="text-[#94a3b8] text-xs mb-1 block">{f.label}</Label>
             {#if f.type === 'textarea'}
-              <Textarea
-                name={f.name}
-                bind:value={fieldValues[f.name]}
-                class="bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px] min-h-20"
-              />
+              <MarkdownEditor bind:value={fieldValues[f.name]} />
             {:else if f.type === 'select'}
               <Select.Root
                 type="single"
