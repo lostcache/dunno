@@ -164,15 +164,17 @@ impl DB {
 
     /// Creates a RELATE edge between two record ids. Public for the generic `dunno link` CLI.
     pub async fn link(&self, from_id: &str, edge_table: &str, to_id: &str) -> anyhow::Result<()> {
-        let sql = format!(
-            "LET $f = type::record($from); \
-             LET $t = type::record($to); \
-             RELATE $f->{edge_table}->$t;"
-        );
+        let (from_table, from_key) = from_id
+            .split_once(':')
+            .ok_or_else(|| anyhow::anyhow!("Invalid record id: {}", from_id))?;
+        let (to_table, to_key) = to_id
+            .split_once(':')
+            .ok_or_else(|| anyhow::anyhow!("Invalid record id: {}", to_id))?;
+        let sql = format!("RELATE $from->{edge_table}->$to;");
         self.client
             .query(&sql)
-            .bind(("from", from_id.to_string()))
-            .bind(("to", to_id.to_string()))
+            .bind(("from", (from_table.to_string(), from_key.to_string())))
+            .bind(("to", (to_table.to_string(), to_key.to_string())))
             .await?;
         Ok(())
     }

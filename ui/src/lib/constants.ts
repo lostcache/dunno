@@ -87,7 +87,7 @@ export const EDIT_SCHEMAS: Record<string, SchemaField[]> = {
   task: [
     { name: 'name', label: 'Name', type: 'text' },
     { name: 'description', label: 'Description', type: 'textarea' },
-    { name: 'status', label: 'Status', type: 'select', options: ['not_started', 'started', 'finished'] },
+    { name: 'status', label: 'Status', type: 'select', options: ['pending', 'active', 'completed'] },
   ],
   todo_item: [
     { name: 'content', label: 'Content', type: 'textarea' },
