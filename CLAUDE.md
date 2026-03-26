@@ -105,6 +105,8 @@ Knowledge can be attached to any structural node:
    - Do not consider the task fully created until all relevant files are linked.
 7. **MANDATORY:** After creating the task, delete the todo item.
 
+Task status values: `pending` (default on creation), `active`, `completed`.
+
 ## Starting Work
 
 When asked to "fetch a task" or "work on a task":
@@ -127,14 +129,11 @@ When asked to "fetch a task" or "work on a task":
 1. List issues to find what needs attention.
    - `dn issue ls` — all issues
    - `dn issue ls --task-id <task_id>` — issues for a specific task
-2. Create an issue and optionally link it to a task with a resolution plan.
-   - `dn issue add --task-id <task_id> --plan "<plan>" "<title>" "<description>"`
-   - `dn issue add "<title>" "<description>"` (standalone, no task link)
-3. Mark the issue active when you begin work.
+2. Mark the issue active when you begin planning.
    - `dn issue update <issue_id> --status active`
-4. Update the plan as investigation progresses.
+3. Update the issue after you have a plan.
    - `dn issue update <issue_id> --plan "<updated plan>"`
-5. Mark the issue completed when resolved.
+4. Mark the issue completed when resolved.
    - `dn issue update <issue_id> --status completed`
 
 Issue status values: `pending` (default on creation), `active`, `completed`.

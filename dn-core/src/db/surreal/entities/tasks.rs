@@ -44,7 +44,7 @@ impl DB {
             id: None,
             name: name.to_string(),
             description: description.to_string(),
-            status: crate::models::TaskStatus::NotStarted,
+            status: crate::models::TaskStatus::Pending,
         };
         let result = self.create_task_record(&task).await?;
 

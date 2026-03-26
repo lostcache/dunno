@@ -33,17 +33,17 @@ pub struct Workflow {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskStatus {
-    NotStarted,
-    Started,
-    Finished,
+    Pending,
+    Active,
+    Completed,
 }
 
 impl TaskStatus {
     pub fn parse(value: &str) -> Option<Self> {
         match value {
-            "not_started" => Some(Self::NotStarted),
-            "started" => Some(Self::Started),
-            "finished" => Some(Self::Finished),
+            "pending" => Some(Self::Pending),
+            "active" => Some(Self::Active),
+            "completed" => Some(Self::Completed),
             _ => None,
         }
     }
@@ -238,19 +238,16 @@ mod tests {
 
     #[test]
     fn task_status_parse_accepts_known_values() {
-        assert_eq!(
-            TaskStatus::parse("not_started"),
-            Some(TaskStatus::NotStarted)
-        );
-        assert_eq!(TaskStatus::parse("started"), Some(TaskStatus::Started));
-        assert_eq!(TaskStatus::parse("finished"), Some(TaskStatus::Finished));
+        assert_eq!(TaskStatus::parse("pending"), Some(TaskStatus::Pending));
+        assert_eq!(TaskStatus::parse("active"), Some(TaskStatus::Active));
+        assert_eq!(TaskStatus::parse("completed"), Some(TaskStatus::Completed));
     }
 
     #[test]
     fn task_status_parse_rejects_unknown_values() {
-        assert_eq!(TaskStatus::parse("in_progress"), None);
+        assert_eq!(TaskStatus::parse("not_started"), None);
         assert_eq!(TaskStatus::parse(""), None);
-        assert_eq!(TaskStatus::parse("NOT_STARTED"), None);
+        assert_eq!(TaskStatus::parse("PENDING"), None);
     }
 
     #[test]
@@ -295,11 +292,11 @@ mod tests {
             id: None,
             name: "Implement Auth".to_string(),
             description: "Add login".to_string(),
-            status: TaskStatus::NotStarted,
+            status: TaskStatus::Pending,
         };
         let json = to_string(&task).expect("Failed to serialize Task");
         assert!(json.contains("Implement Auth"));
-        assert!(json.contains("\"status\":\"not_started\""));
+        assert!(json.contains("\"status\":\"pending\""));
     }
 
     #[test]
@@ -394,7 +391,7 @@ mod tests {
                 id: None,
                 name: "t".to_string(),
                 description: "d".to_string(),
-                status: TaskStatus::NotStarted,
+                status: TaskStatus::Pending,
             },
             files: vec![],
             contexts: vec![],

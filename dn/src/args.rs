@@ -362,7 +362,7 @@ pub enum TaskCommands {
         #[arg(
             long,
             value_name = "STATUS",
-            help = "One of: not_started, started, finished"
+            help = "One of: pending, active, completed"
         )]
         status: Option<String>,
     },

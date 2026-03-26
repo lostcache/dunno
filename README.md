@@ -265,7 +265,7 @@ dn task add --mids <mid> --project-id <pid> "<name>" "<desc>"
 dn task add --mids <mid> -p "<project_name>" "<name>" "<desc>"
 dn task ls
 dn task ls {--pid|--project-id} <id>
-dn task update <id> --status started
+dn task update <id> --status active
 dn task rm <id>
 ```
 
@@ -322,14 +322,16 @@ dn todo rm <id>
 #### Issue
 
 ```bash
-dn issue add "<title>" "<description>"
-dn issue add --task-id <task_id> "<title>" "<description>"
-dn issue add --task-id <task_id> --plan "<plan>" "<title>" "<description>"
-dn issue update <id> [--title <title>] [--description <desc>] [--plan <plan>] [--status <status>]
+dn issue add "<description>"
+dn issue add --task-id <task_id> "<description>"
+dn issue add --task-id <task_id> --plan "<plan>" "<description>"
+dn issue update <id> [--description <desc>] [--plan <plan>] [--status <status>]
 dn issue ls
 dn issue ls --task-id <task_id>
 dn issue rm <id> [<id> ...]
 ```
+
+Task status values: `pending` (default), `active`, `completed`.
 
 Issue status values: `pending` (default), `active`, `completed`.
 
@@ -365,43 +367,43 @@ dn link -f file:abc -e belongs_to_task -t task:ghi
 
 #### Short Flags & Aliases
 
-| Long               | Short     |
-| ------------------ | --------- |
-| `--backend`        | `--b`     |
-| `--pretty`         | `--pp`    |
-| `--ignore-case`    | `-i`      |
-| `--field`          | `-f`      |
-| `--value`          | `-v`      |
-| `--link-to`        | `--ln`    |
-| `--project`        | `-p`      |
-| `--project-id`     | `--pid`   |
-| `--project-ids`    | `--pids`  |
-| `--module-id`      | `--mid`   |
-| `--module-ids`     | `--mids`  |
-| `--parent-module-id` | `--pmid` |
-| `--task-id`        | `--tid`   |
-| `--file-id`        | `--fid`   |
-| `--epic-id`        | `--eid`   |
-| `--epic-ids`       | `--eids`  |
-| `--user-story-ids` | `--usids` |
-| `--from-id`        | `-f`      |
-| `--edge`           | `-e`      |
-| `--to-ids`         | `-t`      |
+| Long                 | Short     |
+| -------------------- | --------- |
+| `--backend`          | `--b`     |
+| `--pretty`           | `--pp`    |
+| `--ignore-case`      | `-i`      |
+| `--field`            | `-f`      |
+| `--value`            | `-v`      |
+| `--link-to`          | `--ln`    |
+| `--project`          | `-p`      |
+| `--project-id`       | `--pid`   |
+| `--project-ids`      | `--pids`  |
+| `--module-id`        | `--mid`   |
+| `--module-ids`       | `--mids`  |
+| `--parent-module-id` | `--pmid`  |
+| `--task-id`          | `--tid`   |
+| `--file-id`          | `--fid`   |
+| `--epic-id`          | `--eid`   |
+| `--epic-ids`         | `--eids`  |
+| `--user-story-ids`   | `--usids` |
+| `--from-id`          | `-f`      |
+| `--edge`             | `-e`      |
+| `--to-ids`           | `-t`      |
 
-| Command      | Aliases         |
-| ------------ | --------------- |
-| `project`    | `proj`, `prj`   |
-| `module`     | `mod`, `mdl`    |
-| `file`       | `f`, `fi`       |
-| `task`       | `t`, `tk`       |
-| `user-story` | `us`, `story`   |
-| `epic`       | `ep`, `e`       |
-| `todo`       | `td`, `to`      |
-| `persona`    | `per`           |
-| `workflow`   | `wf`            |
-| `config`     | `cfg`, `conf`   |
-| `link`       | `ln`            |
-| `context`    | `ctx`           |
+| Command      | Aliases       |
+| ------------ | ------------- |
+| `project`    | `proj`, `prj` |
+| `module`     | `mod`, `mdl`  |
+| `file`       | `f`, `fi`     |
+| `task`       | `t`, `tk`     |
+| `user-story` | `us`, `story` |
+| `epic`       | `ep`, `e`     |
+| `todo`       | `td`, `to`    |
+| `persona`    | `per`         |
+| `workflow`   | `wf`          |
+| `config`     | `cfg`, `conf` |
+| `link`       | `ln`          |
+| `context`    | `ctx`         |
 
 ---
 
@@ -431,7 +433,7 @@ dn add -f type -v mistake \
 dn issue ls --task-id task:abc
 
 # 2. Create an issue and record a resolution plan
-dn issue add --task-id task:abc --plan "Investigate token expiry logic in auth module" "Token expiry bug" "Tokens expire 10 min too early"
+dn issue add --task-id task:abc --plan "Investigate token expiry logic in auth module" "Tokens expire 10 min too early"
 
 # 3. Mark it active when you start
 dn issue update issue:xyz --status active
@@ -594,39 +596,39 @@ Unit tests use in-memory SurrealDB (`mem://`) and don't require a running server
 
 #### Entities
 
-| Entity    | Record ID Pattern | Description                 |
-| --------- | ----------------- | --------------------------- |
-| Project   | `project:<id>`    | Top-level container         |
+| Entity    | Record ID Pattern | Description                                |
+| --------- | ----------------- | ------------------------------------------ |
+| Project   | `project:<id>`    | Top-level container                        |
 | Module    | `module:<id>`     | Code organization unit (nests recursively) |
-| File      | `file:<id>`       | Source file reference       |
-| Task      | `task:<id>`       | Work item                   |
-| Epic      | `epic:<id>`       | Large feature group         |
-| UserStory | `user_story:<id>` | User-centric feature        |
-| Context   | `context:<id>`    | Schemaless knowledge entry  |
-| Todo      | `todo_item:<id>`  | Work queue item             |
-| Persona   | `persona:<id>`    | AI agent persona definition |
-| Workflow  | `workflow:<id>`   | Workflow definition         |
-| Issue     | `issue:<id>`      | Bug or problem linked to a task |
+| File      | `file:<id>`       | Source file reference                      |
+| Task      | `task:<id>`       | Work item                                  |
+| Epic      | `epic:<id>`       | Large feature group                        |
+| UserStory | `user_story:<id>` | User-centric feature                       |
+| Context   | `context:<id>`    | Schemaless knowledge entry                 |
+| Todo      | `todo_item:<id>`  | Work queue item                            |
+| Persona   | `persona:<id>`    | AI agent persona definition                |
+| Workflow  | `workflow:<id>`   | Workflow definition                        |
+| Issue     | `issue:<id>`      | Bug or problem linked to a task            |
 
 #### Graph Relations
 
-| Edge                    | From                                                     | To          | Purpose                |
-| ----------------------- | -------------------------------------------------------- | ----------- | ---------------------- |
-| `contains`              | project, module                                          | module, file | Structural containment |
-| `has_task`              | project, epic, user_story                                | task        | Task assignment        |
-| `has_context`           | project, task, module, epic, file                        | context     | Knowledge linking      |
-| `has_user_story`        | project, epic                                            | user_story  | Story grouping         |
-| `has_epic`              | project                                                  | epic        | Epic grouping          |
-| `has_todo`              | project                                                  | todo_item   | Todo tracking          |
-| `has_persona`           | project                                                  | persona     | Persona grouping       |
-| `has_workflow`          | project                                                  | workflow    | Workflow grouping      |
-| `belongs_to_project`    | task, context, user_story, epic, file, module, persona, workflow | project | Reverse link      |
-| `belongs_to_module`     | task, context, file, module                              | module      | Reverse link (module→parent for child modules) |
-| `belongs_to_story`      | task                                                     | user_story  | Reverse link           |
-| `belongs_to_user_story` | module                                                   | user_story  | Reverse link           |
-| `belongs_to_epic`       | user_story, task                                         | epic        | Reverse link           |
-| `has_issue`             | task                                                     | issue       | Issue tracking         |
-| `belongs_to_task`       | file, context, issue                                     | task        | Reverse link           |
+| Edge                    | From                                                             | To           | Purpose                                        |
+| ----------------------- | ---------------------------------------------------------------- | ------------ | ---------------------------------------------- |
+| `contains`              | project, module                                                  | module, file | Structural containment                         |
+| `has_task`              | project, epic, user_story                                        | task         | Task assignment                                |
+| `has_context`           | project, task, module, epic, file                                | context      | Knowledge linking                              |
+| `has_user_story`        | project, epic                                                    | user_story   | Story grouping                                 |
+| `has_epic`              | project                                                          | epic         | Epic grouping                                  |
+| `has_todo`              | project                                                          | todo_item    | Todo tracking                                  |
+| `has_persona`           | project                                                          | persona      | Persona grouping                               |
+| `has_workflow`          | project                                                          | workflow     | Workflow grouping                              |
+| `belongs_to_project`    | task, context, user_story, epic, file, module, persona, workflow | project      | Reverse link                                   |
+| `belongs_to_module`     | task, context, file, module                                      | module       | Reverse link (module→parent for child modules) |
+| `belongs_to_story`      | task                                                             | user_story   | Reverse link                                   |
+| `belongs_to_user_story` | module                                                           | user_story   | Reverse link                                   |
+| `belongs_to_epic`       | user_story, task                                                 | epic         | Reverse link                                   |
+| `has_issue`             | task                                                             | issue        | Issue tracking                                 |
+| `belongs_to_task`       | file, context, issue                                             | task         | Reverse link                                   |
 
 ---
 

@@ -533,7 +533,7 @@ fn parse_optional_status(
             .map(Some)
             .ok_or_else(|| {
                 anyhow::anyhow!(
-                    "Invalid status '{}'. Expected: not_started, started, finished",
+                    "Invalid status '{}'. Expected: pending, active, completed",
                     value
                 )
             }),

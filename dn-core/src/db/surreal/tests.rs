@@ -1340,34 +1340,34 @@ async fn test_update_task_status() {
         .expect("Failed to create task");
     let task_id = task.id.expect("task id");
 
-    assert_eq!(task.status, crate::models::TaskStatus::NotStarted);
+    assert_eq!(task.status, crate::models::TaskStatus::Pending);
 
     let updated = db
         .update_task(
             &task_id,
             None,
             None,
-            Some(crate::models::TaskStatus::Started),
+            Some(crate::models::TaskStatus::Active),
         )
         .await
         .expect("Failed to update task status");
 
     assert!(updated.is_some());
-    assert_eq!(updated.unwrap().status, crate::models::TaskStatus::Started);
+    assert_eq!(updated.unwrap().status, crate::models::TaskStatus::Active);
 
     let finished = db
         .update_task(
             &task_id,
             None,
             None,
-            Some(crate::models::TaskStatus::Finished),
+            Some(crate::models::TaskStatus::Completed),
         )
         .await
         .expect("Failed to update task to finished");
 
     assert_eq!(
         finished.unwrap().status,
-        crate::models::TaskStatus::Finished
+        crate::models::TaskStatus::Completed
     );
 }
 
@@ -1406,7 +1406,7 @@ async fn test_update_task_all_fields() {
             &task_id,
             Some("New Name".to_string()),
             Some("New Description".to_string()),
-            Some(crate::models::TaskStatus::Started),
+            Some(crate::models::TaskStatus::Active),
         )
         .await
         .expect("Failed to update task");
@@ -1414,7 +1414,7 @@ async fn test_update_task_all_fields() {
     let task = updated.expect("Task should exist");
     assert_eq!(task.name, "New Name");
     assert_eq!(task.description, "New Description");
-    assert_eq!(task.status, crate::models::TaskStatus::Started);
+    assert_eq!(task.status, crate::models::TaskStatus::Active);
 }
 
 #[tokio::test]
