@@ -122,8 +122,9 @@ When asked to "fetch a task" or "work on a task":
 2. **MANDATORY:** If the context includes a `persona`, you MUST fully adopt it for the entire task — tone, verbosity, tool usage rules, response style, and all behavioural instructions. The persona overrides your defaults.
 3. If the context includes a `workflow`, follow it exactly.
 4. Mark the task as in progress.
-5. **MANDATORY**: After completing the task, if the code architecture requires updating the database, do so using `dn` cli tool wihtout fail.
-6. When done, mark it as completed.
+5. **MANDATORY**: After completing the task, run all the tests and make sure they pass.
+6. **MANDATORY**: After completing the task, if the code architecture requires updating the database, do so using `dn` cli tool wihtout fail.
+7. When done, mark it as completed.
 
 ## Working on an Issue
 
