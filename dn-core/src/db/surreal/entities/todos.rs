@@ -25,6 +25,7 @@ impl DB {
         let todo = crate::models::TodoItem {
             id: None,
             content: content.to_string(),
+            status: crate::models::TodoStatus::Pending,
         };
         let result = self.create_todo_record(&todo).await?;
         if let (Some(pid), Some(tid)) = (project_id, result.id.as_ref()) {
@@ -59,11 +60,12 @@ impl DB {
         self.list_records("todo_item").await
     }
 
-    /// Updates a todo item's content.
+    /// Updates a todo item's content and/or status.
     pub async fn update_todo(
         &self,
         todo_id: &str,
         content: Option<String>,
+        status: Option<crate::models::TodoStatus>,
     ) -> anyhow::Result<Option<crate::models::TodoItem>> {
         let key = todo_id
             .split_once(':')
@@ -73,6 +75,12 @@ impl DB {
         let mut patch = serde_json::Map::new();
         if let Some(content) = content {
             patch.insert("content".to_string(), serde_json::Value::String(content));
+        }
+        if let Some(status) = status {
+            patch.insert(
+                "status".to_string(),
+                serde_json::to_value(status)?,
+            );
         }
 
         if patch.is_empty() {
@@ -135,6 +143,48 @@ mod tests {
             .expect("list_todos_by_project accepts project:id");
         let err = ensure_record_id("project", "module:1").expect_err("wrong table rejected");
         assert!(err.to_string().contains("Expected record id"));
+    }
+
+    #[tokio::test]
+    async fn test_create_todo_has_pending_status() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let todo = db
+            .create_todo("Buy milk", None)
+            .await
+            .expect("Failed to create todo");
+        assert_eq!(todo.status, crate::models::TodoStatus::Pending);
+    }
+
+    #[tokio::test]
+    async fn test_update_todo_status_to_active() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let todo = db
+            .create_todo("Buy milk", None)
+            .await
+            .expect("Failed to create todo");
+        let id = todo.id.expect("todo id");
+        let updated = db
+            .update_todo(&id, None, Some(crate::models::TodoStatus::Active))
+            .await
+            .expect("update failed")
+            .expect("todo not found");
+        assert_eq!(updated.status, crate::models::TodoStatus::Active);
+    }
+
+    #[tokio::test]
+    async fn test_update_todo_status_to_completed() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+        let todo = db
+            .create_todo("Buy milk", None)
+            .await
+            .expect("Failed to create todo");
+        let id = todo.id.expect("todo id");
+        let updated = db
+            .update_todo(&id, None, Some(crate::models::TodoStatus::Completed))
+            .await
+            .expect("update failed")
+            .expect("todo not found");
+        assert_eq!(updated.status, crate::models::TodoStatus::Completed);
     }
 
     #[tokio::test]

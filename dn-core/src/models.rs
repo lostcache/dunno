@@ -88,11 +88,31 @@ pub struct Task {
     pub status: TaskStatus,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TodoStatus {
+    Pending,
+    Active,
+    Completed,
+}
+
+impl TodoStatus {
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "pending" => Some(Self::Pending),
+            "active" => Some(Self::Active),
+            "completed" => Some(Self::Completed),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct TodoItem {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     pub content: String,
+    pub status: TodoStatus,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
@@ -300,13 +320,29 @@ mod tests {
     }
 
     #[test]
+    fn todo_status_parse_accepts_known_values() {
+        assert_eq!(TodoStatus::parse("pending"), Some(TodoStatus::Pending));
+        assert_eq!(TodoStatus::parse("active"), Some(TodoStatus::Active));
+        assert_eq!(TodoStatus::parse("completed"), Some(TodoStatus::Completed));
+    }
+
+    #[test]
+    fn todo_status_parse_rejects_unknown_values() {
+        assert_eq!(TodoStatus::parse("open"), None);
+        assert_eq!(TodoStatus::parse(""), None);
+        assert_eq!(TodoStatus::parse("PENDING"), None);
+    }
+
+    #[test]
     fn test_todo_model() {
         let todo = TodoItem {
             id: None,
             content: "Fix bug".to_string(),
+            status: TodoStatus::Pending,
         };
         let json = to_string(&todo).expect("Failed to serialize TodoItem");
         assert!(json.contains("Fix bug"));
+        assert!(json.contains("\"status\":\"pending\""));
     }
 
     #[test]

@@ -588,6 +588,18 @@ pub enum TodoCommands {
         )]
         project: Option<String>,
     },
+    #[command(name = "update")]
+    Update {
+        todo_id: String,
+        #[arg(long, value_name = "CONTENT")]
+        content: Option<String>,
+        #[arg(
+            long,
+            value_name = "STATUS",
+            help = "One of: pending, active, completed"
+        )]
+        status: Option<String>,
+    },
     #[command(name = "rm")]
     Delete {
         #[arg(required = true)]

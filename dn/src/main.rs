@@ -654,6 +654,26 @@ async fn handle_todo_command(
             let todos = db.list_todos_by_project(&pid).await?;
             print_json(serde_json::json!(todos), pretty);
         }
+        args::TodoCommands::Update {
+            todo_id,
+            content,
+            status,
+        } => {
+            let parsed_status = match status.as_deref() {
+                Some(s) => {
+                    let st = dn_core::models::TodoStatus::parse(s).ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Invalid status '{}'. Expected: pending, active, completed",
+                            s
+                        )
+                    })?;
+                    Some(st)
+                }
+                None => None,
+            };
+            let result = db.update_todo(&todo_id, content, parsed_status).await?;
+            print_json(serde_json::json!(result), pretty);
+        }
         args::TodoCommands::Delete { todo_ids } => {
             let mut deleted = Vec::new();
             let mut not_found = Vec::new();

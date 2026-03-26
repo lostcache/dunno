@@ -202,6 +202,7 @@ struct UpdateEpicBody {
 #[derive(Deserialize)]
 struct UpdateTodoBody {
     content: Option<String>,
+    status: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -520,7 +521,19 @@ async fn update_todo(
     State(state): State<Arc<AppState>>,
     Json(body): Json<UpdateTodoBody>,
 ) -> ApiResult<serde_json::Value> {
-    let updated = state.db.update_todo(&id, body.content).await?;
+    let parsed_status = match body.status.as_deref() {
+        Some(s) => {
+            let st = dn_core::models::TodoStatus::parse(s).ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Invalid status '{}'. Expected: pending, active, completed",
+                    s
+                )
+            })?;
+            Some(st)
+        }
+        None => None,
+    };
+    let updated = state.db.update_todo(&id, body.content, parsed_status).await?;
     Ok(Json(serde_json::to_value(updated)?))
 }
 
