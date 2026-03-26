@@ -504,6 +504,13 @@ async fn handle_task_command(
             });
             print_json(result, pretty);
         }
+        args::TaskCommands::Get { id } => {
+            let task = db.get_task(&id).await?;
+            match task {
+                Some(t) => print_json(serde_json::json!(t), pretty),
+                None => return Err(anyhow::anyhow!("Task not found: {}", id)),
+            }
+        }
     }
     Ok(())
 }
@@ -603,6 +610,13 @@ async fn handle_issue_command(
                 pretty,
             );
         }
+        args::IssueCommands::Get { id } => {
+            let issue = db.get_issue(&id).await?;
+            match issue {
+                Some(i) => print_json(serde_json::json!(i), pretty),
+                None => return Err(anyhow::anyhow!("Issue not found: {}", id)),
+            }
+        }
     }
     Ok(())
 }
@@ -691,6 +705,13 @@ async fn handle_todo_command(
             });
             print_json(result, pretty);
         }
+        args::TodoCommands::Get { id } => {
+            let todo = db.get_todo(&id).await?;
+            match todo {
+                Some(t) => print_json(serde_json::json!(t), pretty),
+                None => return Err(anyhow::anyhow!("Todo not found: {}", id)),
+            }
+        }
     }
     Ok(())
 }
@@ -754,6 +775,13 @@ async fn handle_user_story_command(
                 "not_found": not_found,
             });
             print_json(result, pretty);
+        }
+        args::UserStoryCommands::Get { id } => {
+            let user_story = db.get_user_story(&id).await?;
+            match user_story {
+                Some(us) => print_json(serde_json::json!(us), pretty),
+                None => return Err(anyhow::anyhow!("User story not found: {}", id)),
+            }
         }
     }
     Ok(())

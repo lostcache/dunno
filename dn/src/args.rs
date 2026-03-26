@@ -384,6 +384,9 @@ pub enum TaskCommands {
         )]
         project: Option<String>,
     },
+    Get {
+        id: String,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -431,6 +434,9 @@ pub enum UserStoryCommands {
     Delete {
         #[arg(required = true)]
         user_story_ids: Vec<String>,
+    },
+    Get {
+        id: String,
     },
 }
 
@@ -605,6 +611,9 @@ pub enum TodoCommands {
         #[arg(required = true)]
         todo_ids: Vec<String>,
     },
+    Get {
+        id: String,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -639,6 +648,9 @@ pub enum IssueCommands {
     Remove {
         #[arg(required = true)]
         issue_ids: Vec<String>,
+    },
+    Get {
+        id: String,
     },
 }
 
