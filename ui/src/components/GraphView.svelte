@@ -22,9 +22,9 @@
   let hoverHideTimer: ReturnType<typeof setTimeout> | null = null
 
   async function loadGraph(pid?: string | null) {
-    if (!cy) return
+    if (!cy || !pid) return
     try {
-      const url = pid ? `/api/projects/${pid}/graph` : '/api/graph'
+      const url = `/api/projects/${pid}/graph`
       const data = await api<{ elements: unknown[] }>(url)
       cy.elements().remove()
       cy.add(data.elements as cytoscape.ElementDefinition[])
@@ -89,7 +89,8 @@
       if (hoverBtns) hoverBtns.scheduleHide()
     })
 
-    loadGraph(get(projectId))
+    const pid = get(projectId)
+    if (pid) loadGraph(pid)
   })
 
   onDestroy(() => {
@@ -99,7 +100,7 @@
 
   $effect(() => {
     const pid = $projectId
-    if (cy) loadGraph(pid)
+    if (cy && pid) loadGraph(pid)
   })
 
   $effect(() => {
