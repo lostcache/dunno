@@ -5,15 +5,15 @@ impl DB {
     /// Creates an issue record and optionally links it to a task.
     pub async fn create_issue(
         &self,
-        title: &str,
         description: &str,
         task_id: Option<&str>,
+        plan: Option<&str>,
     ) -> anyhow::Result<crate::models::Issue> {
         let issue = crate::models::Issue {
             id: None,
-            title: title.to_string(),
             description: description.to_string(),
-            status: crate::models::IssueStatus::Open,
+            status: crate::models::IssueStatus::Pending,
+            plan: plan.map(|s| s.to_string()),
         };
         let json = serde_json::to_value(&issue)?;
         let value = json_to_surreal(json);
@@ -54,13 +54,13 @@ impl DB {
         .await
     }
 
-    /// Updates an issue's title, description, or status.
+    /// Updates an issue's title, description, status, or plan.
     pub async fn update_issue(
         &self,
         issue_id: &str,
-        title: Option<String>,
         description: Option<String>,
         status: Option<crate::models::IssueStatus>,
+        plan: Option<String>,
     ) -> anyhow::Result<Option<crate::models::Issue>> {
         let key = issue_id
             .split_once(':')
@@ -68,9 +68,6 @@ impl DB {
             .unwrap_or(issue_id);
 
         let mut patch = serde_json::Map::new();
-        if let Some(title) = title {
-            patch.insert("title".to_string(), serde_json::Value::String(title));
-        }
         if let Some(description) = description {
             patch.insert(
                 "description".to_string(),
@@ -79,6 +76,9 @@ impl DB {
         }
         if let Some(status) = status {
             patch.insert("status".to_string(), serde_json::to_value(status)?);
+        }
+        if let Some(plan) = plan {
+            patch.insert("plan".to_string(), serde_json::Value::String(plan));
         }
 
         if patch.is_empty() {
@@ -120,11 +120,11 @@ mod tests {
     async fn test_create_issue_standalone() {
         let db = DB::new("mem://").await.expect("init db");
         let issue = db
-            .create_issue("Login fails", "Users cannot log in", None)
+            .create_issue("Users cannot log in", None, None)
             .await
             .expect("create issue");
-        assert_eq!(issue.title, "Login fails");
-        assert_eq!(issue.status, crate::models::IssueStatus::Open);
+        assert_eq!(issue.description, "Users cannot log in");
+        assert_eq!(issue.status, crate::models::IssueStatus::Pending);
         assert!(issue.id.is_some());
     }
 
@@ -149,7 +149,7 @@ mod tests {
         let task_id = task.id.unwrap();
 
         let issue = db
-            .create_issue("Token expiry bug", "Tokens expire too early", Some(&task_id))
+            .create_issue("Tokens expire too early", Some(&task_id), None)
             .await
             .expect("create issue");
 
@@ -165,7 +165,7 @@ mod tests {
     async fn test_delete_issue() {
         let db = DB::new("mem://").await.expect("init db");
         let issue = db
-            .create_issue("Bug", "desc", None)
+            .create_issue("desc", None, None)
             .await
             .expect("create issue");
         let id = issue.id.unwrap();
@@ -181,7 +181,7 @@ mod tests {
     async fn test_delete_nonexistent_issue() {
         let db = DB::new("mem://").await.expect("init db");
         // ensure table exists
-        db.create_issue("seed", "seed", None)
+        db.create_issue("seed", None, None)
             .await
             .expect("seed issue");
 
@@ -196,16 +196,33 @@ mod tests {
     async fn test_update_issue_status() {
         let db = DB::new("mem://").await.expect("init db");
         let issue = db
-            .create_issue("Bug", "desc", None)
+            .create_issue("desc", None, None)
             .await
             .expect("create issue");
         let id = issue.id.unwrap();
 
         let updated = db
-            .update_issue(&id, None, None, Some(crate::models::IssueStatus::Closed))
+            .update_issue(&id, None, Some(crate::models::IssueStatus::Active), None)
             .await
             .expect("update issue")
             .unwrap();
-        assert_eq!(updated.status, crate::models::IssueStatus::Closed);
+        assert_eq!(updated.status, crate::models::IssueStatus::Active);
+    }
+
+    #[tokio::test]
+    async fn test_update_issue_plan() {
+        let db = DB::new("mem://").await.expect("init db");
+        let issue = db
+            .create_issue("desc", None, None)
+            .await
+            .expect("create issue");
+        let id = issue.id.unwrap();
+
+        let updated = db
+            .update_issue(&id, None, None, Some("Fix the auth module".to_string()))
+            .await
+            .expect("update issue")
+            .unwrap();
+        assert_eq!(updated.plan.as_deref(), Some("Fix the auth module"));
     }
 }

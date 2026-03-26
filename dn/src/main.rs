@@ -550,13 +550,32 @@ async fn handle_issue_command(
     match command {
         args::IssueCommands::Create {
             task_id,
-            title,
+            plan,
             description,
         } => {
             let created = db
-                .create_issue(&title, &description, task_id.as_deref())
+                .create_issue(&description, task_id.as_deref(), plan.as_deref())
                 .await?;
             print_json(serde_json::json!(created), pretty);
+        }
+        args::IssueCommands::Update {
+            issue_id,
+            description,
+            plan,
+            status,
+        } => {
+            let parsed_status = match status.as_deref() {
+                Some(s) => {
+                    let st = dn_core::models::IssueStatus::parse(s)
+                        .ok_or_else(|| anyhow::anyhow!("Invalid status '{}'. Expected: pending, active, completed", s))?;
+                    Some(st)
+                }
+                None => None,
+            };
+            let result = db
+                .update_issue(&issue_id, description, parsed_status, plan)
+                .await?;
+            print_json(serde_json::json!(result), pretty);
         }
         args::IssueCommands::List { task_id } => {
             let issues = match task_id {

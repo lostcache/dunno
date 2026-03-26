@@ -20,6 +20,18 @@
 
   // Form field values — keyed by field name
   let fieldValues = $state<Record<string, string>>({})
+  let taskOptions = $state<{ id: string; name: string }[]>([])
+
+  async function loadTaskOptions() {
+    const pid = get(projectId)
+    if (!pid) { taskOptions = []; return }
+    try {
+      const tasks = await api<{ id: string; name: string }[]>(`/api/projects/${pid}/tasks`)
+      taskOptions = tasks
+    } catch {
+      taskOptions = []
+    }
+  }
 
   function initFields() {
     const ms = get(modalState)
@@ -33,6 +45,8 @@
     } else if (ms.mode === 'create' && ms.tab) {
       const schema = SCHEMAS[ms.tab] || []
       const pid = get(projectId) || ''
+      const needsTasks = schema.some(f => f.fill === 'taskId')
+      if (needsTasks) loadTaskOptions()
       for (const f of schema) {
         newValues[f.name] = f.fill === 'projectId' ? pid : ''
       }
@@ -58,7 +72,7 @@
       url = '/api/contexts'
     } else {
       url = CREATE_ENDPOINTS[tab]
-      body = { ...fieldValues }
+      body = Object.fromEntries(Object.entries(fieldValues).filter(([, v]) => v !== ''))
     }
 
     try {
@@ -108,7 +122,22 @@
         {#each SCHEMAS[$modalState.tab!] ?? [] as f}
           <div>
             <Label class="text-[#94a3b8] text-xs mb-1 block">{f.label}{f.required ? ' *' : ''}</Label>
-            {#if f.type === 'textarea'}
+            {#if f.fill === 'taskId'}
+              <Select.Root
+                type="single"
+                value={fieldValues[f.name]}
+                onValueChange={(v) => { fieldValues[f.name] = v }}
+              >
+                <Select.Trigger class="w-full h-8 bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px]">
+                  {taskOptions.find(t => t.id === fieldValues[f.name])?.name || '— none —'}
+                </Select.Trigger>
+                <Select.Content>
+                  {#each taskOptions as t}
+                    <Select.Item value={t.id} label={t.name} />
+                  {/each}
+                </Select.Content>
+              </Select.Root>
+            {:else if f.type === 'textarea'}
               <Textarea
                 name={f.name}
                 required={f.required}

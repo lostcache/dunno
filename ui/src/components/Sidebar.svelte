@@ -26,6 +26,7 @@
     else if (tab === 'epics' && pid) url = `/api/projects/${pid}/epics`
     else if (tab === 'personas' && pid) url = `/api/projects/${pid}/personas`
     else if (tab === 'workflows' && pid) url = `/api/projects/${pid}/workflows`
+    else if (tab === 'issues') url = '/api/issues'
 
     if (!url) { items = []; return }
     try {

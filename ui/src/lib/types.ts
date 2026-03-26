@@ -3,7 +3,7 @@ export interface SchemaField {
   label: string
   type: 'text' | 'textarea' | 'select'
   required?: boolean
-  fill?: 'projectId'
+  fill?: 'projectId' | 'taskId'
   options?: string[]
 }
 

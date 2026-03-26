@@ -98,15 +98,17 @@ pub struct TodoItem {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum IssueStatus {
-    Open,
-    Closed,
+    Pending,
+    Active,
+    Completed,
 }
 
 impl IssueStatus {
     pub fn parse(value: &str) -> Option<Self> {
         match value {
-            "open" => Some(Self::Open),
-            "closed" => Some(Self::Closed),
+            "pending" => Some(Self::Pending),
+            "active" => Some(Self::Active),
+            "completed" => Some(Self::Completed),
             _ => None,
         }
     }
@@ -116,9 +118,10 @@ impl IssueStatus {
 pub struct Issue {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    pub title: String,
     pub description: String,
     pub status: IssueStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plan: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Default)]
@@ -208,28 +211,29 @@ mod tests {
 
     #[test]
     fn issue_status_parse_accepts_known_values() {
-        assert_eq!(IssueStatus::parse("open"), Some(IssueStatus::Open));
-        assert_eq!(IssueStatus::parse("closed"), Some(IssueStatus::Closed));
+        assert_eq!(IssueStatus::parse("pending"), Some(IssueStatus::Pending));
+        assert_eq!(IssueStatus::parse("active"), Some(IssueStatus::Active));
+        assert_eq!(IssueStatus::parse("completed"), Some(IssueStatus::Completed));
     }
 
     #[test]
     fn issue_status_parse_rejects_unknown_values() {
-        assert_eq!(IssueStatus::parse("pending"), None);
+        assert_eq!(IssueStatus::parse("open"), None);
         assert_eq!(IssueStatus::parse(""), None);
-        assert_eq!(IssueStatus::parse("OPEN"), None);
+        assert_eq!(IssueStatus::parse("PENDING"), None);
     }
 
     #[test]
     fn test_issue_model() {
         let issue = Issue {
             id: None,
-            title: "Login broken".to_string(),
             description: "Users cannot log in".to_string(),
-            status: IssueStatus::Open,
+            status: IssueStatus::Pending,
+            plan: None,
         };
         let json = to_string(&issue).expect("Failed to serialize Issue");
-        assert!(json.contains("Login broken"));
-        assert!(json.contains("\"status\":\"open\""));
+        assert!(json.contains("Users cannot log in"));
+        assert!(json.contains("\"status\":\"pending\""));
     }
 
     #[test]

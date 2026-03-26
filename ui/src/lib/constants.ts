@@ -2,7 +2,7 @@ import type { SchemaField, EdgePair, NodeColor } from './types'
 
 export const ENTITY_TABS = [
   'projects', 'modules', 'files', 'tasks', 'todos',
-  'user-stories', 'epics', 'personas', 'workflows', 'contexts',
+  'user-stories', 'epics', 'personas', 'workflows', 'contexts', 'issues',
 ]
 
 export const SCHEMAS: Record<string, SchemaField[]> = {
@@ -61,6 +61,11 @@ export const SCHEMAS: Record<string, SchemaField[]> = {
     { name: 'fields_content', label: 'Content', type: 'textarea' },
     { name: 'fields_description', label: 'Description', type: 'textarea' },
   ],
+  issues: [
+    { name: 'description', label: 'Description', type: 'textarea', required: true },
+    { name: 'plan', label: 'Plan', type: 'textarea' },
+    { name: 'task_id', label: 'Task (optional)', type: 'select', fill: 'taskId' },
+  ],
 }
 
 export const EDIT_SCHEMAS: Record<string, SchemaField[]> = {
@@ -111,6 +116,11 @@ export const EDIT_SCHEMAS: Record<string, SchemaField[]> = {
     { name: 'severity', label: 'Severity', type: 'text' },
     { name: 'category', label: 'Category', type: 'text' },
   ],
+  issue: [
+    { name: 'description', label: 'Description', type: 'textarea' },
+    { name: 'plan', label: 'Plan', type: 'textarea' },
+    { name: 'status', label: 'Status', type: 'select', options: ['pending', 'active', 'completed'] },
+  ],
 }
 
 export const EDIT_ENDPOINTS: Record<string, string> = {
@@ -124,6 +134,7 @@ export const EDIT_ENDPOINTS: Record<string, string> = {
   persona: '/api/personas',
   workflow: '/api/workflows',
   context: '/api/contexts',
+  issue: '/api/issues',
 }
 
 export const EDGE_PAIRS: EdgePair[] = [
@@ -161,6 +172,7 @@ export const CREATE_ENDPOINTS: Record<string, string> = {
   personas: '/api/personas',
   workflows: '/api/workflows',
   contexts: '/api/contexts',
+  issues: '/api/issues',
 }
 
 export const TYPE_MAP: Record<string, string> = {
@@ -174,6 +186,7 @@ export const TYPE_MAP: Record<string, string> = {
   personas: 'persona',
   workflows: 'workflow',
   contexts: 'context',
+  issues: 'issue',
 }
 
 export const NODE_COLORS: Record<string, NodeColor> = {
@@ -187,6 +200,7 @@ export const NODE_COLORS: Record<string, NodeColor> = {
   todo_item:  { bg: '#64748b', fg: '#fff' },
   persona:    { bg: '#ec4899', fg: '#fff' },
   workflow:   { bg: '#14b8a6', fg: '#fff' },
+  issue:      { bg: '#f43f5e', fg: '#fff' },
 }
 
 export const FRIENDLY_TYPES: Record<string, string> = {
@@ -200,6 +214,7 @@ export const FRIENDLY_TYPES: Record<string, string> = {
   todo_item:  'Todo',
   persona:    'Persona',
   workflow:   'Workflow',
+  issue:      'Issue',
 }
 
 export function findEdgePair(typeA: string, typeB: string): EdgePair | undefined {

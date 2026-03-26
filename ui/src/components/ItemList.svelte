@@ -5,12 +5,12 @@
   import { setStatus } from '../stores/statusStore'
   import { Button } from '$lib/components/ui/button'
 
-  interface Item { id: string; name?: string; title?: string; content?: string }
+  interface Item { id: string; name?: string; title?: string; content?: string; description?: string }
 
   let { items, tab, onRefresh }: { items: Item[]; tab: string; onRefresh: () => void } = $props()
 
   function getLabel(item: Item): string {
-    const raw = item.name || item.title || item.content || item.id || '?'
+    const raw = item.name || item.title || item.content || item.description || item.id || '?'
     return raw.length > 28 ? raw.slice(0, 28) + '…' : raw
   }
 
@@ -46,6 +46,7 @@
     epics: '/api/epics',
     personas: '/api/personas',
     workflows: '/api/workflows',
+    issues: '/api/issues',
   }
 
   async function deleteItem(id: string, e: MouseEvent) {

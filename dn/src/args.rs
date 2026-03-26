@@ -602,8 +602,20 @@ pub enum IssueCommands {
         /// Task ID to link this issue to. Optional.
         #[arg(long, visible_alias = "tid", value_name = "TASK_ID")]
         task_id: Option<String>,
-        title: String,
+        /// Resolution plan for the issue.
+        #[arg(long, value_name = "PLAN")]
+        plan: Option<String>,
         description: String,
+    },
+    #[command(name = "update")]
+    Update {
+        issue_id: String,
+        #[arg(long, value_name = "DESC")]
+        description: Option<String>,
+        #[arg(long, value_name = "PLAN")]
+        plan: Option<String>,
+        #[arg(long, value_name = "STATUS")]
+        status: Option<String>,
     },
     #[command(name = "list", visible_alias = "ls")]
     List {
@@ -2099,13 +2111,12 @@ mod tests {
     }
 
     #[test]
-    fn issue_add_parses_title_and_description() {
-        let args = Args::try_parse_from(["dn", "issue", "add", "Login broken", "Users cannot log in"]);
+    fn issue_add_parses_description() {
+        let args = Args::try_parse_from(["dn", "issue", "add", "Users cannot log in"]);
         assert!(args.is_ok(), "should parse issue add");
         if let Commands::Issue { command } = args.unwrap().command {
-            if let IssueCommands::Create { task_id, title, description } = command {
+            if let IssueCommands::Create { task_id, description, .. } = command {
                 assert_eq!(task_id, None);
-                assert_eq!(title, "Login broken");
                 assert_eq!(description, "Users cannot log in");
             } else {
                 panic!("expected Create command");
@@ -2118,7 +2129,7 @@ mod tests {
     #[test]
     fn issue_add_accepts_task_id() {
         let args = Args::try_parse_from([
-            "dn", "issue", "add", "--task-id", "task:abc123", "Title", "Desc",
+            "dn", "issue", "add", "--task-id", "task:abc123", "Desc",
         ]);
         assert!(args.is_ok(), "should parse issue add with --task-id");
         if let Commands::Issue { command } = args.unwrap().command {
@@ -2135,7 +2146,7 @@ mod tests {
     #[test]
     fn issue_add_accepts_tid_alias() {
         let args = Args::try_parse_from([
-            "dn", "issue", "add", "--tid", "task:abc123", "Title", "Desc",
+            "dn", "issue", "add", "--tid", "task:abc123", "Desc",
         ]);
         assert!(args.is_ok(), "should parse issue add with --tid alias");
     }
@@ -2206,4 +2217,51 @@ mod tests {
         }
     }
 
+    #[test]
+    fn issue_update_parses_all_fields() {
+        let args = Args::try_parse_from([
+            "dn", "issue", "update", "issue:abc123",
+            "--description", "New Desc",
+            "--plan", "Fix it",
+            "--status", "active",
+        ]);
+        assert!(args.is_ok(), "should parse issue update");
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::Update { issue_id, description, plan, status } = command {
+                assert_eq!(issue_id, "issue:abc123");
+                assert_eq!(description.as_deref(), Some("New Desc"));
+                assert_eq!(plan.as_deref(), Some("Fix it"));
+                assert_eq!(status.as_deref(), Some("active"));
+            } else {
+                panic!("expected Update command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
+
+    #[test]
+    fn issue_update_requires_issue_id() {
+        let args = Args::try_parse_from(["dn", "issue", "update"]);
+        assert!(args.is_err(), "should require issue_id");
+    }
+
+    #[test]
+    fn issue_update_accepts_partial_fields() {
+        let args = Args::try_parse_from([
+            "dn", "issue", "update", "issue:abc123", "--status", "completed",
+        ]);
+        assert!(args.is_ok(), "should parse issue update with only status");
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::Update { issue_id, description, status, .. } = command {
+                assert_eq!(issue_id, "issue:abc123");
+                assert!(description.is_none());
+                assert_eq!(status.as_deref(), Some("completed"));
+            } else {
+                panic!("expected Update command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
 }

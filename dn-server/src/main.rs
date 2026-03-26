@@ -222,6 +222,20 @@ struct UpdateContextBody {
 }
 
 #[derive(Deserialize)]
+struct CreateIssueBody {
+    description: String,
+    task_id: Option<String>,
+    plan: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct UpdateIssueBody {
+    description: Option<String>,
+    plan: Option<String>,
+    status: Option<String>,
+}
+
+#[derive(Deserialize)]
 struct LinkBody {
     from_id: String,
     edge: String,
@@ -763,6 +777,55 @@ async fn get_epic_context(
     Ok(Json(serde_json::to_value(ctx)?))
 }
 
+// Issues
+async fn list_issues(State(state): State<Arc<AppState>>) -> ApiResult<serde_json::Value> {
+    let issues = state.db.list_issues().await?;
+    Ok(Json(serde_json::to_value(issues)?))
+}
+
+async fn create_issue(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<CreateIssueBody>,
+) -> ApiResult<serde_json::Value> {
+    let created = state
+        .db
+        .create_issue(&body.description, body.task_id.as_deref(), body.plan.as_deref())
+        .await?;
+    Ok(Json(serde_json::to_value(created)?))
+}
+
+async fn update_issue(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<UpdateIssueBody>,
+) -> ApiResult<serde_json::Value> {
+    let status = body
+        .status
+        .as_deref()
+        .and_then(dn_core::models::IssueStatus::parse);
+    let updated = state
+        .db
+        .update_issue(&id, body.description, status, body.plan)
+        .await?;
+    Ok(Json(serde_json::to_value(updated)?))
+}
+
+async fn delete_issue(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, ApiError> {
+    let deleted = state.db.delete_issue(&id).await?;
+    if deleted {
+        Ok(StatusCode::NO_CONTENT.into_response())
+    } else {
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error":"not found"})),
+        )
+            .into_response())
+    }
+}
+
 // Link
 async fn link_nodes(
     State(state): State<Arc<AppState>>,
@@ -856,6 +919,9 @@ fn build_router(state: Arc<AppState>) -> Router {
             "/api/workflows/:id",
             patch(update_workflow).delete(delete_workflow),
         )
+        // Issues
+        .route("/api/issues", get(list_issues).post(create_issue))
+        .route("/api/issues/:id", patch(update_issue).delete(delete_issue))
         // Context
         .route("/api/contexts", post(create_context))
         .route("/api/contexts/:id", patch(update_context))
