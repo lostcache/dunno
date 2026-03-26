@@ -39,7 +39,6 @@
   const DELETE_ENDPOINTS: Record<string, string> = {
     projects: '/api/projects',
     modules: '/api/modules',
-    submodules: '/api/submodules',
     files: '/api/files',
     tasks: '/api/tasks',
     todos: '/api/todos',

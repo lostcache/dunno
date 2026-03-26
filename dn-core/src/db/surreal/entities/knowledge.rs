@@ -107,10 +107,6 @@ impl DB {
         for id in ancestry.epic_ids {
             self.link(to_context_id, "belongs_to_epic", &id).await?;
         }
-        for id in ancestry.submodule_ids {
-            self.link(to_context_id, "belongs_to_submodule", &id)
-                .await?;
-        }
         Ok(())
     }
 
@@ -122,7 +118,6 @@ impl DB {
             ("belongs_to_module", "module"),
             ("belongs_to_task", "task"),
             ("belongs_to_epic", "epic"),
-            ("belongs_to_submodule", "submodule"),
         ] {
             let ids = self
                 .record_ids_from_query(

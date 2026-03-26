@@ -29,7 +29,7 @@ impl DB {
         Ok(result)
     }
 
-    /// Creates a file, links it to a project (required), and optionally RELATEs it to a parent (module or submodule).
+    /// Creates a file, links it to a project (required), and optionally RELATEs it to a parent module.
     pub async fn create_file(
         &self,
         name: &str,
@@ -54,33 +54,9 @@ impl DB {
             .ok_or_else(|| anyhow::anyhow!("File created without ID"))?;
         self.link(fid, "belongs_to_project", project_id).await?;
         if let Some(pid) = parent_id {
-            let table = ensure_one_of_record_ids(&["module", "submodule"], pid)?;
+            ensure_one_of_record_ids(&["module"], pid)?;
             self.link(pid, "contains", fid).await?;
-            if table == "module" {
-                self.link(fid, "belongs_to_module", pid).await?;
-            } else if table == "submodule" {
-                self.link(fid, "belongs_to_submodule", pid).await?;
-                // Derive and link to the submodule's module (if any)
-                let mut response = self
-                    .client
-                    .query(
-                        "SELECT ->belongs_to_module->module.id AS mid FROM ONLY type::record($sid)",
-                    )
-                    .bind(("sid", pid.to_string()))
-                    .await?;
-                let submodule_record: Option<surrealdb::types::Value> = response.take(0)?;
-                if let Some(record) = submodule_record {
-                    let json = surreal_to_json(record);
-                    if let Some(module_id) = json
-                        .get("mid")
-                        .and_then(|m| m.as_array())
-                        .and_then(|arr| arr.first())
-                        .and_then(|v| v.as_str())
-                    {
-                        self.link(fid, "belongs_to_module", module_id).await?;
-                    }
-                }
-            }
+            self.link(fid, "belongs_to_module", pid).await?;
         }
         Ok(result)
     }
@@ -105,21 +81,6 @@ impl DB {
             "SELECT ->contains->file.* AS items FROM ONLY type::record($mid)",
             "mid",
             module_id.to_string(),
-            "items",
-        )
-        .await
-    }
-
-    /// Lists files under a submodule via graph traversal.
-    pub async fn list_files_by_submodule(
-        &self,
-        submodule_id: &str,
-    ) -> anyhow::Result<Vec<crate::models::File>> {
-        let _ = ensure_one_of_record_ids(&["submodule"], submodule_id)?;
-        self.query_graph_list(
-            "SELECT ->contains->file.* AS items FROM ONLY type::record($sid)",
-            "sid",
-            submodule_id.to_string(),
             "items",
         )
         .await
@@ -182,9 +143,6 @@ impl DB {
         // Resolve ancestry for this file
         let ancestry = self.resolve_structural_ancestry(file_id).await?;
 
-        for sid in ancestry.submodule_ids {
-            ctx.contexts.extend(self.get_linked_context(&sid).await?);
-        }
         for mid in ancestry.module_ids {
             ctx.contexts.extend(self.get_linked_context(&mid).await?);
         }
@@ -292,18 +250,14 @@ mod tests {
 
     #[test]
     fn ensure_one_of_record_ids_accepts_expected_tables() {
-        let table = ensure_one_of_record_ids(&["module", "submodule"], "module:1")
+        let table = ensure_one_of_record_ids(&["module"], "module:1")
             .expect("should accept module record id");
         assert_eq!(table, "module");
-
-        let table = ensure_one_of_record_ids(&["module", "submodule"], "submodule:1")
-            .expect("should accept submodule record id");
-        assert_eq!(table, "submodule");
     }
 
     #[test]
     fn ensure_one_of_record_ids_rejects_other_tables_or_missing_prefix() {
-        let err = ensure_one_of_record_ids(&["module", "submodule"], "project:1")
+        let err = ensure_one_of_record_ids(&["module"], "project:1")
             .expect_err("should reject project record id");
         assert!(err.to_string().contains("Expected record id"));
 

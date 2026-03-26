@@ -142,7 +142,7 @@ impl DB {
         }
     }
 
-    /// Returns the structural hierarchy of a project: all modules, their submodules, and files.
+    /// Returns the structural hierarchy of a project: all modules recursively with their files.
     pub async fn get_project_structure(
         &self,
         project_id: &str,
@@ -152,41 +152,43 @@ impl DB {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Project not found: {}", project_id))?;
 
-        let modules = self.list_modules_by_project(project_id).await?;
+        let top_modules = self.list_modules_by_project(project_id).await?;
         let mut module_structures = Vec::new();
 
-        for module in modules {
-            let module_id = module
-                .id
-                .as_ref()
-                .ok_or_else(|| anyhow::anyhow!("Module has no ID"))?;
-
-            let files = self.list_files_by_module(module_id).await?;
-            let raw_submodules = self.list_submodules_by_module(module_id).await?;
-
-            let mut submodule_structures = Vec::new();
-            for submodule in raw_submodules {
-                let submodule_id = submodule
-                    .id
-                    .as_ref()
-                    .ok_or_else(|| anyhow::anyhow!("Submodule has no ID"))?;
-                let sub_files = self.list_files_by_submodule(submodule_id).await?;
-                submodule_structures.push(crate::models::SubmoduleStructure {
-                    submodule,
-                    files: sub_files,
-                });
-            }
-
-            module_structures.push(crate::models::ModuleStructure {
-                module,
-                submodules: submodule_structures,
-                files,
-            });
+        for module in top_modules {
+            let ms = self.build_module_structure(module).await?;
+            module_structures.push(ms);
         }
 
         Ok(crate::models::ProjectStructure {
             project,
             modules: module_structures,
+        })
+    }
+
+    /// Recursively builds a ModuleStructure for a module and all its descendant modules.
+    async fn build_module_structure(
+        &self,
+        module: crate::models::Module,
+    ) -> anyhow::Result<crate::models::ModuleStructure> {
+        let module_id = module
+            .id
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Module has no ID"))?;
+
+        let files = self.list_files_by_module(module_id).await?;
+        let child_modules = self.list_modules_by_module(module_id).await?;
+
+        let mut children = Vec::new();
+        for child in child_modules {
+            let cs = Box::pin(self.build_module_structure(child)).await?;
+            children.push(cs);
+        }
+
+        Ok(crate::models::ModuleStructure {
+            module,
+            children,
+            files,
         })
     }
 

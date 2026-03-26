@@ -75,16 +75,6 @@ pub enum Commands {
         command: ModuleCommands,
     },
 
-    #[command(
-        about = "Manage submodules.",
-        visible_alias = "submod",
-        visible_alias = "sub"
-    )]
-    Submodule {
-        #[command(subcommand)]
-        command: SubmoduleCommands,
-    },
-
     #[command(about = "Manage files.", visible_alias = "f", visible_alias = "fi")]
     File {
         #[command(subcommand)]
@@ -243,6 +233,9 @@ pub enum ModuleCommands {
             conflicts_with = "project_ids"
         )]
         project: Option<String>,
+        /// Optional parent module ID (makes this a child module of an existing module).
+        #[arg(long, visible_alias = "pmid", value_name = "PARENT_MODULE_ID")]
+        parent_module_id: Option<String>,
         name: String,
         description: String,
         /// Optional notes for the module.
@@ -251,72 +244,24 @@ pub enum ModuleCommands {
     },
     #[command(name = "list", visible_alias = "ls")]
     List {
-        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
+        #[arg(long, visible_alias = "pid", conflicts_with_all = ["project", "module_id"])]
         project_id: Option<String>,
         /// Project name to filter by (alternative to --project-id).
         #[arg(
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
-            conflicts_with = "project_id"
+            conflicts_with_all = ["project_id", "module_id"]
         )]
         project: Option<String>,
-    },
-    #[command(name = "rm")]
-    Delete {
-        #[arg(required = true)]
-        module_ids: Vec<String>,
-    },
-}
-
-#[derive(clap::Subcommand, Debug)]
-pub enum SubmoduleCommands {
-    #[command(name = "add")]
-    Create {
-        /// Project ID(s) to link this submodule to (required). Repeat for multiple.
-        #[arg(
-            long,
-            visible_alias = "pids",
-            value_name = "PROJECT_ID",
-            conflicts_with = "project"
-        )]
-        project_ids: Vec<String>,
-        /// Project name to link this submodule to (alternative to --project-ids).
-        #[arg(
-            short = 'p',
-            long,
-            value_name = "PROJECT_NAME",
-            conflicts_with = "project_ids"
-        )]
-        project: Option<String>,
-        /// Module ID(s) to link this submodule to (required). Repeat for multiple.
-        #[arg(long, visible_alias = "mids", value_name = "MODULE_ID")]
-        module_ids: Vec<String>,
-        name: String,
-        description: String,
-        /// Optional notes for the submodule.
-        #[arg(long, value_name = "NOTES")]
-        notes: Option<String>,
-    },
-    #[command(name = "list", visible_alias = "ls")]
-    List {
-        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
-        project_id: Option<String>,
-        /// Project name to filter by (alternative to --project-id).
-        #[arg(
-            short = 'p',
-            long,
-            value_name = "PROJECT_NAME",
-            conflicts_with = "project_id"
-        )]
-        project: Option<String>,
-        #[arg(long, visible_alias = "mid")]
+        /// List child modules under this module ID.
+        #[arg(long, visible_alias = "mid", conflicts_with_all = ["project_id", "project"])]
         module_id: Option<String>,
     },
     #[command(name = "rm")]
     Delete {
         #[arg(required = true)]
-        submodule_ids: Vec<String>,
+        module_ids: Vec<String>,
     },
 }
 
@@ -340,7 +285,7 @@ pub enum FileCommands {
             conflicts_with = "project_ids"
         )]
         project: Option<String>,
-        /// Parent ID(s) (module or submodule). Optional. Repeat for multiple.
+        /// Parent module ID(s). Optional. Repeat for multiple.
         #[arg(long, value_name = "PARENT_ID")]
         parent_ids: Vec<String>,
         name: String,
@@ -364,10 +309,8 @@ pub enum FileCommands {
             conflicts_with = "project_id"
         )]
         project: Option<String>,
-        #[arg(long, visible_alias = "mid", conflicts_with = "submodule_id")]
+        #[arg(long, visible_alias = "mid")]
         module_id: Option<String>,
-        #[arg(long, visible_alias = "smid", conflicts_with = "module_id")]
-        submodule_id: Option<String>,
     },
     #[command(name = "rm")]
     Delete {
@@ -1366,39 +1309,6 @@ mod tests {
     }
 
     #[test]
-    fn submodule_list_accepts_project_id() {
-        let args = Args::try_parse_from(["dn", "submodule", "ls", "--project-id", "project:abc"]);
-        assert!(
-            args.is_ok(),
-            "should parse --project-id with submodule list"
-        );
-        if let Commands::Submodule { command } = args.unwrap().command {
-            if let SubmoduleCommands::List { project_id, .. } = command {
-                assert_eq!(project_id, Some("project:abc".to_string()));
-            } else {
-                panic!("expected List command");
-            }
-        } else {
-            panic!("expected Submodule command");
-        }
-    }
-
-    #[test]
-    fn submodule_list_accepts_module_id() {
-        let args = Args::try_parse_from(["dn", "submodule", "ls", "--module-id", "module:abc"]);
-        assert!(args.is_ok(), "should parse --module-id with submodule list");
-        if let Commands::Submodule { command } = args.unwrap().command {
-            if let SubmoduleCommands::List { module_id, .. } = command {
-                assert_eq!(module_id, Some("module:abc".to_string()));
-            } else {
-                panic!("expected List command");
-            }
-        } else {
-            panic!("expected Submodule command");
-        }
-    }
-
-    #[test]
     fn file_list_accepts_project_id() {
         let args = Args::try_parse_from(["dn", "file", "ls", "--project-id", "project:abc"]);
         assert!(args.is_ok(), "should parse --project-id with file list");
@@ -1420,21 +1330,6 @@ mod tests {
         if let Commands::File { command } = args.unwrap().command {
             if let FileCommands::List { module_id, .. } = command {
                 assert_eq!(module_id, Some("module:abc".to_string()));
-            } else {
-                panic!("expected List command");
-            }
-        } else {
-            panic!("expected File command");
-        }
-    }
-
-    #[test]
-    fn file_list_accepts_submodule_id() {
-        let args = Args::try_parse_from(["dn", "file", "ls", "--submodule-id", "submodule:abc"]);
-        assert!(args.is_ok(), "should parse --submodule-id with file list");
-        if let Commands::File { command } = args.unwrap().command {
-            if let FileCommands::List { submodule_id, .. } = command {
-                assert_eq!(submodule_id, Some("submodule:abc".to_string()));
             } else {
                 panic!("expected List command");
             }
@@ -1553,54 +1448,6 @@ mod tests {
     fn module_delete_command_requires_module_id() {
         let args = Args::try_parse_from(["dn", "module", "rm"]);
         assert!(args.is_err(), "should require module_id for delete command");
-    }
-
-    #[test]
-    fn submodule_delete_command_accepts_submodule_id() {
-        let args = Args::try_parse_from(["dn", "submodule", "rm", "submodule:abc123"]);
-        assert!(args.is_ok(), "should parse submodule delete command");
-        if let Commands::Submodule { command } = args.unwrap().command {
-            if let SubmoduleCommands::Delete { submodule_ids } = command {
-                assert_eq!(submodule_ids, vec!["submodule:abc123"]);
-            } else {
-                panic!("expected Delete command");
-            }
-        } else {
-            panic!("expected Submodule command");
-        }
-    }
-
-    #[test]
-    fn submodule_delete_command_accepts_multiple_ids() {
-        let args = Args::try_parse_from([
-            "dn",
-            "submodule",
-            "rm",
-            "submodule:abc123",
-            "submodule:def456",
-        ]);
-        assert!(
-            args.is_ok(),
-            "should parse submodule delete command with multiple ids"
-        );
-        if let Commands::Submodule { command } = args.unwrap().command {
-            if let SubmoduleCommands::Delete { submodule_ids } = command {
-                assert_eq!(submodule_ids, vec!["submodule:abc123", "submodule:def456"]);
-            } else {
-                panic!("expected Delete command");
-            }
-        } else {
-            panic!("expected Submodule command");
-        }
-    }
-
-    #[test]
-    fn submodule_delete_command_requires_submodule_id() {
-        let args = Args::try_parse_from(["dn", "submodule", "rm"]);
-        assert!(
-            args.is_err(),
-            "should require submodule_id for delete command"
-        );
     }
 
     #[test]
@@ -1916,118 +1763,8 @@ mod tests {
     }
 
     #[test]
-    fn submodule_commands_accepts_short_flags() {
-        // Test submodule ls with --pid and --mid aliases
-        let args = Args::try_parse_from([
-            "dn",
-            "submodule",
-            "ls",
-            "--pid",
-            "project:abc",
-            "--mid",
-            "module:def",
-        ]);
-        assert!(args.is_ok(), "should parse --pid and --mid aliases");
-        if let Commands::Submodule { command } = args.unwrap().command {
-            if let SubmoduleCommands::List {
-                project_id,
-                module_id,
-                ..
-            } = command
-            {
-                assert_eq!(project_id, Some("project:abc".to_string()));
-                assert_eq!(module_id, Some("module:def".to_string()));
-            } else {
-                panic!("expected List command");
-            }
-        } else {
-            panic!("expected Submodule command");
-        }
-
-        // Test submodule add with --mids alias
-        let args = Args::try_parse_from([
-            "dn",
-            "submodule",
-            "add",
-            "--mids",
-            "module:abc",
-            "--mids",
-            "module:def",
-            "--pids",
-            "project:xyz",
-            "OAuth",
-            "OAuth submodule",
-        ]);
-        assert!(args.is_ok(), "should parse --mids and --pids aliases");
-        if let Commands::Submodule { command } = args.unwrap().command {
-            if let SubmoduleCommands::Create {
-                module_ids,
-                project_ids,
-                ..
-            } = command
-            {
-                assert_eq!(module_ids.len(), 2);
-                assert_eq!(module_ids[0], "module:abc");
-                assert_eq!(module_ids[1], "module:def");
-                assert_eq!(project_ids.len(), 1);
-                assert_eq!(project_ids[0], "project:xyz");
-            } else {
-                panic!("expected Create command");
-            }
-        } else {
-            panic!("expected Submodule command");
-        }
-
-        // Test submodule add with -p (project name) and --mids
-        let args = Args::try_parse_from([
-            "dn",
-            "submodule",
-            "add",
-            "-p",
-            "MyProject",
-            "--mids",
-            "module:abc",
-            "JWT",
-            "JWT submodule",
-        ]);
-        assert!(args.is_ok(), "should parse -p and --mids for submodule add");
-        if let Commands::Submodule { command } = args.unwrap().command {
-            if let SubmoduleCommands::Create {
-                project,
-                module_ids,
-                ..
-            } = command
-            {
-                assert_eq!(project, Some("MyProject".to_string()));
-                assert_eq!(module_ids.len(), 1);
-                assert_eq!(module_ids[0], "module:abc");
-            } else {
-                panic!("expected Create command");
-            }
-        } else {
-            panic!("expected Submodule command");
-        }
-
-        // Test that --pids and -p conflict
-        let args = Args::try_parse_from([
-            "dn",
-            "submodule",
-            "add",
-            "--pids",
-            "project:abc",
-            "-p",
-            "MyProject",
-            "--mids",
-            "module:abc",
-            "JWT",
-            "JWT submodule",
-        ]);
-        assert!(args.is_err(), "--pids and -p should conflict");
-    }
-
-    #[test]
     fn file_commands_accepts_short_flags() {
-        // Test file ls with --pid, --mid, and --smid aliases
+        // Test file ls with --pid and --mid aliases
         let args = Args::try_parse_from([
             "dn",
             "file",
@@ -2042,26 +1779,11 @@ mod tests {
             if let FileCommands::List {
                 project_id,
                 module_id,
-                submodule_id,
                 ..
             } = command
             {
                 assert_eq!(project_id, Some("project:abc".to_string()));
                 assert_eq!(module_id, Some("module:def".to_string()));
-                assert_eq!(submodule_id, None);
-            } else {
-                panic!("expected List command");
-            }
-        } else {
-            panic!("expected File command");
-        }
-
-        // Test file ls with --smid alias
-        let args = Args::try_parse_from(["dn", "file", "ls", "--smid", "submodule:abc"]);
-        assert!(args.is_ok(), "should parse --smid alias");
-        if let Commands::File { command } = args.unwrap().command {
-            if let FileCommands::List { submodule_id, .. } = command {
-                assert_eq!(submodule_id, Some("submodule:abc".to_string()));
             } else {
                 panic!("expected List command");
             }
@@ -2302,10 +2024,6 @@ mod tests {
         let args = Args::try_parse_from(["dn", "mdl", "ls"]);
         assert!(args.is_ok(), "should parse mdl alias");
 
-        // Test submodule aliases
-        let args = Args::try_parse_from(["dn", "sub", "ls"]);
-        assert!(args.is_ok(), "should parse sub alias");
-
         // Test file aliases
         let args = Args::try_parse_from(["dn", "fi", "ls"]);
         assert!(args.is_ok(), "should parse fi alias");
@@ -2487,4 +2205,5 @@ mod tests {
             panic!("expected Issue command");
         }
     }
+
 }

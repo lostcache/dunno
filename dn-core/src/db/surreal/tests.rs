@@ -46,7 +46,7 @@ async fn test_link_context_all_levels() {
     let project_id = project.id.expect("id");
 
     let module = db
-        .create_module("M", "d", None, &project_id)
+        .create_module("M", "d", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("id");
@@ -58,7 +58,7 @@ async fn test_link_context_all_levels() {
     let task_id = task.id.expect("id");
 
     let submodule = db
-        .create_submodule("SM", "d", None, &module_id, &project_id)
+        .create_module("SM", "d", None, &project_id, Some(&module_id))
         .await
         .expect("create submodule");
     let submodule_id = submodule.id.expect("id");
@@ -144,7 +144,7 @@ async fn test_link_context_reverse_belongs_to() {
     let project_id = project.id.expect("id");
 
     let module = db
-        .create_module("M", "d", None, &project_id)
+        .create_module("M", "d", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("id");
@@ -293,7 +293,7 @@ async fn test_get_task_context() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -352,7 +352,7 @@ async fn test_list_tasks_by_project() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("crate::models::Module1", "First module", None, &project_id)
+        .create_module("crate::models::Module1", "First module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -403,7 +403,7 @@ async fn test_create_task_bidirectional_edges() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("crate::models::Module1", "First module", None, &project_id)
+        .create_module("crate::models::Module1", "First module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -447,7 +447,7 @@ async fn test_get_task_context_no_linked_knowledge() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -487,7 +487,7 @@ async fn test_get_task_context_all_knowledge_types() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -592,12 +592,12 @@ async fn test_get_task_context_under_submodule() {
         .expect("Failed to create project");
     let project_id = project.id.expect("project id");
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
     let _submodule = db
-        .create_submodule("JWT", "JWT submodule", None, &module_id, &project_id)
+        .create_module("JWT", "JWT submodule", None, &project_id, Some(&module_id))
         .await
         .expect("Failed to create submodule");
     let task = db
@@ -615,7 +615,6 @@ async fn test_get_task_context_under_submodule() {
         .await
         .expect("get_task_context failed");
     assert_eq!(context.hierarchy.module_name.as_deref(), Some("Auth"));
-    assert!(context.hierarchy.submodule.is_none());
 }
 
 #[tokio::test]
@@ -631,7 +630,7 @@ async fn test_get_task_context_files_from_module() {
         .expect("Failed to create project");
     let project_id = project.id.expect("project id");
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -687,7 +686,7 @@ async fn test_module_operations() {
         .expect("Failed to create project");
     let project_id = project.id.expect("project id");
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -716,25 +715,25 @@ async fn test_submodule_operations() {
         .expect("Failed to create project");
     let project_id = project.id.expect("project id");
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
     let submodule = db
-        .create_submodule("JWT", "JWT submodule", None, &module_id, &project_id)
+        .create_module("JWT", "JWT submodule", None, &project_id, Some(&module_id))
         .await
         .expect("Failed to create submodule");
     let submodule_id = submodule.id.expect("submodule id");
     let fetched = db
-        .get_submodule(&submodule_id)
+        .get_module(&submodule_id)
         .await
         .expect("get_submodule failed");
     assert!(fetched.is_some());
     assert_eq!(fetched.unwrap().name, "JWT");
-    let submodules = db.list_submodules().await.expect("list_submodules failed");
-    assert_eq!(submodules.len(), 1);
+    let submodules = db.list_modules().await.expect("list_submodules failed");
+    assert_eq!(submodules.len(), 2); // both the parent module and child module
     let submodules_by_module = db
-        .list_submodules_by_module(&module_id)
+        .list_modules_by_module(&module_id)
         .await
         .expect("list_submodules_by_module failed");
     assert_eq!(submodules_by_module.len(), 1);
@@ -753,7 +752,7 @@ async fn test_file_operations() {
         .expect("Failed to create project");
     let project_id = project.id.expect("project id");
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -823,7 +822,7 @@ async fn test_list_tasks_by_module() {
         .expect("Failed to create project");
     let project_id = project.id.expect("project id");
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -944,7 +943,7 @@ async fn test_create_module_with_project() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("M", "module with project", None, &project_id)
+        .create_module("M", "module with project", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("module id");
@@ -987,7 +986,7 @@ async fn test_freestanding_file() {
         .expect("create project");
     let project_id = project.id.expect("project id");
     let module = db
-        .create_module("M", "d", None, &project_id)
+        .create_module("M", "d", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("module id");
@@ -1087,7 +1086,7 @@ async fn test_link_after_create_module() {
     let project2_id = project2.id.expect("project2 id");
 
     let module = db
-        .create_module("LaterLinked", "d", None, &project1_id)
+        .create_module("LaterLinked", "d", None, &project1_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("module id");
@@ -1125,7 +1124,7 @@ async fn test_link_after_create_task_hierarchy() {
         .expect("create project");
     let project_id = project.id.expect("project id");
     let module = db
-        .create_module("M", "d", None, &project_id)
+        .create_module("M", "d", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("module id");
@@ -1167,7 +1166,7 @@ async fn test_create_with_link_ids_preserves_hierarchy() {
         .expect("create project");
     let project_id = project.id.expect("project id");
     let module = db
-        .create_module("M", "d", None, &project_id)
+        .create_module("M", "d", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("module id");
@@ -1239,7 +1238,7 @@ async fn test_update_task_name() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -1281,7 +1280,7 @@ async fn test_update_task_description() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -1325,7 +1324,7 @@ async fn test_update_task_status() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -1386,7 +1385,7 @@ async fn test_update_task_all_fields() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -1432,7 +1431,7 @@ async fn test_update_task_empty_patch_returns_current() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -1499,7 +1498,7 @@ async fn test_list_tasks_unfiltered() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -1621,13 +1620,13 @@ async fn test_list_files_by_submodule() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
 
     let submodule = db
-        .create_submodule("OAuth", "OAuth submodule", None, &module_id, &project_id)
+        .create_module("OAuth", "OAuth submodule", None, &project_id, Some(&module_id))
         .await
         .expect("Failed to create submodule");
     let submodule_id = submodule.id.expect("submodule id");
@@ -1659,7 +1658,7 @@ async fn test_list_files_by_submodule() {
     let _file2_id = file2.id.expect("file id");
 
     let files_by_submodule = db
-        .list_files_by_submodule(&submodule_id)
+        .list_files_by_module(&submodule_id)
         .await
         .expect("Failed to list files by submodule");
 
@@ -1945,7 +1944,7 @@ async fn test_user_story_task_linking() {
     let project_id = project.id.expect("id");
 
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("id");
@@ -2006,16 +2005,10 @@ async fn test_user_story_module_linking() {
     let project_id = project.id.expect("id");
 
     let module = db
-        .create_module("Core", "Core module", None, &project_id)
+        .create_module("Core", "Core module", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("id");
-
-    let submodule = db
-        .create_submodule("Utils", "Utils submodule", None, &module_id, &project_id)
-        .await
-        .expect("create submodule");
-    let submodule_id = submodule.id.expect("id");
 
     let user_story = db
         .create_user_story(
@@ -2032,11 +2025,6 @@ async fn test_user_story_module_linking() {
         .await
         .expect("link module to user story");
 
-    // Link submodule to user story
-    db.link_submodule_to_user_story(&submodule_id, &us_id)
-        .await
-        .expect("link submodule to user story");
-
     // Verify module link
     let modules = db
         .list_modules_by_user_story(&us_id)
@@ -2045,26 +2033,12 @@ async fn test_user_story_module_linking() {
     assert_eq!(modules.len(), 1);
     assert_eq!(modules[0].name, "Core");
 
-    // Verify submodule link
-    let submodules = db
-        .list_submodules_by_user_story(&us_id)
-        .await
-        .expect("list submodules by user story");
-    assert_eq!(submodules.len(), 1);
-    assert_eq!(submodules[0].name, "Utils");
-
-    // Verify reverse lookups
+    // Verify reverse lookup
     let stories_from_module = db
         .list_user_stories_by_module(&module_id)
         .await
         .expect("list user stories by module");
     assert_eq!(stories_from_module.len(), 1);
-
-    let stories_from_submodule = db
-        .list_user_stories_by_submodule(&submodule_id)
-        .await
-        .expect("list user stories by submodule");
-    assert_eq!(stories_from_submodule.len(), 1);
 }
 
 #[tokio::test]
@@ -2178,7 +2152,7 @@ async fn test_epic_task_linking() {
     let project_id = project.id.expect("id");
 
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("id");
@@ -2291,7 +2265,7 @@ async fn test_get_task_context_with_files_and_linked_context() {
 
     // Create module with context (this should NOT appear in task context)
     let module = db
-        .create_module("Auth", "Auth module", None, &project_id)
+        .create_module("Auth", "Auth module", None, &project_id, None)
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -2434,7 +2408,6 @@ async fn test_get_task_context_with_files_and_linked_context() {
     // Verify hierarchy is correct
     assert_eq!(context.hierarchy.project_id, project_id);
     assert_eq!(context.hierarchy.module_id.as_deref(), Some(module_id.as_str()));
-    assert!(context.hierarchy.submodule.is_none());
 }
 
 #[tokio::test]
@@ -2454,33 +2427,33 @@ async fn test_list_submodules_by_project() {
 
     // Create module linked to project
     let module = db
-        .create_module("M", "d", None, &project_id)
+        .create_module("M", "d", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("id");
 
     // Create submodule linked to module
     let submodule = db
-        .create_submodule("S", "d", None, &module_id, &project_id)
+        .create_module("S", "d", None, &project_id, Some(&module_id))
         .await
         .expect("create submodule");
     let submodule_id = submodule.id.expect("id");
 
-    // List all submodules (should include the created one)
-    let all = db.list_submodules().await.expect("list_submodules");
-    assert_eq!(all.len(), 1);
+    // List all modules (parent + child)
+    let all = db.list_modules().await.expect("list_submodules");
+    assert_eq!(all.len(), 2);
 
-    // List submodules by project (should find the submodule)
+    // List modules by project returns only top-level modules (M, not S)
     let by_project = db
-        .list_submodules_by_project(&project_id)
+        .list_modules_by_project(&project_id)
         .await
         .expect("list_submodules_by_project");
     assert_eq!(by_project.len(), 1);
-    assert_eq!(by_project[0].id, Some(submodule_id.clone()));
+    assert_eq!(by_project[0].id, Some(module_id.clone()));
 
     // List submodules by module (should find the submodule)
     let by_module = db
-        .list_submodules_by_module(&module_id)
+        .list_modules_by_module(&module_id)
         .await
         .expect("list_submodules_by_module");
     assert_eq!(by_module.len(), 1);
@@ -2504,14 +2477,14 @@ async fn test_list_files_by_project() {
 
     // Create module linked to project
     let module = db
-        .create_module("M", "d", None, &project_id)
+        .create_module("M", "d", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("id");
 
     // Create submodule linked to module
     let submodule = db
-        .create_submodule("S", "d", None, &module_id, &project_id)
+        .create_module("S", "d", None, &project_id, Some(&module_id))
         .await
         .expect("create submodule");
     let submodule_id = submodule.id.expect("id");
@@ -2565,7 +2538,7 @@ async fn test_list_files_by_project() {
 
     // List files by submodule (should find file2)
     let by_submodule = db
-        .list_files_by_submodule(&submodule_id)
+        .list_files_by_module(&submodule_id)
         .await
         .expect("list_files_by_submodule");
     assert_eq!(by_submodule.len(), 1);
@@ -2589,7 +2562,7 @@ async fn test_module_belongs_to_project_edge() {
 
     // Create module linked to project
     let module = db
-        .create_module("M", "d", None, &project_id)
+        .create_module("M", "d", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("id");
@@ -2629,14 +2602,14 @@ async fn test_submodule_belongs_to_edges() {
 
     // Create module linked to project
     let module = db
-        .create_module("M", "d", None, &project_id)
+        .create_module("M", "d", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("id");
 
     // Create submodule linked to module
     let submodule = db
-        .create_submodule("S", "d", None, &module_id, &project_id)
+        .create_module("S", "d", None, &project_id, Some(&module_id))
         .await
         .expect("create submodule");
     let submodule_id = submodule.id.expect("id");
@@ -2693,7 +2666,7 @@ async fn test_file_belongs_to_edges() {
 
     // Create module linked to project
     let module = db
-        .create_module("M", "d", None, &project_id)
+        .create_module("M", "d", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("id");
@@ -2764,14 +2737,14 @@ async fn test_file_belongs_to_edges_with_submodule() {
 
     // Create module linked to project
     let module = db
-        .create_module("M", "d", None, &project_id)
+        .create_module("M", "d", None, &project_id, None)
         .await
         .expect("create module");
     let module_id = module.id.expect("id");
 
     // Create submodule linked to module
     let submodule = db
-        .create_submodule("S", "d", None, &module_id, &project_id)
+        .create_module("S", "d", None, &project_id, Some(&module_id))
         .await
         .expect("create submodule");
     let submodule_id = submodule.id.expect("id");
@@ -2790,24 +2763,7 @@ async fn test_file_belongs_to_edges_with_submodule() {
         .expect("create file");
     let file_id = file.id.expect("id");
 
-    // Verify file has belongs_to_submodule edge
-    let mut response = db
-        .client
-        .query("SELECT ->belongs_to_submodule->submodule.id AS sid FROM ONLY type::record($fid)")
-        .bind(("fid", file_id.clone()))
-        .await
-        .expect("query");
-    let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
-    let json = crate::db::surreal::util::surreal_to_json(record.expect("record"));
-    let found_submodule_id = json
-        .get("sid")
-        .and_then(|s| s.as_array())
-        .and_then(|arr| arr.first())
-        .and_then(|v| v.as_str())
-        .expect("submodule id");
-    assert_eq!(found_submodule_id, submodule_id);
-
-    // Verify file has belongs_to_module edge (cascaded from submodule)
+    // Verify file has belongs_to_module edge (direct link to child module)
     let mut response = db
         .client
         .query("SELECT ->belongs_to_module->module.id AS mid FROM ONLY type::record($fid)")
@@ -2822,7 +2778,7 @@ async fn test_file_belongs_to_edges_with_submodule() {
         .and_then(|arr| arr.first())
         .and_then(|v| v.as_str())
         .expect("module id");
-    assert_eq!(found_module_id, module_id);
+    assert_eq!(found_module_id, submodule_id); // file links directly to child module
 
     // Verify file has belongs_to_project edge (cascaded from submodule)
     let mut response = db
@@ -2888,7 +2844,7 @@ async fn test_context_inheritance_module() {
         .await
         .unwrap();
     let pid = p.id.unwrap();
-    let m = db.create_module("m", "d", None, &pid).await.unwrap();
+    let m = db.create_module("m", "d", None, &pid, None).await.unwrap();
     let mid = m.id.unwrap();
 
     let p_ctx = db
@@ -2937,10 +2893,10 @@ async fn test_context_inheritance_submodule() {
         .await
         .unwrap();
     let pid = p.id.unwrap();
-    let m = db.create_module("m", "d", None, &pid).await.unwrap();
+    let m = db.create_module("m", "d", None, &pid, None).await.unwrap();
     let mid = m.id.unwrap();
     let s = db
-        .create_submodule("s", "d", None, &mid, &pid)
+        .create_module("s", "d", None, &pid, Some(&mid))
         .await
         .unwrap();
     let sid = s.id.unwrap();
@@ -2980,7 +2936,7 @@ async fn test_context_inheritance_submodule() {
         .await
         .unwrap();
 
-    let contexts = db.get_submodule_context(&sid, true).await.unwrap();
+    let contexts = db.get_module_context(&sid, true).await.unwrap();
 
     assert_eq!(contexts.len(), 3);
     let contents: Vec<String> = contexts
@@ -3005,20 +2961,18 @@ async fn test_context_inheritance_task() {
         .await
         .unwrap();
     let pid = p.id.unwrap();
-    let m = db.create_module("m", "d", None, &pid).await.unwrap();
+    let m = db.create_module("m", "d", None, &pid, None).await.unwrap();
     let mid = m.id.unwrap();
     let s = db
-        .create_submodule("s", "d", None, &mid, &pid)
+        .create_module("s", "d", None, &pid, Some(&mid))
         .await
         .unwrap();
     let sid = s.id.unwrap();
     let t = db
-        .create_task("t", "d", Some(&mid), Some(&pid))
+        .create_task("t", "d", Some(&sid), Some(&pid))
         .await
         .unwrap();
     let tid = t.id.unwrap();
-    db.link(&sid, "contains", &tid).await.unwrap();
-    db.link(&tid, "belongs_to_submodule", &sid).await.unwrap();
 
     let p_ctx = db
         .create_context(&crate::models::Context {
@@ -3109,7 +3063,7 @@ async fn test_context_inheritance_file() {
         .await
         .unwrap();
     let pid = p.id.unwrap();
-    let m = db.create_module("m", "d", None, &pid).await.unwrap();
+    let m = db.create_module("m", "d", None, &pid, None).await.unwrap();
     let mid = m.id.unwrap();
     let f = db
         .create_file("f", "src/f.rs", None, None, &pid, Some(&mid))
@@ -3234,7 +3188,7 @@ async fn test_task_ctx_full_includes_persona_workflow() {
         .await
         .unwrap();
     let pid = p.id.unwrap();
-    let m = db.create_module("mod", "d", None, &pid).await.unwrap();
+    let m = db.create_module("mod", "d", None, &pid, None).await.unwrap();
     let mid = m.id.unwrap();
     let t = db
         .create_task("task", "d", Some(&mid), Some(&pid))

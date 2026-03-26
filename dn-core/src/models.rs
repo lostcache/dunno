@@ -68,16 +68,6 @@ pub struct Module {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct Submodule {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
-    pub name: String,
-    pub description: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub notes: Option<String>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct File {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -153,18 +143,11 @@ pub struct Context {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct SubmoduleInfo {
-    pub id: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct TaskHierarchy {
     pub project_id: String,
     pub project_name: String,
     pub module_id: Option<String>,
     pub module_name: Option<String>,
-    pub submodule: Option<SubmoduleInfo>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -192,15 +175,9 @@ pub struct ProjectContext {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct SubmoduleStructure {
-    pub submodule: Submodule,
-    pub files: Vec<File>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct ModuleStructure {
     pub module: Module,
-    pub submodules: Vec<SubmoduleStructure>,
+    pub children: Vec<ModuleStructure>,
     pub files: Vec<File>,
 }
 
@@ -213,12 +190,6 @@ pub struct ProjectStructure {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct ModuleContext {
     pub module: Module,
-    pub contexts: Vec<Context>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct SubmoduleContext {
-    pub submodule: Submodule,
     pub contexts: Vec<Context>,
 }
 
@@ -299,18 +270,6 @@ mod tests {
         };
         let json = to_string(&module).expect("Failed to serialize Module");
         assert!(json.contains("Core module"));
-    }
-
-    #[test]
-    fn test_submodule_model() {
-        let submodule = Submodule {
-            id: None,
-            name: "Lexer".to_string(),
-            description: "Lexer submodule".to_string(),
-            notes: None,
-        };
-        let json = to_string(&submodule).expect("Failed to serialize Submodule");
-        assert!(json.contains("Lexer submodule"));
     }
 
     #[test]
@@ -440,7 +399,6 @@ mod tests {
                 project_name: "proj".to_string(),
                 module_id: Some("module:1".to_string()),
                 module_name: Some("mod".to_string()),
-                submodule: None,
             },
         };
         let json = to_string(&task_ctx).expect("serialize");

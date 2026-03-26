@@ -146,20 +146,6 @@ impl DB {
         .await
     }
 
-    /// Lists submodules linked to a user story.
-    pub async fn list_submodules_by_user_story(
-        &self,
-        user_story_id: &str,
-    ) -> anyhow::Result<Vec<crate::models::Submodule>> {
-        self.query_graph_list(
-            "SELECT ->has_submodule->submodule.* AS items FROM ONLY type::record($usid)",
-            "usid",
-            user_story_id.to_string(),
-            "items",
-        )
-        .await
-    }
-
     /// Lists user stories linked to a module.
     pub async fn list_user_stories_by_module(
         &self,

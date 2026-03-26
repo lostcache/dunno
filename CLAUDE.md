@@ -21,16 +21,17 @@ dn organizes knowledge in a graph with two parallel structural paths:
 ### Code Structure Path
 
 ```
-Project -> Module -> Submodule (optional) -> File/s (path)
+Project -> Module -> Module -> ... -> File/s (path)
 ```
+
+Modules nest recursively to any depth. A child module is created with `--parent-module-id`.
 
 ### Entities
 
 Knowledge can be attached to any structural node:
 
 - **Project**: High-level knowledge applicable to entire codebase
-- **Module**: Knowledge specific to a functional area (e.g., auth, api, utils)
-- **Submodule**: Knowledge for nested components (e.g., auth/jwt, auth/session)
+- **Module**: Knowledge specific to a functional area (e.g., auth, api, utils) or nested component (e.g., auth/jwt). Modules can contain child modules.
 - **File**: Knowledge tied to specific files
 - **Task**: Knowledge related to specific work items
 - **User Story**: Knowledge related to specific user stories
@@ -41,22 +42,19 @@ Knowledge can be attached to any structural node:
 
 ### Edges
 
-- `contains` - Parent contains child (project->module, module->submodule, module->file, submodule->file)
+- `contains` - Parent contains child (project->module, module->module, module->file)
 - `has_task` - Parent has task (project->task, user_story->task, epic->task)
-- `has_context` - Node has knowledge (project, module, submodule, task, epic, file -> context)
-- `belongs_to_project` - Child belongs to project (task, context, user_story, epic, file, persona, workflow -> project)
-- `belongs_to_module` - Child belongs to module (task, context, file -> module)
-- `belongs_to_submodule` - Child belongs to submodule (context, file -> submodule)
+- `has_context` - Node has knowledge (project, module, task, epic, file -> context)
+- `belongs_to_project` - Child belongs to project (task, context, user_story, epic, file, module, persona, workflow -> project)
+- `belongs_to_module` - Child belongs to parent module (task, context, file, module -> module)
 - `belongs_to_story` - Child belongs to user story (task -> user_story)
-- `belongs_to_user_story` - Child belongs to user story (module, submodule -> user_story)
+- `belongs_to_user_story` - Child belongs to user story (module -> user_story)
 - `belongs_to_epic` - Child belongs to epic (user_story, task -> epic)
 - `has_user_story` - Parent has user story (project, epic -> user_story)
 - `has_epic` - Parent has epic (project -> epic)
 - `has_todo` - Parent has todo (project -> todo_item)
 - `has_persona` - Parent has persona (project -> persona)
 - `has_workflow` - Parent has workflow (project -> workflow)
-- `has_module` - Parent has module (user_story -> module)
-- `has_submodule` - Parent has submodule (user_story -> submodule)
 
 ---
 
@@ -73,12 +71,12 @@ Knowledge can be attached to any structural node:
 
 1. Create a new project
    - `dn project create "ProjectName" "Description"`
-2. Read the codebase for all the modules and submodules, create them and link to the respective project and module.
-   - `dn module create --project-ids <project_id> "ModuleName" "Description"`
-   - `dn submodule add --project-ids <project_id> --module-ids <module_id> "SubmoduleName" "Description"`
-3. Create the file nodes with description and link to the respective project (required) and module/submodule (optional).
-   - `dn file add --project-ids <project_id> --parent-ids <module_or_submodule_id> "FileName" "Path" "Description"`
-   - `dn file add --project-ids <project_id> "FileName" "Path" "Description"` (no module/submodule)
+2. Read the codebase for all the modules and nested modules, create them and link to the respective project and parent module.
+   - `dn module add --project-ids <project_id> "ModuleName" "Description"`
+   - `dn module add --project-ids <project_id> --parent-module-id <parent_module_id> "ChildModuleName" "Description"`
+3. Create the file nodes with description and link to the respective project (required) and module (optional).
+   - `dn file add --project-ids <project_id> --parent-ids <module_id> "FileName" "Path" "Description"`
+   - `dn file add --project-ids <project_id> "FileName" "Path" "Description"` (no module)
 
 ## Initializing a task
 
@@ -95,7 +93,7 @@ Knowledge can be attached to any structural node:
    their approval **to create the task** (not to implement it).
    - _CRITICAL:_ Even if the user explicitly says "create a task for X", you MUST present your research and get approval first. NEVER run the `dn task add` command without
      explicit user confirmation of your plan.
-6. **After explicit approval**, create a task node and link to the relevant project, module/submodule and files.
+6. **After explicit approval**, create a task node and link to the relevant project, module and files.
    - `dn task add --project-ids <project_id> "Task Name" "<THE_ENTIRE_MULTILINE_APPROVED_PLAN_VERBATIM>"`
    - _CRITICAL:_ Do NOT summarize the plan. You MUST pass the full, multi-line implementation plan that was approved by the user as the description argument.
    - _CRITICAL:_ "Making a task" or "creating a task" means running `dn task add` ONLY.
@@ -117,20 +115,38 @@ When asked to "fetch a task" or "work on a task":
 
 ## Working on a task
 
-1. Before working on a task, query the context with `dn ctx --task-id <id> --full` to see the inherited context.
-2. **MANDATORY:** If the context includes a `persona`, you MUST fully adopt it for the entire task — tone, verbosity, tool usage rules, response style, and all behavioural instructions. The persona overrides your defaults. If the context includes a `workflow`, follow it exactly.
-3. Mark the task as in progress.
-4. **MANDATORY**: After completing the task, if the code architecture requires updating the database, do so using `dn` cli tool wihtout fail.
-5. When done, mark it as completed.
+1. Before working on a task, query the context with `dn ctx --task-id <task:id> --full` to see the inherited context.
+2. **MANDATORY:** If the context includes a `persona`, you MUST fully adopt it for the entire task — tone, verbosity, tool usage rules, response style, and all behavioural instructions. The persona overrides your defaults.
+3. If the context includes a `workflow`, follow it exactly.
+4. Mark the task as in progress.
+5. **MANDATORY**: After completing the task, if the code architecture requires updating the database, do so using `dn` cli tool wihtout fail.
+6. When done, mark it as completed.
+
+## Working on an Issue
+
+1. List issues to find what needs attention.
+   - `dn issue ls` — all issues
+   - `dn issue ls --task-id <task_id>` — issues for a specific task
+2. Create an issue and optionally link it to a task with a resolution plan.
+   - `dn issue add --task-id <task_id> --plan "<plan>" "<title>" "<description>"`
+   - `dn issue add "<title>" "<description>"` (standalone, no task link)
+3. Mark the issue active when you begin work.
+   - `dn issue update <issue_id> --status active`
+4. Update the plan as investigation progresses.
+   - `dn issue update <issue_id> --plan "<updated plan>"`
+5. Mark the issue completed when resolved.
+   - `dn issue update <issue_id> --status completed`
+
+Issue status values: `pending` (default on creation), `active`, `completed`.
 
 ## Context/Knowledge capture during working on a task
 
-1. while working on a task capture the knowledge/context and link to the relevant and appropriate node task, module/submodule, project or file.
+1. while working on a task capture the knowledge/context and link to the relevant and appropriate node task, module, project or file.
    - `dn add --field type --value <type> --field content --value "<content>" --link-to <node_id>`
 
 ### Learning Extraction
 
-When discovering non-obvious and non-recorded information, add it to dn with appropriate type and link it to appropriate `package/module/submodule` node.
+When discovering non-obvious and non-recorded information, add it to dn with appropriate type and link it to appropriate `package/module` node.
 
 #### **What counts as a learning:**
 

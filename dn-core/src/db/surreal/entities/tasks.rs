@@ -177,21 +177,20 @@ impl DB {
         })
     }
 
-    /// Gets full inherited context for a task (Project -> Module -> Submodule -> Task).
+    /// Gets full inherited context for a task (Project -> Module(s) -> Task).
     pub async fn get_task_context_full(
         &self,
         task_id: &str,
     ) -> anyhow::Result<crate::models::TaskContext> {
         let mut ctx = self.get_task_context_node(task_id).await?;
 
-        if let Some(sub) = &ctx.hierarchy.submodule {
-            ctx.contexts.extend(self.get_linked_context(&sub.id).await?);
-        }
         if let Some(mid) = &ctx.hierarchy.module_id.clone() {
-            ctx.contexts.extend(self.get_linked_context(mid).await?);
+            // Walk up the full module chain (child → parent → ... → project)
+            ctx.contexts.extend(self.get_module_context_full(mid).await?);
+        } else {
+            ctx.contexts
+                .extend(self.get_linked_context(&ctx.hierarchy.project_id).await?);
         }
-        ctx.contexts
-            .extend(self.get_linked_context(&ctx.hierarchy.project_id).await?);
 
         // Deduplicate contexts by ID
         let mut seen = std::collections::HashSet::new();
@@ -278,50 +277,15 @@ impl DB {
             })
             .unwrap_or((None, None));
 
-        let submodule = self.get_submodule_under_module(task_id).await?;
-
         Ok(crate::models::TaskHierarchy {
             project_id: project_id.to_string(),
             project_name,
             module_id,
             module_name,
-            submodule,
         })
     }
 
-    /// Gets the submodule if the task belongs to one.
-    pub(crate) async fn get_submodule_under_module(
-        &self,
-        task_id: &str,
-    ) -> anyhow::Result<Option<crate::models::SubmoduleInfo>> {
-        let mut response = self
-            .client
-            .query(
-                "SELECT ->belongs_to_submodule->submodule.* AS submodule FROM ONLY type::record($tid)",
-            )
-            .bind(("tid", task_id.to_string()))
-            .await?;
-        let result: Option<surrealdb::types::Value> = response.take(0)?;
-        let json = surreal_to_json(result.ok_or_else(|| anyhow::anyhow!("Query failed"))?);
-        if let Some(serde_json::Value::Array(arr)) = json.get("submodule") {
-            if let Some(sub) = arr.first() {
-                let id = sub
-                    .get("id")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow::anyhow!("Submodule missing id"))?
-                    .to_string();
-                let name = sub
-                    .get("name")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                return Ok(Some(crate::models::SubmoduleInfo { id, name }));
-            }
-        }
-        Ok(None)
-    }
-
-    /// Fetches all context records linked to a structural node (project, task, module, submodule).
+    /// Fetches all context records linked to a structural node (project, task, module).
     pub(crate) async fn get_linked_context(
         &self,
         structural_id: &str,
@@ -411,7 +375,7 @@ mod tests {
         let project_id = project.id.expect("project id");
 
         let module = db
-            .create_module("Auth", "Auth module", None, &project_id)
+            .create_module("Auth", "Auth module", None, &project_id, None)
             .await
             .expect("Failed to create module");
         let module_id = module.id.expect("module id");
@@ -483,7 +447,7 @@ mod tests {
         let project_id = project.id.expect("project id");
 
         let module = db
-            .create_module("Auth", "Auth module", None, &project_id)
+            .create_module("Auth", "Auth module", None, &project_id, None)
             .await
             .expect("Failed to create module");
         let module_id = module.id.expect("module id");
@@ -552,7 +516,7 @@ mod tests {
         let project_id = project.id.unwrap();
 
         let module = db
-            .create_module("core", "core module", None, &project_id)
+            .create_module("core", "core module", None, &project_id, None)
             .await
             .expect("create module");
         let module_id = module.id.unwrap();
@@ -601,7 +565,7 @@ mod tests {
         let project_id = project.id.unwrap();
 
         let module = db
-            .create_module("core", "core module", None, &project_id)
+            .create_module("core", "core module", None, &project_id, None)
             .await
             .expect("create module");
         let module_id = module.id.unwrap();

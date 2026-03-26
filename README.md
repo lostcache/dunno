@@ -104,8 +104,8 @@ dn module add --pids project:abc "Auth" "Authentication system"
 # Or using project name
 dn module add -p "My App" "Auth" "Authentication system"
 
-# Create a submodule (both project and module required)
-dn submodule add --pids project:abc --mids module:def "JWT" "JWT handling"
+# Create a child module (nested under a parent module)
+dn module add --pids project:abc --parent-module-id module:def "JWT" "JWT handling"
 
 # Create a task
 dn task add --mids module:def -p "My App" "Implement login" "Add JWT authentication"
@@ -213,10 +213,12 @@ dn [FLAGS] <COMMAND>
 #### Hierarchy
 
 ```
-Project → Module → Submodule (optional) → File
+Project → Module → Module → ... → File
 Project → Module → Task
 Project → Epic → User Story → Task
 ```
+
+Modules nest recursively to any depth. Use `--parent-module-id` to create a child module.
 
 Knowledge can be attached to any node. When retrieving context with `--full`, knowledge is inherited from all ancestors.
 
@@ -247,18 +249,11 @@ dn project ls
 ```bash
 dn module add {--pids|--project-ids} <pid> "<name>" "<desc>" [--notes <notes>]
 dn module add {-p|--project} "<project_name>" "<name>" "<desc>"
+dn module add --pids <pid> --parent-module-id <mid> "<name>" "<desc>"   # child module
 dn module ls
 dn module ls {--pid|--project-id} <id>
 dn module ls {-p|--project} "<project_name>"
-```
-
-#### Submodule
-
-```bash
-dn submodule add --pids <pid> --mids <mid> "<name>" "<desc>" [--notes <notes>]
-dn submodule ls
-dn submodule ls {--mid|--module-id} <id>
-dn submodule ls {--pid|--project-id} <id>
+dn module ls {--mid|--module-id} <id>   # list child modules of a module
 ```
 
 #### Task
@@ -278,11 +273,10 @@ dn task rm <id>
 
 ```bash
 dn file add --pids <pid> "<name>" "<path>" ["<desc>"] [--notes <notes>]
-dn file add --pids <pid> --parent-ids <module_or_submodule_id> "<name>" "<path>"
+dn file add --pids <pid> --parent-ids <module_id> "<name>" "<path>"
 dn file ls
 dn file ls {--pid|--project-id} <id>
 dn file ls {--mid|--module-id} <id>
-dn file ls {--smid|--submodule-id} <id>
 ```
 
 #### User Story
@@ -330,10 +324,14 @@ dn todo rm <id>
 ```bash
 dn issue add "<title>" "<description>"
 dn issue add --task-id <task_id> "<title>" "<description>"
+dn issue add --task-id <task_id> --plan "<plan>" "<title>" "<description>"
+dn issue update <id> [--title <title>] [--description <desc>] [--plan <plan>] [--status <status>]
 dn issue ls
 dn issue ls --task-id <task_id>
 dn issue rm <id> [<id> ...]
 ```
+
+Issue status values: `pending` (default), `active`, `completed`.
 
 #### Knowledge
 
@@ -380,7 +378,7 @@ dn link -f file:abc -e belongs_to_task -t task:ghi
 | `--project-ids`    | `--pids`  |
 | `--module-id`      | `--mid`   |
 | `--module-ids`     | `--mids`  |
-| `--submodule-id`   | `--smid`  |
+| `--parent-module-id` | `--pmid` |
 | `--task-id`        | `--tid`   |
 | `--file-id`        | `--fid`   |
 | `--epic-id`        | `--eid`   |
@@ -394,7 +392,6 @@ dn link -f file:abc -e belongs_to_task -t task:ghi
 | ------------ | --------------- |
 | `project`    | `proj`, `prj`   |
 | `module`     | `mod`, `mdl`    |
-| `submodule`  | `submod`, `sub` |
 | `file`       | `f`, `fi`       |
 | `task`       | `t`, `tk`       |
 | `user-story` | `us`, `story`   |
@@ -425,6 +422,25 @@ dn add -f type -v mistake \
   -f content -v "MutexGuard across await causes deadlock" \
   -f solution -v "Use tokio::sync::Mutex instead" \
   --ln task:ghi
+```
+
+**Working on an issue:**
+
+```bash
+# 1. List open issues (optionally filter by task)
+dn issue ls --task-id task:abc
+
+# 2. Create an issue and record a resolution plan
+dn issue add --task-id task:abc --plan "Investigate token expiry logic in auth module" "Token expiry bug" "Tokens expire 10 min too early"
+
+# 3. Mark it active when you start
+dn issue update issue:xyz --status active
+
+# 4. Update the plan as you learn more
+dn issue update issue:xyz --plan "Root cause: clock skew between services. Fix: use UTC everywhere."
+
+# 5. Mark it completed when resolved
+dn issue update issue:xyz --status completed
 ```
 
 **Getting context before a code review:**
@@ -465,7 +481,7 @@ dunno/
 The shared library consumed by both `dn` and `dn-server`. Contains:
 
 - `config.rs` — Layered config loading (defaults → env → global → local → CLI)
-- `models.rs` — All entity types (Project, Module, Submodule, File, Task, Epic, UserStory, Context, Todo, Persona, Workflow)
+- `models.rs` — All entity types (Project, Module, File, Task, Epic, UserStory, Context, Todo, Persona, Workflow)
 - `db/surreal/` — SurrealDB implementation: connection, CRUD per entity, context queries, graph queries
 - `context.rs` — Context retrieval orchestration
 - `ingest.rs` — Schemaless knowledge ingestion
@@ -581,8 +597,7 @@ Unit tests use in-memory SurrealDB (`mem://`) and don't require a running server
 | Entity    | Record ID Pattern | Description                 |
 | --------- | ----------------- | --------------------------- |
 | Project   | `project:<id>`    | Top-level container         |
-| Module    | `module:<id>`     | Code organization unit      |
-| Submodule | `submodule:<id>`  | Nested code unit            |
+| Module    | `module:<id>`     | Code organization unit (nests recursively) |
 | File      | `file:<id>`       | Source file reference       |
 | Task      | `task:<id>`       | Work item                   |
 | Epic      | `epic:<id>`       | Large feature group         |
@@ -595,24 +610,23 @@ Unit tests use in-memory SurrealDB (`mem://`) and don't require a running server
 
 #### Graph Relations
 
-| Edge                    | From                                                     | To                      | Purpose                |
-| ----------------------- | -------------------------------------------------------- | ----------------------- | ---------------------- |
-| `contains`              | project, module, submodule                               | module, submodule, file | Structural containment |
-| `has_task`              | project, epic, user_story                                | task                    | Task assignment        |
-| `has_context`           | project, task, module, submodule, epic, file             | context                 | Knowledge linking      |
-| `has_user_story`        | project, epic                                            | user_story              | Story grouping         |
-| `has_epic`              | project                                                  | epic                    | Epic grouping          |
-| `has_todo`              | project                                                  | todo_item               | Todo tracking          |
-| `has_persona`           | project                                                  | persona                 | Persona grouping       |
-| `has_workflow`          | project                                                  | workflow                | Workflow grouping      |
-| `belongs_to_project`    | task, context, user_story, epic, file, persona, workflow | project                 | Reverse link           |
-| `belongs_to_module`     | task, context, file                                      | module                  | Reverse link           |
-| `belongs_to_submodule`  | context, file                                            | submodule               | Reverse link           |
-| `belongs_to_story`      | task                                                     | user_story              | Reverse link           |
-| `belongs_to_user_story` | module, submodule                                        | user_story              | Reverse link           |
-| `belongs_to_epic`       | user_story, task                                         | epic                    | Reverse link           |
-| `has_issue`             | task                                                     | issue                   | Issue tracking         |
-| `belongs_to_task`       | file, context, issue                                     | task                    | Reverse link           |
+| Edge                    | From                                                     | To          | Purpose                |
+| ----------------------- | -------------------------------------------------------- | ----------- | ---------------------- |
+| `contains`              | project, module                                          | module, file | Structural containment |
+| `has_task`              | project, epic, user_story                                | task        | Task assignment        |
+| `has_context`           | project, task, module, epic, file                        | context     | Knowledge linking      |
+| `has_user_story`        | project, epic                                            | user_story  | Story grouping         |
+| `has_epic`              | project                                                  | epic        | Epic grouping          |
+| `has_todo`              | project                                                  | todo_item   | Todo tracking          |
+| `has_persona`           | project                                                  | persona     | Persona grouping       |
+| `has_workflow`          | project                                                  | workflow    | Workflow grouping      |
+| `belongs_to_project`    | task, context, user_story, epic, file, module, persona, workflow | project | Reverse link      |
+| `belongs_to_module`     | task, context, file, module                              | module      | Reverse link (module→parent for child modules) |
+| `belongs_to_story`      | task                                                     | user_story  | Reverse link           |
+| `belongs_to_user_story` | module                                                   | user_story  | Reverse link           |
+| `belongs_to_epic`       | user_story, task                                         | epic        | Reverse link           |
+| `has_issue`             | task                                                     | issue       | Issue tracking         |
+| `belongs_to_task`       | file, context, issue                                     | task        | Reverse link           |
 
 ---
 

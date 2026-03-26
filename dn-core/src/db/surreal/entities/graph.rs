@@ -10,7 +10,6 @@ impl DB {
         let node_tables: &[(&str, &str)] = &[
             ("project", "name"),
             ("module", "name"),
-            ("submodule", "name"),
             ("file", "name"),
             ("task", "name"),
             ("todo_item", "content"),
@@ -69,13 +68,10 @@ impl DB {
             "has_task",
             "belongs_to_project",
             "belongs_to_module",
-            "belongs_to_submodule",
             "has_context",
             "has_todo",
             "has_user_story",
             "belongs_to_story",
-            "has_module",
-            "has_submodule",
             "belongs_to_user_story",
             "has_epic",
             "belongs_to_epic",
@@ -232,61 +228,27 @@ impl DB {
             }
         }
 
-        // contains WHERE in = pid → out values (modules)
-        let mut module_ids: Vec<String> = Vec::new();
-        if let Ok(mut res) = self
-            .client
-            .query("SELECT out FROM contains WHERE in = type::record($pid)")
-            .bind(("pid", project_id.to_string()))
-            .await
-        {
-            let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
-            for row in rows {
-                let json = surreal_to_json(row);
-                if let Some(id) = json.get("out").and_then(|v| v.as_str()) {
-                    module_ids.push(id.to_string());
-                    relevant_ids.insert(id.to_string());
-                }
-            }
-        }
-
-        // contains WHERE in IN [module_ids] → out values (submodules/files under modules)
-        let mut submodule_ids: Vec<String> = Vec::new();
-        if !module_ids.is_empty() {
-            let ids_list = module_ids
+        // Recursively collect all modules and files via contains edges
+        let mut frontier: Vec<String> = vec![project_id.to_string()];
+        while !frontier.is_empty() {
+            let ids_list = frontier
                 .iter()
                 .map(|id| id.as_str())
                 .collect::<Vec<_>>()
                 .join(", ");
             let sql = format!("SELECT out FROM contains WHERE in IN [{}]", ids_list);
+            frontier.clear();
             if let Ok(mut res) = self.client.query(&sql).await {
                 let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
                 for row in rows {
                     let json = surreal_to_json(row);
                     if let Some(id) = json.get("out").and_then(|v| v.as_str()) {
-                        if id.starts_with("submodule:") {
-                            submodule_ids.push(id.to_string());
+                        if relevant_ids.insert(id.to_string()) {
+                            // If it's a module, we need to recurse into its children
+                            if id.starts_with("module:") {
+                                frontier.push(id.to_string());
+                            }
                         }
-                        relevant_ids.insert(id.to_string());
-                    }
-                }
-            }
-        }
-
-        // contains WHERE in IN [submodule_ids] → out values (files under submodules)
-        if !submodule_ids.is_empty() {
-            let ids_list = submodule_ids
-                .iter()
-                .map(|id| id.as_str())
-                .collect::<Vec<_>>()
-                .join(", ");
-            let sql = format!("SELECT out FROM contains WHERE in IN [{}]", ids_list);
-            if let Ok(mut res) = self.client.query(&sql).await {
-                let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
-                for row in rows {
-                    let json = surreal_to_json(row);
-                    if let Some(id) = json.get("out").and_then(|v| v.as_str()) {
-                        relevant_ids.insert(id.to_string());
                     }
                 }
             }
@@ -319,7 +281,6 @@ impl DB {
         let node_tables: &[(&str, &str)] = &[
             ("project", "name"),
             ("module", "name"),
-            ("submodule", "name"),
             ("file", "name"),
             ("task", "name"),
             ("todo_item", "content"),
@@ -383,13 +344,10 @@ impl DB {
             "has_task",
             "belongs_to_project",
             "belongs_to_module",
-            "belongs_to_submodule",
             "has_context",
             "has_todo",
             "has_user_story",
             "belongs_to_story",
-            "has_module",
-            "has_submodule",
             "belongs_to_user_story",
             "has_epic",
             "belongs_to_epic",

@@ -5,8 +5,8 @@ use crate::db::surreal::util::surreal_to_json;
 #[derive(Debug, Default, Clone)]
 pub(crate) struct StructuralAncestry {
     pub(crate) project_ids: Vec<String>,
+    /// All ancestor module IDs (self + all parents up the chain).
     pub(crate) module_ids: Vec<String>,
-    pub(crate) submodule_ids: Vec<String>,
     pub(crate) task_ids: Vec<String>,
     pub(crate) epic_ids: Vec<String>,
 }
@@ -32,39 +32,37 @@ impl DB {
                         "p",
                     )
                     .await?;
-                Ok(StructuralAncestry {
-                    project_ids,
-                    module_ids: vec![from_id.to_string()],
-                    ..Default::default()
-                })
-            }
-            "submodule" => {
-                let module_ids = self
-                    .record_ids_from_query(
-                        "SELECT ->belongs_to_module->module.* AS m FROM ONLY type::record($sid)",
-                        "sid",
-                        from_id.to_string(),
-                        "m",
-                    )
-                    .await?;
-                let project_ids = self
-                    .record_ids_from_query(
-                        "SELECT ->belongs_to_project->project.* AS p FROM ONLY type::record($sid)",
-                        "sid",
-                        from_id.to_string(),
-                        "p",
-                    )
-                    .await?;
+
+                // Walk up belongs_to_module chain to collect all ancestor modules
+                let mut module_ids = vec![from_id.to_string()];
+                let mut current = from_id.to_string();
+                loop {
+                    let parents = self
+                        .record_ids_from_query(
+                            "SELECT ->belongs_to_module->module.* AS m FROM ONLY type::record($mid)",
+                            "mid",
+                            current.clone(),
+                            "m",
+                        )
+                        .await?;
+                    if parents.is_empty() {
+                        break;
+                    }
+                    let parent = parents.into_iter().next().unwrap();
+                    if module_ids.contains(&parent) {
+                        break; // cycle guard
+                    }
+                    module_ids.push(parent.clone());
+                    current = parent;
+                }
+
                 Ok(StructuralAncestry {
                     project_ids,
                     module_ids,
-                    submodule_ids: vec![from_id.to_string()],
                     ..Default::default()
                 })
             }
             "task" => {
-                // To support multiple parents correctly, we shouldn't rely on `get_task_hierarchy` which
-                // still uses a single path. We'll query them directly like the others.
                 let project_ids = self
                     .record_ids_from_query(
                         "SELECT ->belongs_to_project->project.* AS p FROM ONLY type::record($tid)",
@@ -81,18 +79,9 @@ impl DB {
                         "m",
                     )
                     .await?;
-                let submodule_ids = self
-                    .record_ids_from_query(
-                        "SELECT ->belongs_to_submodule->submodule.* AS s FROM ONLY type::record($tid)",
-                        "tid",
-                        from_id.to_string(),
-                        "s",
-                    )
-                    .await?;
                 Ok(StructuralAncestry {
                     project_ids,
                     module_ids,
-                    submodule_ids,
                     task_ids: vec![from_id.to_string()],
                     epic_ids: vec![],
                 })
@@ -129,24 +118,15 @@ impl DB {
                         "m",
                     )
                     .await?;
-                let submodule_ids = self
-                    .record_ids_from_query(
-                        "SELECT ->belongs_to_submodule->submodule.* AS s FROM ONLY type::record($fid)",
-                        "fid",
-                        from_id.to_string(),
-                        "s",
-                    )
-                    .await?;
 
                 Ok(StructuralAncestry {
                     project_ids,
                     module_ids,
-                    submodule_ids,
                     ..Default::default()
                 })
             }
             _ => Err(anyhow::anyhow!(
-                "resolve_structural_ancestry: from_id must be project, module, submodule, task, epic, or file; got {:?}",
+                "resolve_structural_ancestry: from_id must be project, module, task, epic, or file; got {:?}",
                 table
             )),
         }

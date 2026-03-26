@@ -66,9 +66,6 @@ async fn dispatch_command(
         args::Commands::Module { command } => {
             handle_module_command(command, db, pretty, ignore_case).await
         }
-        args::Commands::Submodule { command } => {
-            handle_submodule_command(command, db, pretty, ignore_case).await
-        }
         args::Commands::File { command } => {
             handle_file_command(command, db, pretty, ignore_case).await
         }
@@ -188,8 +185,6 @@ async fn handle_link(
         "has_todo",
         "has_context",
         "has_user_story",
-        "has_module",
-        "has_submodule",
         "has_epic",
         "has_issue",
         "belongs_to_project",
@@ -272,6 +267,7 @@ async fn handle_module_command(
         args::ModuleCommands::Create {
             project_ids,
             project,
+            parent_module_id,
             name,
             description,
             notes,
@@ -283,7 +279,13 @@ async fn handle_module_command(
             })?;
 
             let created = db
-                .create_module(&name, &description, notes.as_deref(), &project_id)
+                .create_module(
+                    &name,
+                    &description,
+                    notes.as_deref(),
+                    &project_id,
+                    parent_module_id.as_deref(),
+                )
                 .await?;
             let module_id = match &created.id {
                 Some(id) => id.as_str(),
@@ -303,11 +305,16 @@ async fn handle_module_command(
         args::ModuleCommands::List {
             project_id,
             project,
+            module_id,
         } => {
-            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
-            let modules = match resolved_id {
-                Some(pid) => db.list_modules_by_project(&pid).await?,
-                None => db.list_modules().await?,
+            let modules = if let Some(mid) = module_id {
+                db.list_modules_by_module(&mid).await?
+            } else {
+                let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
+                match resolved_id {
+                    Some(pid) => db.list_modules_by_project(&pid).await?,
+                    None => db.list_modules().await?,
+                }
             };
             print_json(serde_json::json!(modules), pretty);
         }
@@ -316,97 +323,6 @@ async fn handle_module_command(
             let mut not_found = Vec::new();
             for id in module_ids {
                 if db.delete_module(&id).await? {
-                    deleted.push(id);
-                } else {
-                    not_found.push(id);
-                }
-            }
-            let result = serde_json::json!({
-                "status": "ok",
-                "deleted": deleted,
-                "not_found": not_found,
-            });
-            print_json(result, pretty);
-        }
-    }
-    Ok(())
-}
-
-/// Submodule management with optional module and project filtering.
-async fn handle_submodule_command(
-    command: args::SubmoduleCommands,
-    db: &dn_core::db::DB,
-    pretty: bool,
-    ignore_case: bool,
-) -> anyhow::Result<()> {
-    match command {
-        args::SubmoduleCommands::Create {
-            project_ids,
-            project,
-            module_ids,
-            name,
-            description,
-            notes,
-        } => {
-            if module_ids.is_empty() {
-                anyhow::bail!("--module-ids/--mids must be provided");
-            }
-            let resolved_project_id =
-                resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
-            let project_id = resolved_project_id.ok_or_else(|| {
-                anyhow::anyhow!("Either --project-ids/--pids or --project/-p must be provided")
-            })?;
-
-            let created = db
-                .create_submodule(
-                    &name,
-                    &description,
-                    notes.as_deref(),
-                    module_ids.first().map(String::as_str).unwrap(),
-                    &project_id,
-                )
-                .await?;
-
-            let sub_id = match &created.id {
-                Some(id) => id.as_str(),
-                None => {
-                    print_json(serde_json::json!(created), pretty);
-                    return Ok(());
-                }
-            };
-
-            for mid in module_ids.iter().skip(1) {
-                db.link(mid, "contains", sub_id).await?;
-            }
-            for pid in project_ids.iter().skip(1) {
-                db.link(sub_id, "belongs_to_project", pid).await?;
-            }
-
-            print_json(serde_json::json!(created), pretty);
-        }
-        args::SubmoduleCommands::List {
-            project_id,
-            project,
-            module_id,
-        } => {
-            let submodules = match module_id {
-                Some(mid) => db.list_submodules_by_module(&mid).await?,
-                None => {
-                    let resolved_id =
-                        resolve_project_id(db, project_id, project, ignore_case).await?;
-                    match resolved_id {
-                        Some(pid) => db.list_submodules_by_project(&pid).await?,
-                        None => db.list_submodules().await?,
-                    }
-                }
-            };
-            print_json(serde_json::json!(submodules), pretty);
-        }
-        args::SubmoduleCommands::Delete { submodule_ids } => {
-            let mut deleted = Vec::new();
-            let mut not_found = Vec::new();
-            for id in submodule_ids {
-                if db.delete_submodule(&id).await? {
                     deleted.push(id);
                 } else {
                     not_found.push(id);
@@ -474,14 +390,12 @@ async fn handle_file_command(
             project_id,
             project,
             module_id,
-            submodule_id,
         } => {
-            let files = match (submodule_id, module_id, project_id, project) {
-                (Some(sid), _, _, _) => db.list_files_by_submodule(&sid).await?,
-                (_, Some(mid), _, _) => db.list_files_by_module(&mid).await?,
-                (_, _, pid_opt, proj_opt) => {
+            let files = match module_id {
+                Some(mid) => db.list_files_by_module(&mid).await?,
+                None => {
                     let resolved_id =
-                        resolve_project_id(db, pid_opt, proj_opt, ignore_case).await?;
+                        resolve_project_id(db, project_id, project, ignore_case).await?;
                     match resolved_id {
                         Some(pid) => db.list_files_by_project(&pid).await?,
                         None => db.list_files().await?,

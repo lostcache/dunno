@@ -98,15 +98,7 @@ struct CreateModuleBody {
     description: String,
     notes: Option<String>,
     project_id: String,
-}
-
-#[derive(Deserialize)]
-struct CreateSubmoduleBody {
-    name: String,
-    description: String,
-    notes: Option<String>,
-    module_id: String,
-    project_id: String,
+    parent_module_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -182,13 +174,6 @@ struct UpdateProjectBody {
 
 #[derive(Deserialize)]
 struct UpdateModuleBody {
-    name: Option<String>,
-    description: Option<String>,
-    notes: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdateSubmoduleBody {
     name: Option<String>,
     description: Option<String>,
     notes: Option<String>,
@@ -317,6 +302,7 @@ async fn create_module(
             &body.description,
             body.notes.as_deref(),
             &body.project_id,
+            body.parent_module_id.as_deref(),
         )
         .await?;
     Ok(Json(serde_json::to_value(created)?))
@@ -350,58 +336,13 @@ async fn update_module(
     Ok(Json(serde_json::to_value(updated)?))
 }
 
-// Submodules
-async fn list_submodules_by_module(
+// Child modules
+async fn list_modules_by_module(
     Path(mid): Path<String>,
     State(state): State<Arc<AppState>>,
 ) -> ApiResult<serde_json::Value> {
-    let submodules = state.db.list_submodules_by_module(&mid).await?;
-    Ok(Json(serde_json::to_value(submodules)?))
-}
-
-async fn create_submodule(
-    State(state): State<Arc<AppState>>,
-    Json(body): Json<CreateSubmoduleBody>,
-) -> ApiResult<serde_json::Value> {
-    let created = state
-        .db
-        .create_submodule(
-            &body.name,
-            &body.description,
-            body.notes.as_deref(),
-            &body.module_id,
-            &body.project_id,
-        )
-        .await?;
-    Ok(Json(serde_json::to_value(created)?))
-}
-
-async fn delete_submodule(
-    Path(id): Path<String>,
-    State(state): State<Arc<AppState>>,
-) -> Result<impl IntoResponse, ApiError> {
-    let deleted = state.db.delete_submodule(&id).await?;
-    if deleted {
-        Ok(StatusCode::NO_CONTENT.into_response())
-    } else {
-        Ok((
-            StatusCode::NOT_FOUND,
-            Json(serde_json::json!({"error":"not found"})),
-        )
-            .into_response())
-    }
-}
-
-async fn update_submodule(
-    Path(id): Path<String>,
-    State(state): State<Arc<AppState>>,
-    Json(body): Json<UpdateSubmoduleBody>,
-) -> ApiResult<serde_json::Value> {
-    let updated = state
-        .db
-        .update_submodule(&id, body.name, body.description, body.notes)
-        .await?;
-    Ok(Json(serde_json::to_value(updated)?))
+    let modules = state.db.list_modules_by_module(&mid).await?;
+    Ok(Json(serde_json::to_value(modules)?))
 }
 
 // Files
@@ -883,17 +824,8 @@ fn build_router(state: Arc<AppState>) -> Router {
             "/api/modules/:id",
             patch(update_module).delete(delete_module),
         )
-        .route(
-            "/api/modules/:mid/submodules",
-            get(list_submodules_by_module),
-        )
+        .route("/api/modules/:mid/modules", get(list_modules_by_module))
         .route("/api/modules/:mid/files", get(list_files_by_module))
-        // Submodules
-        .route("/api/submodules", post(create_submodule))
-        .route(
-            "/api/submodules/:id",
-            patch(update_submodule).delete(delete_submodule),
-        )
         // Files
         .route("/api/files", post(create_file))
         .route("/api/files/:id", patch(update_file).delete(delete_file))
