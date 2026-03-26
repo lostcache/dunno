@@ -164,17 +164,15 @@ impl DB {
 
     /// Creates a RELATE edge between two record ids. Public for the generic `dunno link` CLI.
     pub async fn link(&self, from_id: &str, edge_table: &str, to_id: &str) -> anyhow::Result<()> {
-        let (from_table, from_key) = from_id
-            .split_once(':')
-            .ok_or_else(|| anyhow::anyhow!("Invalid record id: {}", from_id))?;
-        let (to_table, to_key) = to_id
-            .split_once(':')
-            .ok_or_else(|| anyhow::anyhow!("Invalid record id: {}", to_id))?;
+        let from_rid = surrealdb::types::RecordId::parse_simple(from_id)
+            .map_err(|_| anyhow::anyhow!("Invalid record id: {}", from_id))?;
+        let to_rid = surrealdb::types::RecordId::parse_simple(to_id)
+            .map_err(|_| anyhow::anyhow!("Invalid record id: {}", to_id))?;
         let sql = format!("RELATE $from->{edge_table}->$to;");
         self.client
             .query(&sql)
-            .bind(("from", (from_table.to_string(), from_key.to_string())))
-            .bind(("to", (to_table.to_string(), to_key.to_string())))
+            .bind(("from", from_rid))
+            .bind(("to", to_rid))
             .await?;
         Ok(())
     }

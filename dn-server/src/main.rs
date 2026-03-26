@@ -129,7 +129,7 @@ struct UpdateTaskBody {
 #[derive(Deserialize)]
 struct CreateTodoBody {
     content: String,
-    project_id: Option<String>,
+    project_id: String,
 }
 
 #[derive(Deserialize)]
@@ -495,7 +495,7 @@ async fn create_todo(
 ) -> ApiResult<serde_json::Value> {
     let created = state
         .db
-        .create_todo(&body.content, body.project_id.as_deref())
+        .create_todo(&body.content, Some(&body.project_id))
         .await?;
     Ok(Json(serde_json::to_value(created)?))
 }
@@ -1065,4 +1065,28 @@ async fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod handler_tests {
+    use super::*;
+
+    #[test]
+    fn create_todo_body_requires_project_id() {
+        let json = r#"{"content":"test"}"#;
+        let result: Result<CreateTodoBody, _> = serde_json::from_str(json);
+        assert!(
+            result.is_err(),
+            "project_id must be required — missing field should fail deserialization"
+        );
+    }
+
+    #[test]
+    fn create_todo_body_accepts_valid_body() {
+        let json = r#"{"content":"test","project_id":"project:abc"}"#;
+        let body: CreateTodoBody =
+            serde_json::from_str(json).expect("valid body must deserialize");
+        assert_eq!(body.project_id, "project:abc");
+        assert_eq!(body.content, "test");
+    }
 }

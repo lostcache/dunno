@@ -73,6 +73,13 @@
     } else {
       url = CREATE_ENDPOINTS[tab]
       body = Object.fromEntries(Object.entries(fieldValues).filter(([, v]) => v !== ''))
+      const schema = SCHEMAS[tab] ?? []
+      for (const f of schema) {
+        if (f.required && !(f.name in (body as Record<string, unknown>))) {
+          setStatus(`${f.label} is required`, 'err')
+          return
+        }
+      }
     }
 
     try {

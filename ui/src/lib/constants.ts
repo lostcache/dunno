@@ -33,7 +33,7 @@ export const SCHEMAS: Record<string, SchemaField[]> = {
   ],
   todos: [
     { name: 'content', label: 'Content', type: 'textarea', required: true },
-    { name: 'project_id', label: 'Project ID', type: 'text', fill: 'projectId' },
+    { name: 'project_id', label: 'Project ID', type: 'text', required: true, fill: 'projectId' },
   ],
   'user-stories': [
     { name: 'title', label: 'Title', type: 'text', required: true },
