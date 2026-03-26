@@ -24,7 +24,6 @@
     const gRect = graphView.getBoundingClientRect()
     left = cyRect.left - gRect.left + renderedPos.x
     top = cyRect.top - gRect.top + renderedPos.y
-    editingNode.set(nodeData)
     hoverNode.set(nodeData)
     visible = true
   }
