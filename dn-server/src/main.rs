@@ -223,9 +223,16 @@ struct UpdateContextBody {
 }
 
 #[derive(Deserialize)]
+struct ListIssuesQuery {
+    project_id: String,
+    task_id: Option<String>,
+}
+
+#[derive(Deserialize)]
 struct CreateIssueBody {
     description: String,
     task_id: Option<String>,
+    project_id: Option<String>,
     plan: Option<String>,
 }
 
@@ -791,8 +798,14 @@ async fn get_epic_context(
 }
 
 // Issues
-async fn list_issues(State(state): State<Arc<AppState>>) -> ApiResult<serde_json::Value> {
-    let issues = state.db.list_issues().await?;
+async fn list_issues(
+    Query(q): Query<ListIssuesQuery>,
+    State(state): State<Arc<AppState>>,
+) -> ApiResult<serde_json::Value> {
+    let issues = match q.task_id {
+        Some(tid) => state.db.list_issues_by_task(&tid).await?,
+        None => state.db.list_issues_by_project(&q.project_id).await?,
+    };
     Ok(Json(serde_json::to_value(issues)?))
 }
 
@@ -802,7 +815,12 @@ async fn create_issue(
 ) -> ApiResult<serde_json::Value> {
     let created = state
         .db
-        .create_issue(&body.description, body.task_id.as_deref(), body.plan.as_deref())
+        .create_issue(
+            &body.description,
+            body.task_id.as_deref(),
+            body.plan.as_deref(),
+            body.project_id.as_deref(),
+        )
         .await?;
     Ok(Json(serde_json::to_value(created)?))
 }

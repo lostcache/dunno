@@ -557,11 +557,17 @@ async fn handle_issue_command(
     match command {
         args::IssueCommands::Create {
             task_id,
+            project_id,
             plan,
             description,
         } => {
             let created = db
-                .create_issue(&description, task_id.as_deref(), plan.as_deref())
+                .create_issue(
+                    &description,
+                    task_id.as_deref(),
+                    plan.as_deref(),
+                    project_id.as_deref(),
+                )
                 .await?;
             print_json(serde_json::json!(created), pretty);
         }
@@ -584,10 +590,13 @@ async fn handle_issue_command(
                 .await?;
             print_json(serde_json::json!(result), pretty);
         }
-        args::IssueCommands::List { task_id } => {
+        args::IssueCommands::List {
+            project_id,
+            task_id,
+        } => {
             let issues = match task_id {
                 Some(tid) => db.list_issues_by_task(&tid).await?,
-                None => db.list_issues().await?,
+                None => db.list_issues_by_project(&project_id).await?,
             };
             print_json(serde_json::json!(issues), pretty);
         }

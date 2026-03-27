@@ -623,6 +623,9 @@ pub enum IssueCommands {
         /// Task ID to link this issue to. Optional.
         #[arg(long, visible_alias = "tid", value_name = "TASK_ID")]
         task_id: Option<String>,
+        /// Project ID to link this issue to. Optional.
+        #[arg(long, visible_alias = "pid", value_name = "PROJECT_ID")]
+        project_id: Option<String>,
         /// Resolution plan for the issue.
         #[arg(long, value_name = "PLAN")]
         plan: Option<String>,
@@ -640,7 +643,10 @@ pub enum IssueCommands {
     },
     #[command(name = "list", visible_alias = "ls")]
     List {
-        /// Task ID to filter issues by. Optional.
+        /// Project ID to filter issues by.
+        #[arg(long, visible_alias = "pid", value_name = "PROJECT_ID")]
+        project_id: String,
+        /// Task ID to further filter issues by. Optional.
         #[arg(long, visible_alias = "tid", value_name = "TASK_ID")]
         task_id: Option<String>,
     },
@@ -2176,11 +2182,19 @@ mod tests {
     }
 
     #[test]
-    fn issue_list_parses_without_filter() {
+    fn issue_list_requires_project_id() {
         let args = Args::try_parse_from(["dn", "issue", "ls"]);
-        assert!(args.is_ok(), "should parse issue list");
+        assert!(args.is_err(), "should require --project-id");
+    }
+
+    #[test]
+    fn issue_list_accepts_project_id() {
+        let args =
+            Args::try_parse_from(["dn", "issue", "ls", "--project-id", "project:abc"]);
+        assert!(args.is_ok(), "should parse issue list with --project-id");
         if let Commands::Issue { command } = args.unwrap().command {
-            if let IssueCommands::List { task_id } = command {
+            if let IssueCommands::List { project_id, task_id } = command {
+                assert_eq!(project_id, "project:abc".to_string());
                 assert_eq!(task_id, None);
             } else {
                 panic!("expected List command");
@@ -2192,13 +2206,32 @@ mod tests {
 
     #[test]
     fn issue_list_accepts_task_id() {
-        let args = Args::try_parse_from(["dn", "issue", "ls", "--task-id", "task:abc"]);
+        let args = Args::try_parse_from([
+            "dn", "issue", "ls", "--project-id", "project:abc", "--task-id", "task:abc",
+        ]);
         assert!(args.is_ok(), "should parse issue list with --task-id");
         if let Commands::Issue { command } = args.unwrap().command {
-            if let IssueCommands::List { task_id } = command {
+            if let IssueCommands::List { task_id, .. } = command {
                 assert_eq!(task_id, Some("task:abc".to_string()));
             } else {
                 panic!("expected List command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
+
+    #[test]
+    fn issue_add_accepts_project_id() {
+        let args = Args::try_parse_from([
+            "dn", "issue", "add", "--project-id", "project:abc", "Desc",
+        ]);
+        assert!(args.is_ok(), "should parse issue add with --project-id");
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::Create { project_id, .. } = command {
+                assert_eq!(project_id, Some("project:abc".to_string()));
+            } else {
+                panic!("expected Create command");
             }
         } else {
             panic!("expected Issue command");

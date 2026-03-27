@@ -2,12 +2,13 @@ use crate::db::surreal::DB;
 use crate::db::surreal::util::{json_to_surreal, surreal_to_json};
 
 impl DB {
-    /// Creates an issue record and optionally links it to a task.
+    /// Creates an issue record and optionally links it to a task and/or project.
     pub async fn create_issue(
         &self,
         description: &str,
         task_id: Option<&str>,
         plan: Option<&str>,
+        project_id: Option<&str>,
     ) -> anyhow::Result<crate::models::Issue> {
         let issue = crate::models::Issue {
             id: None,
@@ -27,7 +28,25 @@ impl DB {
             self.link(iid, "belongs_to_task", tid).await?;
         }
 
+        if let (Some(pid), Some(iid)) = (project_id, result.id.as_ref()) {
+            self.link(iid, "belongs_to_project", pid).await?;
+        }
+
         Ok(result)
+    }
+
+    /// Lists issues linked to a project via belongs_to_project.
+    pub async fn list_issues_by_project(
+        &self,
+        project_id: &str,
+    ) -> anyhow::Result<Vec<crate::models::Issue>> {
+        self.query_graph_list(
+            "SELECT <-belongs_to_project<-issue.* AS items FROM ONLY type::record($pid)",
+            "pid",
+            project_id.to_string(),
+            "items",
+        )
+        .await
     }
 
     /// Fetches an issue by record id.
@@ -120,7 +139,7 @@ mod tests {
     async fn test_create_issue_standalone() {
         let db = DB::new("mem://").await.expect("init db");
         let issue = db
-            .create_issue("Users cannot log in", None, None)
+            .create_issue("Users cannot log in", None, None, None)
             .await
             .expect("create issue");
         assert_eq!(issue.description, "Users cannot log in");
@@ -149,7 +168,7 @@ mod tests {
         let task_id = task.id.unwrap();
 
         let issue = db
-            .create_issue("Tokens expire too early", Some(&task_id), None)
+            .create_issue("Tokens expire too early", Some(&task_id), None, None)
             .await
             .expect("create issue");
 
@@ -162,10 +181,70 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_create_issue_linked_to_project() {
+        let db = DB::new("mem://").await.expect("init db");
+
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "Proj Link Test".to_string(),
+                description: "desc".to_string(),
+            })
+            .await
+            .expect("create project");
+        let project_id = project.id.unwrap();
+
+        let issue = db
+            .create_issue("Project-level issue", None, None, Some(&project_id))
+            .await
+            .expect("create issue");
+        assert!(issue.id.is_some());
+
+        let issues = db
+            .list_issues_by_project(&project_id)
+            .await
+            .expect("list issues by project");
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].id, issue.id);
+    }
+
+    #[tokio::test]
+    async fn test_list_issues_by_project() {
+        let db = DB::new("mem://").await.expect("init db");
+
+        let project = db
+            .create_project(&crate::models::Project {
+                id: None,
+                name: "Multi Issue Project".to_string(),
+                description: "desc".to_string(),
+            })
+            .await
+            .expect("create project");
+        let project_id = project.id.unwrap();
+
+        db.create_issue("Issue A", None, None, Some(&project_id))
+            .await
+            .expect("create issue a");
+        db.create_issue("Issue B", None, None, Some(&project_id))
+            .await
+            .expect("create issue b");
+        // unlinked issue — should not appear
+        db.create_issue("Issue C unlinked", None, None, None)
+            .await
+            .expect("create issue c");
+
+        let issues = db
+            .list_issues_by_project(&project_id)
+            .await
+            .expect("list issues by project");
+        assert_eq!(issues.len(), 2);
+    }
+
+    #[tokio::test]
     async fn test_delete_issue() {
         let db = DB::new("mem://").await.expect("init db");
         let issue = db
-            .create_issue("desc", None, None)
+            .create_issue("desc", None, None, None)
             .await
             .expect("create issue");
         let id = issue.id.unwrap();
@@ -181,7 +260,7 @@ mod tests {
     async fn test_delete_nonexistent_issue() {
         let db = DB::new("mem://").await.expect("init db");
         // ensure table exists
-        db.create_issue("seed", None, None)
+        db.create_issue("seed", None, None, None)
             .await
             .expect("seed issue");
 
@@ -196,7 +275,7 @@ mod tests {
     async fn test_update_issue_status() {
         let db = DB::new("mem://").await.expect("init db");
         let issue = db
-            .create_issue("desc", None, None)
+            .create_issue("desc", None, None, None)
             .await
             .expect("create issue");
         let id = issue.id.unwrap();
@@ -213,7 +292,7 @@ mod tests {
     async fn test_update_issue_plan() {
         let db = DB::new("mem://").await.expect("init db");
         let issue = db
-            .create_issue("desc", None, None)
+            .create_issue("desc", None, None, None)
             .await
             .expect("create issue");
         let id = issue.id.unwrap();
