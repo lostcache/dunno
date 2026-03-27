@@ -39,6 +39,7 @@ Knowledge can be attached to any structural node:
 - **Todo**: Knowledge related to specific todo items
 - **Persona**: AI agent persona definitions linked to a project
 - **Workflow**: Workflow definitions linked to a project
+- **Issue**: Bug or a problem, optionally linked to a task
 
 ### Edges
 
@@ -55,6 +56,8 @@ Knowledge can be attached to any structural node:
 - `has_todo` - Parent has todo (project -> todo_item)
 - `has_persona` - Parent has persona (project -> persona)
 - `has_workflow` - Parent has workflow (project -> workflow)
+- `has_issue` - Parent has issue (task -> issue)
+- `belongs_to_task` - Child belongs to task (issue -> task)
 
 ---
 
@@ -80,10 +83,10 @@ Knowledge can be attached to any structural node:
 
 ## Initializing a task
 
-1. Set a todo to `active` when you begin planning the associated work: `dn todo update <todo_id> --status active`
-1. Fetch an item from the todo list or user-story to work on.
+1. If given a todo/user-story id fetch using `dn {todo/user-story} get <id> ` else an item from the todo list or user-story to work on.
    - `dn todo list --project-id <project_id>`
    - `dn user-story list --project-id <project_id>`
+1. Set a todo to `active` when you begin planning the associated work: `dn todo update <todo_id> --status active`
 1. If you have access to shell tool in Plan Mode switch to Plan Mode (if available) or remain in Agent Mode, but **DO NOT** create the task yet.
 1. **MANDATORY:** use the `dn ctx --general -p <project>` commmand to get the project structure.
 1. **MANDATORY:** Do complete research on the task. This includes:
@@ -128,9 +131,9 @@ When asked to "fetch a task" or "work on a task":
 
 ## Working on an Issue
 
-1. List issues to find what needs attention.
-   - `dn issue ls` — all issues
-   - `dn issue ls --task-id <task_id>` — issues for a specific task
+1. If given an issue id fetch using `dn issue get <id>` else an issue from the issue list to work on.
+   - `dn issue ls --project-id <project_id>` — all issues for a project
+   - `dn issue ls --project-id <project_id> --task-id <task_id>` — issues for a specific task
 2. Mark the issue active when you begin planning.
    - `dn issue update <issue_id> --status active`
 3. Update the issue after you have a plan.
