@@ -3305,3 +3305,123 @@ async fn test_epic_ctx_full_includes_persona_workflow() {
     assert_eq!(full_ctx.workflow.len(), 1);
     assert_eq!(full_ctx.workflow[0].name, "W1");
 }
+
+#[tokio::test]
+async fn test_child_module_belongs_to_module_edge_and_graph() {
+    let db = DB::new("mem://").await.expect("init db");
+
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("project id");
+
+    let parent = db
+        .create_module("Parent", "d", None, &project_id, None)
+        .await
+        .expect("create parent module");
+    let parent_id = parent.id.expect("parent id");
+
+    let child = db
+        .create_module("Child", "d", None, &project_id, Some(&parent_id))
+        .await
+        .expect("create child module");
+    let child_id = child.id.expect("child id");
+
+    // Verify the belongs_to_module edge from child -> parent exists in the DB
+    let mut response = db
+        .client
+        .query("SELECT ->belongs_to_module->module.id AS mid FROM ONLY type::record($cid)")
+        .bind(("cid", child_id.clone()))
+        .await
+        .expect("raw query");
+    let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
+    let json = crate::db::surreal::util::surreal_to_json(record.expect("record"));
+    let found_parent_id = json
+        .get("mid")
+        .and_then(|m| m.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|v| v.as_str())
+        .expect("parent module id from edge");
+    assert_eq!(found_parent_id, parent_id);
+
+    // Verify get_graph_data_by_project returns the belongs_to_module edge
+    let graph = db
+        .get_graph_data_by_project(&project_id)
+        .await
+        .expect("get graph data");
+    let elements = graph["elements"].as_array().expect("elements array");
+    let has_btm_edge = elements.iter().any(|el| {
+        el["data"]["edge_type"].as_str() == Some("belongs_to_module")
+            && el["data"]["source"].as_str() == Some(&child_id)
+            && el["data"]["target"].as_str() == Some(&parent_id)
+    });
+    assert!(
+        has_btm_edge,
+        "belongs_to_module edge from child to parent not found in graph data"
+    );
+}
+
+#[tokio::test]
+async fn test_child_module_has_module_edge_and_graph() {
+    let db = DB::new("mem://").await.expect("init db");
+
+    let project = db
+        .create_project(&crate::models::Project {
+            id: None,
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id.expect("project id");
+
+    let parent = db
+        .create_module("Parent", "d", None, &project_id, None)
+        .await
+        .expect("create parent module");
+    let parent_id = parent.id.expect("parent id");
+
+    let child = db
+        .create_module("Child", "d", None, &project_id, Some(&parent_id))
+        .await
+        .expect("create child module");
+    let child_id = child.id.expect("child id");
+
+    // Verify has_module edge: parent -> child
+    let mut response = db
+        .client
+        .query("SELECT ->has_module->module.id AS mid FROM ONLY type::record($pid)")
+        .bind(("pid", parent_id.clone()))
+        .await
+        .expect("raw query");
+    let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
+    let json = crate::db::surreal::util::surreal_to_json(record.expect("record"));
+    let found_child_id = json
+        .get("mid")
+        .and_then(|m| m.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|v| v.as_str())
+        .expect("child module id from has_module edge");
+    assert_eq!(found_child_id, child_id);
+
+    // Verify get_graph_data_by_project returns the has_module edge
+    let graph = db
+        .get_graph_data_by_project(&project_id)
+        .await
+        .expect("get graph data");
+    let elements = graph["elements"].as_array().expect("elements array");
+    let has_hm_edge = elements.iter().any(|el| {
+        el["data"]["edge_type"].as_str() == Some("has_module")
+            && el["data"]["source"].as_str() == Some(&parent_id)
+            && el["data"]["target"].as_str() == Some(&child_id)
+    });
+    assert!(
+        has_hm_edge,
+        "has_module edge from parent to child not found in graph data"
+    );
+}

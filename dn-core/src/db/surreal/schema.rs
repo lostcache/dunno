@@ -26,11 +26,13 @@ pub(crate) async fn define_schema(client: &Surreal<Any>) -> anyhow::Result<()> {
             DEFINE TABLE IF NOT EXISTS contains TYPE RELATION \
                 IN project|module \
                 OUT module|file;
+            DEFINE TABLE OVERWRITE has_module TYPE RELATION \
+                IN module|user_story OUT module;
             DEFINE TABLE IF NOT EXISTS has_task TYPE RELATION \
                 IN project|user_story|epic OUT task;
             DEFINE TABLE OVERWRITE belongs_to_project TYPE RELATION \
                 IN task|context|user_story|epic|file|module|persona|workflow|issue OUT project;
-            DEFINE TABLE IF NOT EXISTS belongs_to_module TYPE RELATION \
+            DEFINE TABLE OVERWRITE belongs_to_module TYPE RELATION \
                 IN task|context|file|module OUT module;
             DEFINE TABLE IF NOT EXISTS has_context TYPE RELATION \
                 IN project|task|module|epic|file OUT context;

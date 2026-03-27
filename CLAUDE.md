@@ -43,7 +43,8 @@ Knowledge can be attached to any structural node:
 
 ### Edges
 
-- `contains` - Parent contains child (project->module, module->module, module->file)
+- `contains` - Parent contains child (project->module, module->file)
+- `has_module` - Parent module has child module (module->module)
 - `has_task` - Parent has task (project->task, user_story->task, epic->task)
 - `has_context` - Node has knowledge (project, module, task, epic, file -> context)
 - `belongs_to_project` - Child belongs to project (task, context, user_story, epic, file, module, persona, workflow -> project)
