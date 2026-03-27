@@ -159,7 +159,7 @@ export const ALL_EDGE_TYPES = [
   'contains', 'has_task', 'has_context', 'belongs_to_project', 'belongs_to_module',
   'belongs_to_task', 'belongs_to_story', 'has_todo',
   'has_user_story', 'belongs_to_user_story', 'belongs_to_epic', 'has_epic',
-  'has_persona', 'has_workflow',
+  'has_persona', 'has_workflow', 'has_issue',
 ]
 
 export const CREATE_ENDPOINTS: Record<string, string> = {

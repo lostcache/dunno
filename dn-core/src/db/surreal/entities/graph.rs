@@ -18,7 +18,7 @@ impl DB {
             ("epic", "title"),
             ("persona", "name"),
             ("workflow", "name"),
-            ("issue", "title"),
+            ("issue", "description"),
         ];
 
         for (table, label_field) in node_tables {
@@ -289,7 +289,7 @@ impl DB {
             ("epic", "title"),
             ("persona", "name"),
             ("workflow", "name"),
-            ("issue", "title"),
+            ("issue", "description"),
         ];
 
         let mut elements: Vec<serde_json::Value> = Vec::new();

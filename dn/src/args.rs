@@ -623,9 +623,9 @@ pub enum IssueCommands {
         /// Task ID to link this issue to. Optional.
         #[arg(long, visible_alias = "tid", value_name = "TASK_ID")]
         task_id: Option<String>,
-        /// Project ID to link this issue to. Optional.
+        /// Project ID to link this issue to.
         #[arg(long, visible_alias = "pid", value_name = "PROJECT_ID")]
-        project_id: Option<String>,
+        project_id: String,
         /// Resolution plan for the issue.
         #[arg(long, value_name = "PLAN")]
         plan: Option<String>,
@@ -2141,8 +2141,16 @@ mod tests {
     }
 
     #[test]
-    fn issue_add_parses_description() {
+    fn issue_add_requires_project_id() {
         let args = Args::try_parse_from(["dn", "issue", "add", "Users cannot log in"]);
+        assert!(args.is_err(), "should require --project-id");
+    }
+
+    #[test]
+    fn issue_add_parses_description() {
+        let args = Args::try_parse_from([
+            "dn", "issue", "add", "--project-id", "project:abc", "Users cannot log in",
+        ]);
         assert!(args.is_ok(), "should parse issue add");
         if let Commands::Issue { command } = args.unwrap().command {
             if let IssueCommands::Create { task_id, description, .. } = command {
@@ -2159,7 +2167,7 @@ mod tests {
     #[test]
     fn issue_add_accepts_task_id() {
         let args = Args::try_parse_from([
-            "dn", "issue", "add", "--task-id", "task:abc123", "Desc",
+            "dn", "issue", "add", "--project-id", "project:abc", "--task-id", "task:abc123", "Desc",
         ]);
         assert!(args.is_ok(), "should parse issue add with --task-id");
         if let Commands::Issue { command } = args.unwrap().command {
@@ -2176,7 +2184,7 @@ mod tests {
     #[test]
     fn issue_add_accepts_tid_alias() {
         let args = Args::try_parse_from([
-            "dn", "issue", "add", "--tid", "task:abc123", "Desc",
+            "dn", "issue", "add", "--project-id", "project:abc", "--tid", "task:abc123", "Desc",
         ]);
         assert!(args.is_ok(), "should parse issue add with --tid alias");
     }
@@ -2229,7 +2237,7 @@ mod tests {
         assert!(args.is_ok(), "should parse issue add with --project-id");
         if let Commands::Issue { command } = args.unwrap().command {
             if let IssueCommands::Create { project_id, .. } = command {
-                assert_eq!(project_id, Some("project:abc".to_string()));
+                assert_eq!(project_id, "project:abc".to_string());
             } else {
                 panic!("expected Create command");
             }

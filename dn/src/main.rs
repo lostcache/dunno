@@ -566,7 +566,7 @@ async fn handle_issue_command(
                     &description,
                     task_id.as_deref(),
                     plan.as_deref(),
-                    project_id.as_deref(),
+                    &project_id,
                 )
                 .await?;
             print_json(serde_json::json!(created), pretty);

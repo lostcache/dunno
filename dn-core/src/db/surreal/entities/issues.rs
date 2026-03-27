@@ -2,13 +2,13 @@ use crate::db::surreal::DB;
 use crate::db::surreal::util::{json_to_surreal, surreal_to_json};
 
 impl DB {
-    /// Creates an issue record and optionally links it to a task and/or project.
+    /// Creates an issue record, links it to a project, and optionally links it to a task.
     pub async fn create_issue(
         &self,
         description: &str,
         task_id: Option<&str>,
         plan: Option<&str>,
-        project_id: Option<&str>,
+        project_id: &str,
     ) -> anyhow::Result<crate::models::Issue> {
         let issue = crate::models::Issue {
             id: None,
@@ -23,13 +23,16 @@ impl DB {
         let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create issue"))?;
         let result: crate::models::Issue = serde_json::from_value(surreal_to_json(val))?;
 
-        if let (Some(tid), Some(iid)) = (task_id, result.id.as_ref()) {
+        let iid = result
+            .id
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Created issue has no id"))?;
+
+        self.link(iid, "belongs_to_project", project_id).await?;
+
+        if let Some(tid) = task_id {
             self.link(tid, "has_issue", iid).await?;
             self.link(iid, "belongs_to_task", tid).await?;
-        }
-
-        if let (Some(pid), Some(iid)) = (project_id, result.id.as_ref()) {
-            self.link(iid, "belongs_to_project", pid).await?;
         }
 
         Ok(result)
@@ -40,13 +43,21 @@ impl DB {
         &self,
         project_id: &str,
     ) -> anyhow::Result<Vec<crate::models::Issue>> {
-        self.query_graph_list(
-            "SELECT <-belongs_to_project<-issue.* AS items FROM ONLY type::record($pid)",
-            "pid",
-            project_id.to_string(),
-            "items",
-        )
-        .await
+        // Use a direct subquery instead of backward graph traversal to avoid
+        // result-format mismatches (the backward traversal can return null/nested
+        // tuples that query_graph_list mis-handles, as seen with the todo issue).
+        let mut res = self
+            .client
+            .query("SELECT * FROM issue WHERE id INSIDE (SELECT VALUE in FROM belongs_to_project WHERE out = type::record($pid))")
+            .bind(("pid", project_id.to_string()))
+            .await?;
+        let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
+        let mut out = Vec::with_capacity(rows.len());
+        for val in rows {
+            let json = crate::db::surreal::util::surreal_to_json(val);
+            out.push(serde_json::from_value(json)?);
+        }
+        Ok(out)
     }
 
     /// Fetches an issue by record id.
@@ -135,11 +146,24 @@ impl DB {
 mod tests {
     use super::*;
 
+    async fn make_project(db: &DB, name: &str) -> String {
+        db.create_project(&crate::models::Project {
+            id: None,
+            name: name.to_string(),
+            description: "desc".to_string(),
+        })
+        .await
+        .expect("create project")
+        .id
+        .unwrap()
+    }
+
     #[tokio::test]
     async fn test_create_issue_standalone() {
         let db = DB::new("mem://").await.expect("init db");
+        let pid = make_project(&db, "Test Project").await;
         let issue = db
-            .create_issue("Users cannot log in", None, None, None)
+            .create_issue("Users cannot log in", None, None, &pid)
             .await
             .expect("create issue");
         assert_eq!(issue.description, "Users cannot log in");
@@ -150,25 +174,16 @@ mod tests {
     #[tokio::test]
     async fn test_create_issue_linked_to_task() {
         let db = DB::new("mem://").await.expect("init db");
-
-        let project = db
-            .create_project(&crate::models::Project {
-                id: None,
-                name: "Test Project".to_string(),
-                description: "desc".to_string(),
-            })
-            .await
-            .expect("create project");
-        let project_id = project.id.unwrap();
+        let pid = make_project(&db, "Test Project").await;
 
         let task = db
-            .create_task("Fix auth", "Auth broken", None, Some(&project_id))
+            .create_task("Fix auth", "Auth broken", None, Some(&pid))
             .await
             .expect("create task");
         let task_id = task.id.unwrap();
 
         let issue = db
-            .create_issue("Tokens expire too early", Some(&task_id), None, None)
+            .create_issue("Tokens expire too early", Some(&task_id), None, &pid)
             .await
             .expect("create issue");
 
@@ -183,25 +198,16 @@ mod tests {
     #[tokio::test]
     async fn test_create_issue_linked_to_project() {
         let db = DB::new("mem://").await.expect("init db");
-
-        let project = db
-            .create_project(&crate::models::Project {
-                id: None,
-                name: "Proj Link Test".to_string(),
-                description: "desc".to_string(),
-            })
-            .await
-            .expect("create project");
-        let project_id = project.id.unwrap();
+        let pid = make_project(&db, "Proj Link Test").await;
 
         let issue = db
-            .create_issue("Project-level issue", None, None, Some(&project_id))
+            .create_issue("Project-level issue", None, None, &pid)
             .await
             .expect("create issue");
         assert!(issue.id.is_some());
 
         let issues = db
-            .list_issues_by_project(&project_id)
+            .list_issues_by_project(&pid)
             .await
             .expect("list issues by project");
         assert_eq!(issues.len(), 1);
@@ -211,30 +217,21 @@ mod tests {
     #[tokio::test]
     async fn test_list_issues_by_project() {
         let db = DB::new("mem://").await.expect("init db");
+        let pid = make_project(&db, "Multi Issue Project").await;
+        let other_pid = make_project(&db, "Other Project").await;
 
-        let project = db
-            .create_project(&crate::models::Project {
-                id: None,
-                name: "Multi Issue Project".to_string(),
-                description: "desc".to_string(),
-            })
-            .await
-            .expect("create project");
-        let project_id = project.id.unwrap();
-
-        db.create_issue("Issue A", None, None, Some(&project_id))
+        db.create_issue("Issue A", None, None, &pid)
             .await
             .expect("create issue a");
-        db.create_issue("Issue B", None, None, Some(&project_id))
+        db.create_issue("Issue B", None, None, &pid)
             .await
             .expect("create issue b");
-        // unlinked issue — should not appear
-        db.create_issue("Issue C unlinked", None, None, None)
+        db.create_issue("Issue C other project", None, None, &other_pid)
             .await
             .expect("create issue c");
 
         let issues = db
-            .list_issues_by_project(&project_id)
+            .list_issues_by_project(&pid)
             .await
             .expect("list issues by project");
         assert_eq!(issues.len(), 2);
@@ -243,8 +240,9 @@ mod tests {
     #[tokio::test]
     async fn test_delete_issue() {
         let db = DB::new("mem://").await.expect("init db");
+        let pid = make_project(&db, "Test Project").await;
         let issue = db
-            .create_issue("desc", None, None, None)
+            .create_issue("desc", None, None, &pid)
             .await
             .expect("create issue");
         let id = issue.id.unwrap();
@@ -259,8 +257,8 @@ mod tests {
     #[tokio::test]
     async fn test_delete_nonexistent_issue() {
         let db = DB::new("mem://").await.expect("init db");
-        // ensure table exists
-        db.create_issue("seed", None, None, None)
+        let pid = make_project(&db, "Test Project").await;
+        db.create_issue("seed", None, None, &pid)
             .await
             .expect("seed issue");
 
@@ -274,8 +272,9 @@ mod tests {
     #[tokio::test]
     async fn test_update_issue_status() {
         let db = DB::new("mem://").await.expect("init db");
+        let pid = make_project(&db, "Test Project").await;
         let issue = db
-            .create_issue("desc", None, None, None)
+            .create_issue("desc", None, None, &pid)
             .await
             .expect("create issue");
         let id = issue.id.unwrap();
@@ -291,8 +290,9 @@ mod tests {
     #[tokio::test]
     async fn test_update_issue_plan() {
         let db = DB::new("mem://").await.expect("init db");
+        let pid = make_project(&db, "Test Project").await;
         let issue = db
-            .create_issue("desc", None, None, None)
+            .create_issue("desc", None, None, &pid)
             .await
             .expect("create issue");
         let id = issue.id.unwrap();

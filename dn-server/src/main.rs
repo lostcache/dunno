@@ -232,7 +232,7 @@ struct ListIssuesQuery {
 struct CreateIssueBody {
     description: String,
     task_id: Option<String>,
-    project_id: Option<String>,
+    project_id: String,
     plan: Option<String>,
 }
 
@@ -819,7 +819,7 @@ async fn create_issue(
             &body.description,
             body.task_id.as_deref(),
             body.plan.as_deref(),
-            body.project_id.as_deref(),
+            &body.project_id,
         )
         .await?;
     Ok(Json(serde_json::to_value(created)?))
