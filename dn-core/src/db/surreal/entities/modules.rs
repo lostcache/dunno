@@ -45,7 +45,7 @@ impl DB {
                 self.link(parent_mid, "has_module", mid).await?;
                 self.link(mid, "belongs_to_module", parent_mid).await?;
             } else {
-                self.link(project_id, "contains", mid).await?;
+                self.link(project_id, "has_module", mid).await?;
             }
         }
         Ok(result)
@@ -63,7 +63,7 @@ impl DB {
     ) -> anyhow::Result<Vec<crate::models::Module>> {
         ensure_record_id("project", project_id)?;
         self.query_graph_list(
-            "SELECT ->contains->module.* AS items FROM ONLY type::record($pid)",
+            "SELECT ->has_module->module.* AS items FROM ONLY type::record($pid)",
             "pid",
             project_id.to_string(),
             "items",

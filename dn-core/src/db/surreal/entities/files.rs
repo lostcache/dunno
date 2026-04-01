@@ -55,7 +55,7 @@ impl DB {
         self.link(fid, "belongs_to_project", project_id).await?;
         if let Some(pid) = parent_id {
             ensure_one_of_record_ids(&["module"], pid)?;
-            self.link(pid, "contains", fid).await?;
+            self.link(pid, "has_file", fid).await?;
             self.link(fid, "belongs_to_module", pid).await?;
         }
         Ok(result)
@@ -78,7 +78,7 @@ impl DB {
     ) -> anyhow::Result<Vec<crate::models::File>> {
         let _ = ensure_one_of_record_ids(&["module"], module_id)?;
         self.query_graph_list(
-            "SELECT ->contains->file.* AS items FROM ONLY type::record($mid)",
+            "SELECT ->has_file->file.* AS items FROM ONLY type::record($mid)",
             "mid",
             module_id.to_string(),
             "items",

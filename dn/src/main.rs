@@ -181,6 +181,7 @@ async fn handle_link(
 ) -> anyhow::Result<()> {
     const ALLOWED_EDGES: &[&str] = &[
         "contains",
+        "has_file",
         "has_module",
         "has_task",
         "has_todo",

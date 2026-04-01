@@ -139,8 +139,8 @@ export const EDIT_ENDPOINTS: Record<string, string> = {
 }
 
 export const EDGE_PAIRS: EdgePair[] = [
-  { a: 'project',    b: 'module',     a_to_b: 'contains',       b_to_a: 'belongs_to_project' },
-  { a: 'project',    b: 'file',       a_to_b: 'contains',       b_to_a: 'belongs_to_project' },
+  { a: 'project',    b: 'module',     a_to_b: 'has_module',     b_to_a: 'belongs_to_project' },
+  { a: 'project',    b: 'file',       a_to_b: 'has_file',       b_to_a: 'belongs_to_project' },
   { a: 'project',    b: 'task',       a_to_b: 'has_task',       b_to_a: 'belongs_to_project' },
   { a: 'project',    b: 'user_story', a_to_b: 'has_user_story', b_to_a: 'belongs_to_project' },
   { a: 'project',    b: 'epic',       a_to_b: 'has_epic',       b_to_a: 'belongs_to_project' },
@@ -148,7 +148,7 @@ export const EDGE_PAIRS: EdgePair[] = [
   { a: 'project',    b: 'persona',    a_to_b: 'has_persona',    b_to_a: 'belongs_to_project' },
   { a: 'project',    b: 'workflow',   a_to_b: 'has_workflow',   b_to_a: 'belongs_to_project' },
   { a: 'module',     b: 'module',     a_to_b: 'has_module',     b_to_a: 'belongs_to_module' },
-  { a: 'module',     b: 'file',       a_to_b: 'contains',       b_to_a: 'belongs_to_module' },
+  { a: 'module',     b: 'file',       a_to_b: 'has_file',       b_to_a: 'belongs_to_module' },
   { a: 'module',     b: 'task',       a_to_b: 'has_task',       b_to_a: 'belongs_to_module' },
   { a: 'epic',       b: 'user_story', a_to_b: 'has_user_story', b_to_a: 'belongs_to_epic' },
   { a: 'epic',       b: 'task',       a_to_b: 'has_task',       b_to_a: 'belongs_to_epic' },
@@ -156,7 +156,7 @@ export const EDGE_PAIRS: EdgePair[] = [
 ]
 
 export const ALL_EDGE_TYPES = [
-  'contains', 'has_module', 'has_task', 'has_context', 'belongs_to_project', 'belongs_to_module',
+  'has_file', 'has_module', 'has_task', 'has_context', 'belongs_to_project', 'belongs_to_module',
   'belongs_to_task', 'belongs_to_story', 'has_todo',
   'has_user_story', 'belongs_to_user_story', 'belongs_to_epic', 'has_epic',
   'has_persona', 'has_workflow', 'has_issue',

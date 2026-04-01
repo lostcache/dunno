@@ -64,7 +64,7 @@ impl DB {
             .collect();
 
         let edge_tables = [
-            "contains",
+            "has_file",
             "has_module",
             "has_task",
             "belongs_to_project",
@@ -229,7 +229,7 @@ impl DB {
             }
         }
 
-        // Recursively collect all modules and files via contains and has_module edges
+        // Recursively collect all modules and files via has_file and has_module edges
         let mut frontier: Vec<String> = vec![project_id.to_string()];
         while !frontier.is_empty() {
             let ids_list = frontier
@@ -239,7 +239,7 @@ impl DB {
                 .join(", ");
             frontier.clear();
             for sql in &[
-                format!("SELECT out FROM contains WHERE in IN [{}]", ids_list),
+                format!("SELECT out FROM has_file WHERE in IN [{}]", ids_list),
                 format!("SELECT out FROM has_module WHERE in IN [{}]", ids_list),
             ] {
                 if let Ok(mut res) = self.client.query(sql).await {
@@ -344,7 +344,7 @@ impl DB {
             .collect();
 
         let edge_tables = [
-            "contains",
+            "has_file",
             "has_module",
             "has_task",
             "belongs_to_project",

@@ -1099,9 +1099,9 @@ async fn test_link_after_create_module() {
     assert_eq!(by_p2_before.len(), 0);
 
     // Link module to project2 after creation
-    db.link(&project2_id, "contains", &module_id)
+    db.link(&project2_id, "has_module", &module_id)
         .await
-        .expect("link project2 -> contains -> module");
+        .expect("link project2 -> has_module -> module");
 
     let by_p2_after = db
         .list_modules_by_project(&project2_id)
