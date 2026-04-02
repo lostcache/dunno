@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { editingNode } from '../stores/graphStore'
+  import { get } from 'svelte/store'
+  import { editingNode, cyInstance } from '../stores/graphStore'
   import { openEdit } from '../stores/modalStore'
   import { apiDel, apiPatch } from '../lib/api'
   import { setStatus } from '../stores/statusStore'
@@ -14,7 +15,7 @@
   import * as Select from '$lib/components/ui/select'
   import MarkdownEditor from './MarkdownEditor.svelte'
 
-  let { onRefresh }: { onRefresh: () => void } = $props()
+  let { onRefresh }: { onRefresh: () => Promise<void> } = $props()
 
   let confirmingDelete = $state(false)
   let fieldValues = $state<Record<string, string>>({})
@@ -67,11 +68,12 @@
       ? { fields: { ...fieldValues } }
       : { ...fieldValues }
 
+    const savedNodeId = node.id
     try {
       await apiPatch(`${endpoint}/${encodeURIComponent(node.id)}`, body)
-      editingNode.set(null)
       setStatus('Saved', 'ok')
-      onRefresh()
+      await onRefresh()
+      get(cyInstance)?.getElementById(savedNodeId).select()
     } catch (e: unknown) {
       setStatus('Save failed: ' + (e as Error).message, 'err')
     }
