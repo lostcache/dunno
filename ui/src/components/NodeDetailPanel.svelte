@@ -179,7 +179,10 @@
           </div>
 
           <div class="mt-3 pt-2 border-t border-[#2d3148]">
-            <span class="text-[9px] text-[#475569] font-mono break-all">{$editingNode.id}</span>
+            <span
+              class="text-[9px] text-[#475569] font-mono break-all cursor-pointer hover:text-[#64748b]"
+              onclick={() => navigator.clipboard.writeText($editingNode.id).then(() => setStatus('ID copied', 'ok'))}
+            >{$editingNode.id}</span>
           </div>
         </ScrollArea>
       </CardContent>
