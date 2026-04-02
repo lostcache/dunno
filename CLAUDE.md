@@ -148,6 +148,8 @@ Issue status values: `pending` (default on creation), `active`, `completed`.
 
 1. while working on a task capture the knowledge/context and link to the relevant and appropriate node task, module, project or file.
    - `dn add --field type --value <type> --field content --value "<content>" --link-to <node_id>`
+2. To delete a context entry:
+   - `dn rm <context_id> [<context_id>...]`
 
 ### Learning Extraction
 

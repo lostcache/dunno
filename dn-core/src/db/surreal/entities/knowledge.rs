@@ -110,6 +110,18 @@ impl DB {
         Ok(())
     }
 
+    /// Deletes a context record by id.
+    pub async fn delete_context(&self, context_id: &str) -> anyhow::Result<bool> {
+        let key = context_id
+            .split_once(':')
+            .map(|(_, key)| key)
+            .unwrap_or(context_id);
+
+        let deleted: Option<surrealdb::types::Value> =
+            self.client.delete(("context", key)).await?;
+        Ok(deleted.is_some())
+    }
+
     /// Returns structural node ids (project, module, task) that this context record belongs to.
     pub async fn get_belongs_to_targets(&self, context_id: &str) -> anyhow::Result<Vec<String>> {
         let mut out = Vec::new();
@@ -136,6 +148,77 @@ impl DB {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn delete_context_success() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        let mut fields = serde_json::Map::new();
+        fields.insert(
+            "type".to_string(),
+            serde_json::Value::String("test".to_string()),
+        );
+        let created = db
+            .create_context_schemaless(fields)
+            .await
+            .expect("Failed to create context");
+        let context_id = created
+            .get("id")
+            .and_then(|v| v.as_str())
+            .expect("context id")
+            .to_string();
+
+        let fetched = db
+            .get_context(&context_id)
+            .await
+            .expect("Failed to fetch context");
+        assert!(fetched.is_some());
+
+        let deleted = db
+            .delete_context(&context_id)
+            .await
+            .expect("Failed to delete context");
+        assert!(deleted, "delete_context should return true for existing context");
+
+        let after_delete = db
+            .get_context(&context_id)
+            .await
+            .expect("Failed to check context");
+        assert!(after_delete.is_none(), "Context should be deleted");
+    }
+
+    #[tokio::test]
+    async fn delete_nonexistent_context() {
+        let db = DB::new("mem://").await.expect("Failed to init DB");
+
+        // Create one context to ensure the table exists
+        let mut fields = serde_json::Map::new();
+        fields.insert(
+            "type".to_string(),
+            serde_json::Value::String("seed".to_string()),
+        );
+        let created = db
+            .create_context_schemaless(fields)
+            .await
+            .expect("create context");
+        let context_id = created
+            .get("id")
+            .and_then(|v| v.as_str())
+            .expect("context id")
+            .to_string();
+
+        let deleted = db
+            .delete_context("context:nonexistent12345")
+            .await
+            .expect("Should not error on nonexistent context when table exists");
+        assert!(
+            !deleted,
+            "delete_context should return false for nonexistent context"
+        );
+
+        // Cleanup
+        db.delete_context(&context_id).await.expect("cleanup delete");
+    }
 
     #[test]
     fn ensure_context_record_id_accepts_context_ids() {

@@ -760,6 +760,22 @@ async fn update_context(
     Ok(Json(updated))
 }
 
+async fn delete_context(
+    Path(id): Path<String>,
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, ApiError> {
+    let deleted = state.db.delete_context(&id).await?;
+    if deleted {
+        Ok(StatusCode::NO_CONTENT.into_response())
+    } else {
+        Ok((
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "error": "context not found" })),
+        )
+            .into_response())
+    }
+}
+
 // Context queries
 async fn get_task_context(
     Path(id): Path<String>,
@@ -955,7 +971,7 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/issues/:id", patch(update_issue).delete(delete_issue))
         // Context
         .route("/api/contexts", post(create_context))
-        .route("/api/contexts/:id", patch(update_context))
+        .route("/api/contexts/:id", patch(update_context).delete(delete_context))
         .route("/api/ctx/task/:id", get(get_task_context))
         .route("/api/ctx/file/:id", get(get_file_context))
         .route("/api/ctx/epic/:id", get(get_epic_context))

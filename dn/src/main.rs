@@ -96,6 +96,7 @@ async fn dispatch_command(
             general,
             project,
         } => handle_context(task_id, file_id, epic_id, full, general, project, db, pretty).await,
+        args::Commands::Rm { context_ids } => handle_rm(context_ids, db, pretty).await,
         args::Commands::Purge => handle_purge(db, pretty).await,
         args::Commands::Config { .. } => {
             unreachable!("config command handled before db init")
@@ -168,6 +169,30 @@ async fn handle_add(
     }
     dn_core::ingest::add_knowledge_schemaless(map, link_to, db).await?;
     print_json(serde_json::json!({ "status": "ok" }), pretty);
+    Ok(())
+}
+
+/// Deletes context records by id.
+async fn handle_rm(
+    context_ids: Vec<String>,
+    db: &dn_core::db::DB,
+    pretty: bool,
+) -> anyhow::Result<()> {
+    let mut deleted = Vec::new();
+    let mut not_found = Vec::new();
+    for id in context_ids {
+        if db.delete_context(&id).await? {
+            deleted.push(id);
+        } else {
+            not_found.push(id);
+        }
+    }
+    let result = serde_json::json!({
+        "status": "ok",
+        "deleted": deleted,
+        "not_found": not_found,
+    });
+    print_json(result, pretty);
     Ok(())
 }
 

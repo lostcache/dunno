@@ -193,6 +193,17 @@ pub enum Commands {
     },
 
     #[command(
+        about = "Remove one or more context entries.",
+        long_about = "Delete context records by their IDs.",
+        after_help = "Example:\n  dn rm context:abc\n  dn rm context:abc context:def"
+    )]
+    Rm {
+        /// Context record ID(s) to delete. Repeat for multiple.
+        #[arg(required = true, value_name = "CONTEXT_ID")]
+        context_ids: Vec<String>,
+    },
+
+    #[command(
         about = "Purge the database (DANGER).",
         long_about = "Delete all records from the database. This action is irreversible.",
         hide = true
