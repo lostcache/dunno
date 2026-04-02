@@ -80,6 +80,24 @@ export function buildCyStyles(): cytoscape.Stylesheet[] {
       } as cytoscape.Css.Edge,
     },
     {
+      selector: 'node[status = "completed"]',
+      style: {
+        'background-image': `data:image/svg+xml,${encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">' +
+          '<circle cx="8" cy="8" r="8" fill="#22c55e"/>' +
+          '<path d="M3.5 8l3 3 6-6" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' +
+          '</svg>'
+        )}`,
+        'background-fit': 'none',
+        'background-width': '16px',
+        'background-height': '16px',
+        'background-position-x': '100%',
+        'background-position-y': '0%',
+        'background-clip': 'none',
+        'background-image-opacity': 1,
+      } as cytoscape.Css.Node,
+    },
+    {
       selector: ':selected',
       style: { 'border-width': 2, 'border-color': '#a78bfa' } as cytoscape.Css.Node,
     },
