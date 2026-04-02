@@ -26,6 +26,7 @@ impl DB {
             id: None,
             content: content.to_string(),
             status: crate::models::TodoStatus::Pending,
+            project_id: String::new(),
         };
         let result = self.create_todo_record(&todo).await?;
         if let (Some(pid), Some(tid)) = (project_id, result.id.as_ref()) {
@@ -35,9 +36,28 @@ impl DB {
         Ok(result)
     }
 
-    /// Fetches a todo item by record id.
+    /// Fetches a todo item by record id, including its linked project_id.
     pub async fn get_todo(&self, id: &str) -> anyhow::Result<Option<crate::models::TodoItem>> {
-        self.get_record("todo_item", id).await
+        let mut todo: crate::models::TodoItem = match self.get_record("todo_item", id).await? {
+            Some(t) => t,
+            None => return Ok(None),
+        };
+        let todo_id = todo.id.as_deref().unwrap_or(id);
+        let mut res = self
+            .client
+            .query("SELECT in AS project_id FROM has_todo WHERE out = type::record($id) LIMIT 1")
+            .bind(("id", todo_id.to_string()))
+            .await?;
+        let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
+        if let Some(project_id) = rows.into_iter().next().and_then(|row| {
+            let json = surreal_to_json(row);
+            json.get("project_id")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        }) {
+            todo.project_id = project_id;
+        }
+        Ok(Some(todo))
     }
 
     /// Lists todo items for a project via graph traversal.

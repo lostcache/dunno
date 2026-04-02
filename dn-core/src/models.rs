@@ -113,6 +113,8 @@ pub struct TodoItem {
     pub id: Option<String>,
     pub content: String,
     pub status: TodoStatus,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub project_id: String,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
@@ -339,6 +341,7 @@ mod tests {
             id: None,
             content: "Fix bug".to_string(),
             status: TodoStatus::Pending,
+            project_id: String::new(),
         };
         let json = to_string(&todo).expect("Failed to serialize TodoItem");
         assert!(json.contains("Fix bug"));
