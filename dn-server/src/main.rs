@@ -1,3 +1,5 @@
+mod schema;
+
 use axum::Json;
 use axum::body::Body;
 use axum::http::{Method, Response, header, header::CONTENT_TYPE};
@@ -11,9 +13,10 @@ use axum::{
 use clap::Parser;
 use dn_core::{config::Config, db::surreal::DB};
 use rust_embed::RustEmbed;
-use serde::Deserialize;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
+
+use schema::*;
 
 #[derive(RustEmbed)]
 #[folder = "../static/dist/"]
@@ -78,177 +81,6 @@ impl IntoResponse for ApiError {
 }
 
 type ApiResult<T> = Result<Json<T>, ApiError>;
-
-#[derive(Deserialize)]
-struct FullQuery {
-    full: Option<bool>,
-}
-
-// ── Request bodies ────────────────────────────────────────────────────────────
-
-#[derive(Deserialize)]
-struct CreateProjectBody {
-    name: String,
-    description: String,
-}
-
-#[derive(Deserialize)]
-struct CreateModuleBody {
-    name: String,
-    description: String,
-    notes: Option<String>,
-    project_id: String,
-    parent_module_id: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct CreateFileBody {
-    name: String,
-    path: String,
-    description: Option<String>,
-    notes: Option<String>,
-    project_id: String,
-    parent_id: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct CreateTaskBody {
-    name: String,
-    description: String,
-    module_id: Option<String>,
-    project_id: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdateTaskBody {
-    name: Option<String>,
-    description: Option<String>,
-    status: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct CreateTodoBody {
-    content: String,
-    project_id: String,
-}
-
-#[derive(Deserialize)]
-struct CreateUserStoryBody {
-    title: String,
-    description: String,
-    project_id: String,
-}
-
-#[derive(Deserialize)]
-struct CreateEpicBody {
-    title: String,
-    description: String,
-    project_id: String,
-}
-
-#[derive(Deserialize)]
-struct CreatePersonaBody {
-    name: String,
-    content: String,
-    project_id: String,
-}
-
-#[derive(Deserialize)]
-struct CreateWorkflowBody {
-    name: String,
-    content: String,
-    project_id: String,
-}
-
-#[derive(Deserialize)]
-struct CreateContextBody {
-    fields: serde_json::Map<String, serde_json::Value>,
-    link_to: String,
-}
-
-#[derive(Deserialize)]
-struct UpdateProjectBody {
-    name: Option<String>,
-    description: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdateModuleBody {
-    name: Option<String>,
-    description: Option<String>,
-    notes: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdateFileBody {
-    name: Option<String>,
-    path: Option<String>,
-    description: Option<String>,
-    notes: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdateUserStoryBody {
-    title: Option<String>,
-    description: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdateEpicBody {
-    title: Option<String>,
-    description: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdateTodoBody {
-    content: Option<String>,
-    status: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdatePersonaBody {
-    name: Option<String>,
-    content: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdateWorkflowBody {
-    name: Option<String>,
-    content: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdateContextBody {
-    fields: serde_json::Map<String, serde_json::Value>,
-}
-
-#[derive(Deserialize)]
-struct ListIssuesQuery {
-    project_id: String,
-    task_id: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct CreateIssueBody {
-    description: String,
-    task_id: Option<String>,
-    project_id: String,
-    plan: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct UpdateIssueBody {
-    description: Option<String>,
-    plan: Option<String>,
-    status: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct LinkBody {
-    from_id: String,
-    edge: String,
-    to_id: String,
-}
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
@@ -540,7 +372,10 @@ async fn update_todo(
         }
         None => None,
     };
-    let updated = state.db.update_todo(&id, body.content, parsed_status).await?;
+    let updated = state
+        .db
+        .update_todo(&id, body.content, parsed_status)
+        .await?;
     Ok(Json(serde_json::to_value(updated)?))
 }
 
@@ -971,7 +806,10 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/issues/:id", patch(update_issue).delete(delete_issue))
         // Context
         .route("/api/contexts", post(create_context))
-        .route("/api/contexts/:id", patch(update_context).delete(delete_context))
+        .route(
+            "/api/contexts/:id",
+            patch(update_context).delete(delete_context),
+        )
         .route("/api/ctx/task/:id", get(get_task_context))
         .route("/api/ctx/file/:id", get(get_file_context))
         .route("/api/ctx/epic/:id", get(get_epic_context))
@@ -1046,38 +884,44 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::load(args.backend.as_deref())?;
 
-    let (db, surreal_child): (DB, Option<std::process::Child>) =
-        if matches!(config.backend, dn_core::config::StorageBackend::Local) {
-            let db_path = config.local_data_path();
-            if let Some(parent) = db_path.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-            let surreal_port = find_free_port();
-            match spawn_surreal_server(surreal_port, &db_path) {
-                Ok(child) => {
-                    if !wait_for_port(surreal_port, 10).await {
-                        return Err(anyhow::anyhow!(
-                            "surreal server did not start within 10 seconds"
-                        ));
-                    }
-                    let ws_url = format!("ws://127.0.0.1:{}/rpc", surreal_port);
-                    let db = DB::new(&ws_url).await?;
-                    (db, Some(child))
+    let (db, surreal_child): (DB, Option<std::process::Child>) = if matches!(
+        config.backend,
+        dn_core::config::StorageBackend::Local
+    ) {
+        let db_path = config.local_data_path();
+        if let Some(parent) = db_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let surreal_port = find_free_port();
+        match spawn_surreal_server(surreal_port, &db_path) {
+            Ok(child) => {
+                if !wait_for_port(surreal_port, 10).await {
+                    return Err(anyhow::anyhow!(
+                        "surreal server did not start within 10 seconds"
+                    ));
                 }
-                Err(e) => {
-                    eprintln!("Warning: {e}");
-                    eprintln!("dn-server started, but the dn CLI will not be available concurrently.");
-                    eprintln!("To use both at the same time, either:");
-                    eprintln!("  - Install surreal and restart dn-server: curl -sSf https://install.surrealdb.com | sh");
-                    eprintln!("  - Or set backend = \"local-server\" in your config and run SurrealDB separately");
-                    let db = DB::from_config(&config).await?;
-                    (db, None)
-                }
+                let ws_url = format!("ws://127.0.0.1:{}/rpc", surreal_port);
+                let db = DB::new(&ws_url).await?;
+                (db, Some(child))
             }
-        } else {
-            let db = DB::from_config(&config).await?;
-            (db, None)
-        };
+            Err(e) => {
+                eprintln!("Warning: {e}");
+                eprintln!("dn-server started, but the dn CLI will not be available concurrently.");
+                eprintln!("To use both at the same time, either:");
+                eprintln!(
+                    "  - Install surreal and restart dn-server: curl -sSf https://install.surrealdb.com | sh"
+                );
+                eprintln!(
+                    "  - Or set backend = \"local-server\" in your config and run SurrealDB separately"
+                );
+                let db = DB::from_config(&config).await?;
+                (db, None)
+            }
+        }
+    } else {
+        let db = DB::from_config(&config).await?;
+        (db, None)
+    };
 
     let state = Arc::new(AppState { db });
 
@@ -1118,8 +962,7 @@ mod handler_tests {
     #[test]
     fn create_todo_body_accepts_valid_body() {
         let json = r#"{"content":"test","project_id":"project:abc"}"#;
-        let body: CreateTodoBody =
-            serde_json::from_str(json).expect("valid body must deserialize");
+        let body: CreateTodoBody = serde_json::from_str(json).expect("valid body must deserialize");
         assert_eq!(body.project_id, "project:abc");
         assert_eq!(body.content, "test");
     }
