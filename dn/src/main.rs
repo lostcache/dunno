@@ -60,9 +60,7 @@ async fn dispatch_command(
             edge,
             to_ids,
         } => handle_link(from_id, edge, to_ids, db, pretty).await,
-        args::Commands::Project { command } => {
-            handle_project_command(command, db, pretty).await
-        }
+        args::Commands::Project { command } => handle_project_command(command, db, pretty).await,
         args::Commands::Module { command } => {
             handle_module_command(command, db, pretty, ignore_case).await
         }
@@ -95,7 +93,12 @@ async fn dispatch_command(
             full,
             general,
             project,
-        } => handle_context(task_id, file_id, epic_id, full, general, project, db, pretty).await,
+        } => {
+            handle_context(
+                task_id, file_id, epic_id, full, general, project, db, pretty,
+            )
+            .await
+        }
         args::Commands::Rm { context_ids } => handle_rm(context_ids, db, pretty).await,
         args::Commands::Purge => handle_purge(db, pretty).await,
         args::Commands::Config { .. } => {
@@ -606,8 +609,12 @@ async fn handle_issue_command(
         } => {
             let parsed_status = match status.as_deref() {
                 Some(s) => {
-                    let st = dn_core::models::IssueStatus::parse(s)
-                        .ok_or_else(|| anyhow::anyhow!("Invalid status '{}'. Expected: pending, active, completed", s))?;
+                    let st = dn_core::models::IssueStatus::parse(s).ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Invalid status '{}'. Expected: pending, active, completed",
+                            s
+                        )
+                    })?;
                     Some(st)
                 }
                 None => None,
@@ -997,8 +1004,8 @@ async fn handle_context(
     pretty: bool,
 ) -> anyhow::Result<()> {
     if general {
-        let proj = project
-            .ok_or_else(|| anyhow::anyhow!("--project / -p is required with --general"))?;
+        let proj =
+            project.ok_or_else(|| anyhow::anyhow!("--project / -p is required with --general"))?;
         let project_id = if proj.contains(':') {
             proj.clone()
         } else {

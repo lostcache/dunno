@@ -296,10 +296,17 @@ mod tests {
         let f1_id = f1.id.as_ref().unwrap().clone();
         let f2_id = f2.id.as_ref().unwrap().clone();
 
-        db.link(&f1_id, "belongs_to_task", &task_id).await.expect("link f1");
-        db.link(&f2_id, "belongs_to_task", &task_id).await.expect("link f2");
+        db.link(&f1_id, "belongs_to_task", &task_id)
+            .await
+            .expect("link f1");
+        db.link(&f2_id, "belongs_to_task", &task_id)
+            .await
+            .expect("link f2");
 
-        let files = db.list_files_by_task(&task_id).await.expect("list files by task");
+        let files = db
+            .list_files_by_task(&task_id)
+            .await
+            .expect("list files by task");
         assert_eq!(files.len(), 2);
         let ids: Vec<_> = files.iter().map(|f| f.id.as_deref().unwrap()).collect();
         assert!(ids.contains(&f1_id.as_str()));
@@ -326,11 +333,21 @@ mod tests {
         let task_id = task.id.unwrap();
 
         // Create a file but do NOT link it to the task
-        db.create_file("unlinked.rs", "src/unlinked.rs", None, None, &project_id, None)
-            .await
-            .expect("create file");
+        db.create_file(
+            "unlinked.rs",
+            "src/unlinked.rs",
+            None,
+            None,
+            &project_id,
+            None,
+        )
+        .await
+        .expect("create file");
 
-        let files = db.list_files_by_task(&task_id).await.expect("list files by task");
+        let files = db
+            .list_files_by_task(&task_id)
+            .await
+            .expect("list files by task");
         assert!(files.is_empty());
     }
 

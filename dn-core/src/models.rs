@@ -235,7 +235,10 @@ mod tests {
     fn issue_status_parse_accepts_known_values() {
         assert_eq!(IssueStatus::parse("pending"), Some(IssueStatus::Pending));
         assert_eq!(IssueStatus::parse("active"), Some(IssueStatus::Active));
-        assert_eq!(IssueStatus::parse("completed"), Some(IssueStatus::Completed));
+        assert_eq!(
+            IssueStatus::parse("completed"),
+            Some(IssueStatus::Completed)
+        );
     }
 
     #[test]

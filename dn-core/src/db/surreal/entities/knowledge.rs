@@ -117,8 +117,7 @@ impl DB {
             .map(|(_, key)| key)
             .unwrap_or(context_id);
 
-        let deleted: Option<surrealdb::types::Value> =
-            self.client.delete(("context", key)).await?;
+        let deleted: Option<surrealdb::types::Value> = self.client.delete(("context", key)).await?;
         Ok(deleted.is_some())
     }
 
@@ -178,7 +177,10 @@ mod tests {
             .delete_context(&context_id)
             .await
             .expect("Failed to delete context");
-        assert!(deleted, "delete_context should return true for existing context");
+        assert!(
+            deleted,
+            "delete_context should return true for existing context"
+        );
 
         let after_delete = db
             .get_context(&context_id)
@@ -217,7 +219,9 @@ mod tests {
         );
 
         // Cleanup
-        db.delete_context(&context_id).await.expect("cleanup delete");
+        db.delete_context(&context_id)
+            .await
+            .expect("cleanup delete");
     }
 
     #[test]

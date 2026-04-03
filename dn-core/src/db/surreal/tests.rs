@@ -352,7 +352,13 @@ async fn test_list_tasks_by_project() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("crate::models::Module1", "First module", None, &project_id, None)
+        .create_module(
+            "crate::models::Module1",
+            "First module",
+            None,
+            &project_id,
+            None,
+        )
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -403,7 +409,13 @@ async fn test_create_task_bidirectional_edges() {
     let project_id = project.id.expect("project id");
 
     let module = db
-        .create_module("crate::models::Module1", "First module", None, &project_id, None)
+        .create_module(
+            "crate::models::Module1",
+            "First module",
+            None,
+            &project_id,
+            None,
+        )
         .await
         .expect("Failed to create module");
     let module_id = module.id.expect("module id");
@@ -1626,7 +1638,13 @@ async fn test_list_files_by_submodule() {
     let module_id = module.id.expect("module id");
 
     let submodule = db
-        .create_module("OAuth", "OAuth submodule", None, &project_id, Some(&module_id))
+        .create_module(
+            "OAuth",
+            "OAuth submodule",
+            None,
+            &project_id,
+            Some(&module_id),
+        )
         .await
         .expect("Failed to create submodule");
     let submodule_id = submodule.id.expect("submodule id");
@@ -2357,7 +2375,14 @@ async fn test_get_task_context_with_files_and_linked_context() {
 
     // Link a different file directly to the task
     let task_file = db
-        .create_file("task.rs", "src/task.rs", Some("Task-specific file"), None, &project_id, None)
+        .create_file(
+            "task.rs",
+            "src/task.rs",
+            Some("Task-specific file"),
+            None,
+            &project_id,
+            None,
+        )
         .await
         .expect("create task file");
     let task_file_id = task_file.id.as_ref().unwrap().clone();
@@ -2403,11 +2428,19 @@ async fn test_get_task_context_with_files_and_linked_context() {
     assert_eq!(context.files[0].id.as_deref().unwrap(), task_file_id);
     assert_eq!(context.files[0].name, "task.rs");
     // The module file must NOT appear
-    assert!(!context.files.iter().any(|f| f.id.as_deref() == Some(file_id.as_str())));
+    assert!(
+        !context
+            .files
+            .iter()
+            .any(|f| f.id.as_deref() == Some(file_id.as_str()))
+    );
 
     // Verify hierarchy is correct
     assert_eq!(context.hierarchy.project_id, project_id);
-    assert_eq!(context.hierarchy.module_id.as_deref(), Some(module_id.as_str()));
+    assert_eq!(
+        context.hierarchy.module_id.as_deref(),
+        Some(module_id.as_str())
+    );
 }
 
 #[tokio::test]
@@ -3188,7 +3221,10 @@ async fn test_task_ctx_full_includes_persona_workflow() {
         .await
         .unwrap();
     let pid = p.id.unwrap();
-    let m = db.create_module("mod", "d", None, &pid, None).await.unwrap();
+    let m = db
+        .create_module("mod", "d", None, &pid, None)
+        .await
+        .unwrap();
     let mid = m.id.unwrap();
     let t = db
         .create_task("task", "d", Some(&mid), Some(&pid))

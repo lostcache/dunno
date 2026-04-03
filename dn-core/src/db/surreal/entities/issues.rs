@@ -136,8 +136,7 @@ impl DB {
             .map(|(_, key)| key)
             .unwrap_or(issue_id);
 
-        let deleted: Option<surrealdb::types::Value> =
-            self.client.delete(("issue", key)).await?;
+        let deleted: Option<surrealdb::types::Value> = self.client.delete(("issue", key)).await?;
         Ok(deleted.is_some())
     }
 }
@@ -187,10 +186,7 @@ mod tests {
             .await
             .expect("create issue");
 
-        let issues = db
-            .list_issues_by_task(&task_id)
-            .await
-            .expect("list issues");
+        let issues = db.list_issues_by_task(&task_id).await.expect("list issues");
         assert_eq!(issues.len(), 1);
         assert_eq!(issues[0].id, issue.id);
     }

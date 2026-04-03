@@ -97,10 +97,7 @@ impl DB {
             patch.insert("content".to_string(), serde_json::Value::String(content));
         }
         if let Some(status) = status {
-            patch.insert(
-                "status".to_string(),
-                serde_json::to_value(status)?,
-            );
+            patch.insert("status".to_string(), serde_json::to_value(status)?);
         }
 
         if patch.is_empty() {

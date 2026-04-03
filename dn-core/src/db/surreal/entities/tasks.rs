@@ -186,7 +186,8 @@ impl DB {
 
         if let Some(mid) = &ctx.hierarchy.module_id.clone() {
             // Walk up the full module chain (child → parent → ... → project)
-            ctx.contexts.extend(self.get_module_context_full(mid).await?);
+            ctx.contexts
+                .extend(self.get_module_context_full(mid).await?);
         } else {
             ctx.contexts
                 .extend(self.get_linked_context(&ctx.hierarchy.project_id).await?);
@@ -523,7 +524,14 @@ mod tests {
 
         // File attached to the module (should NOT appear in task context)
         let module_file = db
-            .create_file("module.rs", "src/module.rs", None, None, &project_id, Some(&module_id))
+            .create_file(
+                "module.rs",
+                "src/module.rs",
+                None,
+                None,
+                &project_id,
+                Some(&module_id),
+            )
             .await
             .expect("create module file");
 
@@ -543,7 +551,10 @@ mod tests {
             .await
             .expect("link file to task");
 
-        let ctx = db.get_task_context(&task_id, false).await.expect("get context");
+        let ctx = db
+            .get_task_context(&task_id, false)
+            .await
+            .expect("get context");
 
         assert_eq!(ctx.files.len(), 1);
         assert_eq!(ctx.files[0].id.as_deref(), Some(task_file_id.as_str()));
@@ -571,9 +582,16 @@ mod tests {
         let module_id = module.id.unwrap();
 
         // File attached to the module only
-        db.create_file("module.rs", "src/module.rs", None, None, &project_id, Some(&module_id))
-            .await
-            .expect("create module file");
+        db.create_file(
+            "module.rs",
+            "src/module.rs",
+            None,
+            None,
+            &project_id,
+            Some(&module_id),
+        )
+        .await
+        .expect("create module file");
 
         let task = db
             .create_task("My Task", "desc", Some(&module_id), Some(&project_id))
@@ -581,7 +599,13 @@ mod tests {
             .expect("create task");
         let task_id = task.id.unwrap();
 
-        let ctx = db.get_task_context(&task_id, false).await.expect("get context");
-        assert!(ctx.files.is_empty(), "no files should appear without direct task link");
+        let ctx = db
+            .get_task_context(&task_id, false)
+            .await
+            .expect("get context");
+        assert!(
+            ctx.files.is_empty(),
+            "no files should appear without direct task link"
+        );
     }
 }

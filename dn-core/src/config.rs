@@ -270,14 +270,30 @@ impl Config {
         if let Some(backend) = partial.backend {
             self.backend = StorageBackend::parse(&backend)?;
         }
-        if let Some(v) = partial.local_path { self.local_path = v; }
-        if let Some(v) = partial.url { self.url = v; }
-        if let Some(v) = partial.namespace { self.namespace = v; }
-        if let Some(v) = partial.database { self.database = v; }
-        if let Some(v) = partial.username { self.username = v; }
-        if let Some(v) = partial.password { self.password = v; }
-        if let Some(v) = partial.auth_type { self.auth_type = v; }
-        if let Some(v) = partial.qdrant_url { self.qdrant_url = v; }
+        if let Some(v) = partial.local_path {
+            self.local_path = v;
+        }
+        if let Some(v) = partial.url {
+            self.url = v;
+        }
+        if let Some(v) = partial.namespace {
+            self.namespace = v;
+        }
+        if let Some(v) = partial.database {
+            self.database = v;
+        }
+        if let Some(v) = partial.username {
+            self.username = v;
+        }
+        if let Some(v) = partial.password {
+            self.password = v;
+        }
+        if let Some(v) = partial.auth_type {
+            self.auth_type = v;
+        }
+        if let Some(v) = partial.qdrant_url {
+            self.qdrant_url = v;
+        }
         Ok(())
     }
 }

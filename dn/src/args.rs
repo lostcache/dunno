@@ -1279,13 +1279,25 @@ mod tests {
     fn task_create_requires_project() {
         // No --project or --project-ids should be rejected at parse time.
         let args = Args::try_parse_from(["dn", "task", "add", "Task Name", "Description"]);
-        assert!(args.is_err(), "task add without a project should be rejected");
+        assert!(
+            args.is_err(),
+            "task add without a project should be rejected"
+        );
 
         // Project-only (no module) should be accepted.
         let args = Args::try_parse_from([
-            "dn", "task", "add", "--project-id", "project:abc", "Task Name", "Description",
+            "dn",
+            "task",
+            "add",
+            "--project-id",
+            "project:abc",
+            "Task Name",
+            "Description",
         ]);
-        assert!(args.is_ok(), "task add with only --project-id should be accepted");
+        assert!(
+            args.is_ok(),
+            "task add with only --project-id should be accepted"
+        );
     }
 
     #[test]
@@ -2160,11 +2172,21 @@ mod tests {
     #[test]
     fn issue_add_parses_description() {
         let args = Args::try_parse_from([
-            "dn", "issue", "add", "--project-id", "project:abc", "Users cannot log in",
+            "dn",
+            "issue",
+            "add",
+            "--project-id",
+            "project:abc",
+            "Users cannot log in",
         ]);
         assert!(args.is_ok(), "should parse issue add");
         if let Commands::Issue { command } = args.unwrap().command {
-            if let IssueCommands::Create { task_id, description, .. } = command {
+            if let IssueCommands::Create {
+                task_id,
+                description,
+                ..
+            } = command
+            {
                 assert_eq!(task_id, None);
                 assert_eq!(description, "Users cannot log in");
             } else {
@@ -2178,7 +2200,14 @@ mod tests {
     #[test]
     fn issue_add_accepts_task_id() {
         let args = Args::try_parse_from([
-            "dn", "issue", "add", "--project-id", "project:abc", "--task-id", "task:abc123", "Desc",
+            "dn",
+            "issue",
+            "add",
+            "--project-id",
+            "project:abc",
+            "--task-id",
+            "task:abc123",
+            "Desc",
         ]);
         assert!(args.is_ok(), "should parse issue add with --task-id");
         if let Commands::Issue { command } = args.unwrap().command {
@@ -2195,7 +2224,14 @@ mod tests {
     #[test]
     fn issue_add_accepts_tid_alias() {
         let args = Args::try_parse_from([
-            "dn", "issue", "add", "--project-id", "project:abc", "--tid", "task:abc123", "Desc",
+            "dn",
+            "issue",
+            "add",
+            "--project-id",
+            "project:abc",
+            "--tid",
+            "task:abc123",
+            "Desc",
         ]);
         assert!(args.is_ok(), "should parse issue add with --tid alias");
     }
@@ -2208,11 +2244,14 @@ mod tests {
 
     #[test]
     fn issue_list_accepts_project_id() {
-        let args =
-            Args::try_parse_from(["dn", "issue", "ls", "--project-id", "project:abc"]);
+        let args = Args::try_parse_from(["dn", "issue", "ls", "--project-id", "project:abc"]);
         assert!(args.is_ok(), "should parse issue list with --project-id");
         if let Commands::Issue { command } = args.unwrap().command {
-            if let IssueCommands::List { project_id, task_id } = command {
+            if let IssueCommands::List {
+                project_id,
+                task_id,
+            } = command
+            {
                 assert_eq!(project_id, "project:abc".to_string());
                 assert_eq!(task_id, None);
             } else {
@@ -2226,7 +2265,13 @@ mod tests {
     #[test]
     fn issue_list_accepts_task_id() {
         let args = Args::try_parse_from([
-            "dn", "issue", "ls", "--project-id", "project:abc", "--task-id", "task:abc",
+            "dn",
+            "issue",
+            "ls",
+            "--project-id",
+            "project:abc",
+            "--task-id",
+            "task:abc",
         ]);
         assert!(args.is_ok(), "should parse issue list with --task-id");
         if let Commands::Issue { command } = args.unwrap().command {
@@ -2242,9 +2287,8 @@ mod tests {
 
     #[test]
     fn issue_add_accepts_project_id() {
-        let args = Args::try_parse_from([
-            "dn", "issue", "add", "--project-id", "project:abc", "Desc",
-        ]);
+        let args =
+            Args::try_parse_from(["dn", "issue", "add", "--project-id", "project:abc", "Desc"]);
         assert!(args.is_ok(), "should parse issue add with --project-id");
         if let Commands::Issue { command } = args.unwrap().command {
             if let IssueCommands::Create { project_id, .. } = command {
@@ -2296,14 +2340,26 @@ mod tests {
     #[test]
     fn issue_update_parses_all_fields() {
         let args = Args::try_parse_from([
-            "dn", "issue", "update", "issue:abc123",
-            "--description", "New Desc",
-            "--plan", "Fix it",
-            "--status", "active",
+            "dn",
+            "issue",
+            "update",
+            "issue:abc123",
+            "--description",
+            "New Desc",
+            "--plan",
+            "Fix it",
+            "--status",
+            "active",
         ]);
         assert!(args.is_ok(), "should parse issue update");
         if let Commands::Issue { command } = args.unwrap().command {
-            if let IssueCommands::Update { issue_id, description, plan, status } = command {
+            if let IssueCommands::Update {
+                issue_id,
+                description,
+                plan,
+                status,
+            } = command
+            {
                 assert_eq!(issue_id, "issue:abc123");
                 assert_eq!(description.as_deref(), Some("New Desc"));
                 assert_eq!(plan.as_deref(), Some("Fix it"));
@@ -2325,11 +2381,22 @@ mod tests {
     #[test]
     fn issue_update_accepts_partial_fields() {
         let args = Args::try_parse_from([
-            "dn", "issue", "update", "issue:abc123", "--status", "completed",
+            "dn",
+            "issue",
+            "update",
+            "issue:abc123",
+            "--status",
+            "completed",
         ]);
         assert!(args.is_ok(), "should parse issue update with only status");
         if let Commands::Issue { command } = args.unwrap().command {
-            if let IssueCommands::Update { issue_id, description, status, .. } = command {
+            if let IssueCommands::Update {
+                issue_id,
+                description,
+                status,
+                ..
+            } = command
+            {
                 assert_eq!(issue_id, "issue:abc123");
                 assert!(description.is_none());
                 assert_eq!(status.as_deref(), Some("completed"));

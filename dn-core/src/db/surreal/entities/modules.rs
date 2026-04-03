@@ -213,8 +213,7 @@ mod tests {
 
     #[test]
     fn module_id_must_have_module_prefix_for_child_module_ops() {
-        ensure_record_id("module", "module:xyz")
-            .expect("list_modules_by_module accepts module:id");
+        ensure_record_id("module", "module:xyz").expect("list_modules_by_module accepts module:id");
         let err = ensure_record_id("module", "project:1").expect_err("wrong table rejected");
         assert!(err.to_string().contains("Expected record id"));
     }
