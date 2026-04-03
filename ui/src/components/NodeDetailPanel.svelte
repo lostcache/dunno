@@ -101,7 +101,7 @@
     <Card class="rounded-none border-0 bg-transparent flex flex-col h-full">
       <CardHeader class="pb-2 pt-3 px-3 gap-1.5">
         <div class="flex items-start justify-between gap-2">
-          <div class="flex flex-col gap-1 min-w-0">
+          <div class="flex flex-col gap-1 min-w-0 overflow-hidden">
             <Badge variant="secondary" class="w-fit text-[10px]">{$editingNode.node_type}</Badge>
             <CardTitle class="text-sm text-[#a78bfa] leading-tight break-words">{$editingNode.label}</CardTitle>
           </div>
