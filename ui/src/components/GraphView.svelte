@@ -2,10 +2,12 @@
   import { onMount, onDestroy } from 'svelte'
   import { get } from 'svelte/store'
   import cytoscape from 'cytoscape'
+  import LayersPlugin, { renderPerNode } from 'cytoscape-layers'
+  import type { IHTMLLayer } from 'cytoscape-layers'
   import { projectId } from '../stores/appStore'
   import { cyInstance, editingNode } from '../stores/graphStore'
   import { hiddenNodeTypes, hiddenEdgeTypes } from '../stores/filterStore'
-  import { buildCyStyles, applyFilters } from '../lib/cytoscapeHelpers'
+  import { buildCyStyles, applyFilters, buildNodeCardHtml, measureCardHeight, truncateLabel } from '../lib/cytoscapeHelpers'
   import { api } from '../lib/api'
   import { setStatus } from '../stores/statusStore'
   import MultiSelectPanel from './MultiSelectPanel.svelte'
@@ -17,6 +19,7 @@
   let cyContainer = $state<HTMLDivElement | null>(null)
   let graphView = $state<HTMLDivElement | null>(null)
   let cy: cytoscape.Core | null = null
+  let htmlLayer: IHTMLLayer | null = null
   let hoverBtns = $state<ReturnType<typeof NodeHoverBtns> | null>(null)
   let selectedNodes = $state<NodeData[]>([])
   let hoverHideTimer: ReturnType<typeof setTimeout> | null = null
@@ -57,6 +60,8 @@
   onMount(() => {
     if (!cyContainer) return
 
+    cytoscape.use(LayersPlugin)
+
     cy = cytoscape({
       container: cyContainer,
       style: buildCyStyles(),
@@ -65,13 +70,33 @@
       boxSelectionEnabled: true,
     })
 
+    // Set up HTML card overlay layer.
+    // nodeHeights tracks the last measured height per node id so we only call
+    // node.style() when the height actually changes — prevents render loops.
+    const nodeHeights = new Map<string, number>()
+    const layers = (cy as any).layers()
+    htmlLayer = layers.append('html') as IHTMLLayer
+    renderPerNode(htmlLayer, (elem, node) => {
+      const data = node.data() as NodeData
+      const content = truncateLabel(data.label ?? '', 80)
+      const cardH = measureCardHeight(content)
+      elem.innerHTML = buildNodeCardHtml(data, node.selected(), cardH)
+      if (nodeHeights.get(data.id) !== cardH) {
+        nodeHeights.set(data.id, cardH)
+        node.style({ height: cardH })
+      }
+    }, { position: 'top-left' })
+
     cyInstance.set(cy)
 
     cy.on('tap', 'node', () => {
       setTimeout(() => onSelectionChange(), 0)
     })
     cy.on('select unselect', 'node', () => {
-      setTimeout(() => onSelectionChange(), 0)
+      setTimeout(() => {
+        onSelectionChange()
+        htmlLayer?.update()
+      }, 0)
     })
     cy.on('tap', (evt: cytoscape.EventObject) => {
       if (evt.target === cy) {
@@ -94,6 +119,7 @@
   })
 
   onDestroy(() => {
+    htmlLayer = null
     if (cy) { cy.destroy(); cy = null }
     cyInstance.set(null)
   })
