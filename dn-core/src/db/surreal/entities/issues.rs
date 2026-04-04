@@ -9,12 +9,14 @@ impl DB {
         task_id: Option<&str>,
         plan: Option<&str>,
         project_id: &str,
+        verification: Option<&str>,
     ) -> anyhow::Result<crate::models::Issue> {
         let issue = crate::models::Issue {
             id: None,
             description: description.to_string(),
             status: crate::models::IssueStatus::Pending,
             plan: plan.map(|s| s.to_string()),
+            verification: verification.map(|s| s.to_string()),
         };
         let json = serde_json::to_value(&issue)?;
         let value = json_to_surreal(json);
@@ -91,6 +93,7 @@ impl DB {
         description: Option<String>,
         status: Option<crate::models::IssueStatus>,
         plan: Option<String>,
+        verification: Option<String>,
     ) -> anyhow::Result<Option<crate::models::Issue>> {
         let key = issue_id
             .split_once(':')
@@ -109,6 +112,12 @@ impl DB {
         }
         if let Some(plan) = plan {
             patch.insert("plan".to_string(), serde_json::Value::String(plan));
+        }
+        if let Some(verification) = verification {
+            patch.insert(
+                "verification".to_string(),
+                serde_json::Value::String(verification),
+            );
         }
 
         if patch.is_empty() {
@@ -162,7 +171,7 @@ mod tests {
         let db = DB::new("mem://").await.expect("init db");
         let pid = make_project(&db, "Test Project").await;
         let issue = db
-            .create_issue("Users cannot log in", None, None, &pid)
+            .create_issue("Users cannot log in", None, None, &pid, None)
             .await
             .expect("create issue");
         assert_eq!(issue.description, "Users cannot log in");
@@ -182,7 +191,7 @@ mod tests {
         let task_id = task.id.unwrap();
 
         let issue = db
-            .create_issue("Tokens expire too early", Some(&task_id), None, &pid)
+            .create_issue("Tokens expire too early", Some(&task_id), None, &pid, None)
             .await
             .expect("create issue");
 
@@ -197,7 +206,7 @@ mod tests {
         let pid = make_project(&db, "Proj Link Test").await;
 
         let issue = db
-            .create_issue("Project-level issue", None, None, &pid)
+            .create_issue("Project-level issue", None, None, &pid, None)
             .await
             .expect("create issue");
         assert!(issue.id.is_some());
@@ -216,13 +225,13 @@ mod tests {
         let pid = make_project(&db, "Multi Issue Project").await;
         let other_pid = make_project(&db, "Other Project").await;
 
-        db.create_issue("Issue A", None, None, &pid)
+        db.create_issue("Issue A", None, None, &pid, None)
             .await
             .expect("create issue a");
-        db.create_issue("Issue B", None, None, &pid)
+        db.create_issue("Issue B", None, None, &pid, None)
             .await
             .expect("create issue b");
-        db.create_issue("Issue C other project", None, None, &other_pid)
+        db.create_issue("Issue C other project", None, None, &other_pid, None)
             .await
             .expect("create issue c");
 
@@ -238,7 +247,7 @@ mod tests {
         let db = DB::new("mem://").await.expect("init db");
         let pid = make_project(&db, "Test Project").await;
         let issue = db
-            .create_issue("desc", None, None, &pid)
+            .create_issue("desc", None, None, &pid, None)
             .await
             .expect("create issue");
         let id = issue.id.unwrap();
@@ -254,7 +263,7 @@ mod tests {
     async fn test_delete_nonexistent_issue() {
         let db = DB::new("mem://").await.expect("init db");
         let pid = make_project(&db, "Test Project").await;
-        db.create_issue("seed", None, None, &pid)
+        db.create_issue("seed", None, None, &pid, None)
             .await
             .expect("seed issue");
 
@@ -270,13 +279,19 @@ mod tests {
         let db = DB::new("mem://").await.expect("init db");
         let pid = make_project(&db, "Test Project").await;
         let issue = db
-            .create_issue("desc", None, None, &pid)
+            .create_issue("desc", None, None, &pid, None)
             .await
             .expect("create issue");
         let id = issue.id.unwrap();
 
         let updated = db
-            .update_issue(&id, None, Some(crate::models::IssueStatus::Active), None)
+            .update_issue(
+                &id,
+                None,
+                Some(crate::models::IssueStatus::Active),
+                None,
+                None,
+            )
             .await
             .expect("update issue")
             .unwrap();
@@ -288,16 +303,51 @@ mod tests {
         let db = DB::new("mem://").await.expect("init db");
         let pid = make_project(&db, "Test Project").await;
         let issue = db
-            .create_issue("desc", None, None, &pid)
+            .create_issue("desc", None, None, &pid, None)
             .await
             .expect("create issue");
         let id = issue.id.unwrap();
 
         let updated = db
-            .update_issue(&id, None, None, Some("Fix the auth module".to_string()))
+            .update_issue(
+                &id,
+                None,
+                None,
+                Some("Fix the auth module".to_string()),
+                None,
+            )
             .await
             .expect("update issue")
             .unwrap();
         assert_eq!(updated.plan.as_deref(), Some("Fix the auth module"));
+    }
+
+    #[tokio::test]
+    async fn test_create_issue_with_verification() {
+        let db = DB::new("mem://").await.expect("init db");
+        let pid = make_project(&db, "Test Project").await;
+        let issue = db
+            .create_issue("desc", None, None, &pid, Some("Check login flow"))
+            .await
+            .expect("create issue");
+        assert_eq!(issue.verification.as_deref(), Some("Check login flow"));
+    }
+
+    #[tokio::test]
+    async fn test_update_issue_verification() {
+        let db = DB::new("mem://").await.expect("init db");
+        let pid = make_project(&db, "Test Project").await;
+        let issue = db
+            .create_issue("desc", None, None, &pid, None)
+            .await
+            .expect("create issue");
+        let id = issue.id.unwrap();
+
+        let updated = db
+            .update_issue(&id, None, None, None, Some("Updated check".to_string()))
+            .await
+            .expect("update issue")
+            .unwrap();
+        assert_eq!(updated.verification.as_deref(), Some("Updated check"));
     }
 }

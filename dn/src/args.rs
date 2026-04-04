@@ -629,7 +629,10 @@ pub enum TodoCommands {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum IssueCommands {
-    #[command(name = "add", about = "Create a new issue and optionally link it to a task.")]
+    #[command(
+        name = "add",
+        about = "Create a new issue and optionally link it to a task."
+    )]
     Create {
         /// Task ID to link this issue to. Optional.
         #[arg(long, visible_alias = "tid", value_name = "TASK_ID")]
@@ -640,10 +643,16 @@ pub enum IssueCommands {
         /// Resolution plan for the issue.
         #[arg(long, value_name = "PLAN")]
         plan: Option<String>,
+        /// Verification plan for the issue.
+        #[arg(long, value_name = "VERIFICATION")]
+        verification: Option<String>,
         /// Short description of the issue.
         description: String,
     },
-    #[command(name = "update", about = "Update an existing issue's description, plan, or status.")]
+    #[command(
+        name = "update",
+        about = "Update an existing issue's description, plan, or status."
+    )]
     Update {
         /// ID of the issue to update (e.g. issue:abc123).
         issue_id: String,
@@ -653,6 +662,9 @@ pub enum IssueCommands {
         /// Updated resolution plan for the issue.
         #[arg(long, value_name = "PLAN")]
         plan: Option<String>,
+        /// Updated verification steps for the issue.
+        #[arg(long, value_name = "VERIFICATION")]
+        verification: Option<String>,
         #[arg(
             long,
             value_name = "STATUS",
@@ -660,7 +672,11 @@ pub enum IssueCommands {
         )]
         status: Option<String>,
     },
-    #[command(name = "list", visible_alias = "ls", about = "List issues for a project, optionally filtered by task.")]
+    #[command(
+        name = "list",
+        visible_alias = "ls",
+        about = "List issues for a project, optionally filtered by task."
+    )]
     List {
         /// Project ID to filter issues by.
         #[arg(long, visible_alias = "pid", value_name = "PROJECT_ID")]
@@ -2369,12 +2385,106 @@ mod tests {
                 description,
                 plan,
                 status,
+                ..
             } = command
             {
                 assert_eq!(issue_id, "issue:abc123");
                 assert_eq!(description.as_deref(), Some("New Desc"));
                 assert_eq!(plan.as_deref(), Some("Fix it"));
                 assert_eq!(status.as_deref(), Some("active"));
+            } else {
+                panic!("expected Update command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
+
+    #[test]
+    fn issue_add_accepts_verification() {
+        let args = Args::try_parse_from([
+            "dn",
+            "issue",
+            "add",
+            "--project-id",
+            "project:abc",
+            "--verification",
+            "Check the login flow",
+            "Users cannot log in",
+        ]);
+        assert!(args.is_ok(), "should parse issue add with --verification");
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::Create { verification, .. } = command {
+                assert_eq!(verification.as_deref(), Some("Check the login flow"));
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
+
+    #[test]
+    fn issue_add_verification_defaults_to_none() {
+        let args = Args::try_parse_from([
+            "dn",
+            "issue",
+            "add",
+            "--project-id",
+            "project:abc",
+            "Users cannot log in",
+        ]);
+        assert!(args.is_ok());
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::Create { verification, .. } = command {
+                assert!(verification.is_none());
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
+
+    #[test]
+    fn issue_update_accepts_verification() {
+        let args = Args::try_parse_from([
+            "dn",
+            "issue",
+            "update",
+            "issue:abc123",
+            "--verification",
+            "Verify fix in staging",
+        ]);
+        assert!(
+            args.is_ok(),
+            "should parse issue update with --verification"
+        );
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::Update { verification, .. } = command {
+                assert_eq!(verification.as_deref(), Some("Verify fix in staging"));
+            } else {
+                panic!("expected Update command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
+
+    #[test]
+    fn issue_update_verification_defaults_to_none() {
+        let args = Args::try_parse_from([
+            "dn",
+            "issue",
+            "update",
+            "issue:abc123",
+            "--status",
+            "active",
+        ]);
+        assert!(args.is_ok());
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::Update { verification, .. } = command {
+                assert!(verification.is_none());
             } else {
                 panic!("expected Update command");
             }

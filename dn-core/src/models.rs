@@ -144,6 +144,8 @@ pub struct Issue {
     pub status: IssueStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub plan: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verification: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Default)]
@@ -255,6 +257,7 @@ mod tests {
             description: "Users cannot log in".to_string(),
             status: IssueStatus::Pending,
             plan: None,
+            verification: None,
         };
         let json = to_string(&issue).expect("Failed to serialize Issue");
         assert!(json.contains("Users cannot log in"));

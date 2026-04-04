@@ -148,12 +148,14 @@ pub struct CreateIssueBody {
     pub task_id: Option<String>,
     pub project_id: String,
     pub plan: Option<String>,
+    pub verification: Option<String>,
 }
 
 #[derive(Deserialize)]
 pub struct UpdateIssueBody {
     pub description: Option<String>,
     pub plan: Option<String>,
+    pub verification: Option<String>,
     pub status: Option<String>,
 }
 

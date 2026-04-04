@@ -671,6 +671,7 @@ async fn create_issue(
             body.task_id.as_deref(),
             body.plan.as_deref(),
             &body.project_id,
+            body.verification.as_deref(),
         )
         .await?;
     Ok(Json(serde_json::to_value(created)?))
@@ -687,7 +688,7 @@ async fn update_issue(
         .and_then(dn_core::models::IssueStatus::parse);
     let updated = state
         .db
-        .update_issue(&id, body.description, status, body.plan)
+        .update_issue(&id, body.description, status, body.plan, body.verification)
         .await?;
     Ok(Json(serde_json::to_value(updated)?))
 }

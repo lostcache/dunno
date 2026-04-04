@@ -64,6 +64,7 @@ export const SCHEMAS: Record<string, SchemaField[]> = {
   issues: [
     { name: 'description', label: 'Description', type: 'textarea', required: true },
     { name: 'plan', label: 'Plan', type: 'textarea' },
+    { name: 'verification', label: 'Verification', type: 'textarea' },
     { name: 'project_id', label: 'Project ID', type: 'text', required: true, fill: 'projectId' },
     { name: 'task_id', label: 'Task (optional)', type: 'select', fill: 'taskId' },
   ],
@@ -120,6 +121,7 @@ export const EDIT_SCHEMAS: Record<string, SchemaField[]> = {
   issue: [
     { name: 'description', label: 'Description', type: 'textarea' },
     { name: 'plan', label: 'Plan', type: 'textarea' },
+    { name: 'verification', label: 'Verification', type: 'textarea' },
     { name: 'status', label: 'Status', type: 'select', options: ['pending', 'active', 'completed'] },
   ],
 }

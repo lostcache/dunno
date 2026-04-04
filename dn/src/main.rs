@@ -589,6 +589,7 @@ async fn handle_issue_command(
             task_id,
             project_id,
             plan,
+            verification,
             description,
         } => {
             let created = db
@@ -597,6 +598,7 @@ async fn handle_issue_command(
                     task_id.as_deref(),
                     plan.as_deref(),
                     &project_id,
+                    verification.as_deref(),
                 )
                 .await?;
             print_json(serde_json::json!(created), pretty);
@@ -605,6 +607,7 @@ async fn handle_issue_command(
             issue_id,
             description,
             plan,
+            verification,
             status,
         } => {
             let parsed_status = match status.as_deref() {
@@ -620,7 +623,7 @@ async fn handle_issue_command(
                 None => None,
             };
             let result = db
-                .update_issue(&issue_id, description, parsed_status, plan)
+                .update_issue(&issue_id, description, parsed_status, plan, verification)
                 .await?;
             print_json(serde_json::json!(result), pretty);
         }
