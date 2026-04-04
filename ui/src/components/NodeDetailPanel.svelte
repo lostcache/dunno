@@ -19,6 +19,23 @@
 
   let confirmingDelete = $state(false)
   let fieldValues = $state<Record<string, string>>({})
+  let panelWidth = $state(340)
+
+  function startResize(e: MouseEvent) {
+    e.preventDefault()
+    const startX = e.clientX
+    const startWidth = panelWidth
+
+    function onMove(ev: MouseEvent) {
+      panelWidth = Math.min(640, Math.max(200, startWidth - (ev.clientX - startX)))
+    }
+    function onUp() {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
 
   // Must run before DOM update so bind:value={fieldValues[f.name]} is never undefined
   // when MarkdownEditor mounts (Svelte 5 throws props_invalid_value on bind:value={undefined})
@@ -97,7 +114,14 @@
 </script>
 
 {#if $editingNode}
-  <div class="max-lg:hidden flex w-72 flex-col border-l border-[#2d3148] bg-[#14172a] overflow-hidden shrink-0">
+  <div class="max-lg:hidden relative flex flex-col border-l border-[#2d3148] bg-[#14172a] overflow-hidden shrink-0" style="width: {panelWidth}px">
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <div
+      role="separator"
+      aria-label="Resize sidebar"
+      class="absolute left-0 top-0 h-full w-1 cursor-col-resize hover:bg-[#7c6df0]/40 z-10"
+      onmousedown={startResize}
+    ></div>
     <Card class="rounded-none border-0 bg-transparent flex flex-col h-full">
       <CardHeader class="pb-2 pt-3 px-3 gap-1.5">
         <div class="flex items-start justify-between gap-2">
