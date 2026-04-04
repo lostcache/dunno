@@ -43,10 +43,12 @@ impl DB {
             None => return Ok(None),
         };
         let todo_id = todo.id.as_deref().unwrap_or(id);
+        let todo_rid = surrealdb::types::RecordId::parse_simple(todo_id)
+            .map_err(|_| anyhow::anyhow!("Invalid record id: {}", todo_id))?;
         let mut res = self
             .client
-            .query("SELECT in AS project_id FROM has_todo WHERE out = type::record($id) LIMIT 1")
-            .bind(("id", todo_id.to_string()))
+            .query("SELECT in AS project_id FROM has_todo WHERE out = $id LIMIT 1")
+            .bind(("id", todo_rid))
             .await?;
         let rows: Vec<surrealdb::types::Value> = res.take(0).unwrap_or_default();
         if let Some(project_id) = rows.into_iter().next().and_then(|row| {

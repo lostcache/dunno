@@ -811,7 +811,9 @@ async fn test_todo_operations() {
     let todo_id = todo.id.expect("todo id");
     let fetched = db.get_todo(&todo_id).await.expect("get_todo failed");
     assert!(fetched.is_some());
-    assert_eq!(fetched.unwrap().content, "Buy milk");
+    let fetched = fetched.unwrap();
+    assert_eq!(fetched.content, "Buy milk");
+    assert_eq!(fetched.project_id, project_id);
     let todos = db.list_todos().await.expect("list_todos failed");
     assert_eq!(todos.len(), 1);
     let todos_by_project = db
