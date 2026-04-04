@@ -8,8 +8,6 @@
   import { Button } from '$lib/components/ui/button'
   import { Badge } from '$lib/components/ui/badge'
   import { Separator } from '$lib/components/ui/separator'
-  import { ScrollArea } from '$lib/components/ui/scroll-area'
-  import { Card, CardHeader, CardTitle, CardContent } from '$lib/components/ui/card'
   import { Input } from '$lib/components/ui/input'
   import { Label } from '$lib/components/ui/label'
   import * as Select from '$lib/components/ui/select'
@@ -114,7 +112,7 @@
 </script>
 
 {#if $editingNode}
-  <div class="max-lg:hidden relative flex flex-col border-l border-[#2d3148] bg-[#14172a] overflow-hidden shrink-0" style="width: {panelWidth}px">
+  <div class="max-lg:hidden relative flex flex-col border-l border-[#2d3148] bg-[#14172a] overflow-hidden shrink-0 h-full" style="width: {panelWidth}px">
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
       role="separator"
@@ -122,96 +120,90 @@
       class="absolute left-0 top-0 h-full w-1 cursor-col-resize hover:bg-[#7c6df0]/40 z-10"
       onmousedown={startResize}
     ></div>
-    <Card class="rounded-none border-0 bg-transparent flex flex-col h-full">
-      <CardHeader class="pb-2 pt-3 px-3 gap-1.5">
-        <div class="flex items-start justify-between gap-2">
-          <div class="flex flex-col gap-1 min-w-0 overflow-hidden">
-            <Badge variant="secondary" class="w-fit text-[10px]">{$editingNode.node_type}</Badge>
-            <CardTitle class="text-sm text-[#a78bfa] leading-tight break-words">{$editingNode.label}</CardTitle>
-          </div>
-          <div class="flex flex-col gap-1 shrink-0">
-            <Button size="sm" class="h-6 px-2 text-xs" onclick={saveNode}>Save</Button>
-            {#if confirmingDelete}
-              <div class="flex flex-col gap-1">
-                <Button size="sm" variant="destructive" class="h-6 px-2 text-xs" onclick={deleteNode}>Confirm</Button>
-                <Button size="sm" variant="ghost" class="h-6 px-2 text-xs" onclick={() => confirmingDelete = false}>Cancel</Button>
-              </div>
-            {:else}
-              <Button size="sm" variant="destructive" class="h-6 px-2 text-xs" onclick={() => confirmingDelete = true}>Delete</Button>
-            {/if}
-          </div>
+    <div class="flex-1 min-h-0 overflow-y-auto px-3 pt-3 pb-2 flex flex-col gap-3">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex flex-col gap-1 min-w-0 overflow-hidden">
+          <Badge variant="secondary" class="w-fit text-[10px]">{$editingNode.node_type}</Badge>
+          <span class="text-sm text-[#a78bfa] leading-tight break-words font-semibold">{$editingNode.label}</span>
         </div>
-      </CardHeader>
+        <div class="flex flex-col gap-1 shrink-0">
+          <Button size="sm" class="h-6 px-2 text-xs" onclick={saveNode}>Save</Button>
+          {#if confirmingDelete}
+            <div class="flex flex-col gap-1">
+              <Button size="sm" variant="destructive" class="h-6 px-2 text-xs" onclick={deleteNode}>Confirm</Button>
+              <Button size="sm" variant="ghost" class="h-6 px-2 text-xs" onclick={() => confirmingDelete = false}>Cancel</Button>
+            </div>
+          {:else}
+            <Button size="sm" variant="destructive" class="h-6 px-2 text-xs" onclick={() => confirmingDelete = true}>Delete</Button>
+          {/if}
+        </div>
+      </div>
 
       <Separator class="bg-[#2d3148]" />
 
-      <CardContent class="flex-1 p-0 overflow-hidden">
-        <ScrollArea class="h-full px-3 py-2">
-          <div class="flex flex-col gap-3">
-            {#each EDIT_SCHEMAS[$editingNode.node_type] ?? [] as f}
-              <div class="flex flex-col gap-1">
-                <Label class="text-[10px] text-[#64748b] uppercase tracking-wide">{f.label}</Label>
-                {#if f.type === 'textarea'}
-                  <MarkdownEditor bind:value={fieldValues[f.name]} />
-                {:else if f.type === 'select'}
-                  <Select.Root
-                    type="single"
-                    value={fieldValues[f.name]}
-                    onValueChange={(v) => { fieldValues[f.name] = v }}
-                  >
-                    <Select.Trigger class="w-full h-8 bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px]">
-                      {fieldValues[f.name] || '— select —'}
-                    </Select.Trigger>
-                    <Select.Content>
-                      {#each f.options ?? [] as opt}
-                        <Select.Item value={opt} label={opt} />
-                      {/each}
-                    </Select.Content>
-                  </Select.Root>
-                {:else}
-                  <Input
-                    type="text"
-                    name={f.name}
-                    bind:value={fieldValues[f.name]}
-                    class="bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px] h-8"
-                  />
-                {/if}
-              </div>
-            {/each}
-
-            {#if getExtraFields($editingNode).length > 0}
-              {#if (EDIT_SCHEMAS[$editingNode.node_type] ?? []).length > 0}
-                <Separator class="bg-[#2d3148]" />
-              {/if}
-              {#each getExtraFields($editingNode) as [key, value]}
-                <div class="flex flex-col gap-0.5">
-                  <span class="text-[10px] text-[#64748b] uppercase tracking-wide">{toTitleCase(key)}</span>
-                  {#if Array.isArray(value)}
-                    <div class="flex flex-wrap gap-1">
-                      {#each value as item}
-                        <Badge variant="outline" class="text-[10px]">{item}</Badge>
-                      {/each}
-                    </div>
-                  {:else if typeof value === 'boolean'}
-                    <span class="text-xs text-[#94a3b8]">{value ? '✓' : '✗'}</span>
-                  {:else if value !== null && value !== undefined && value !== ''}
-                    <span class="text-xs text-[#94a3b8] break-words">{value}</span>
-                  {:else}
-                    <span class="text-xs text-[#475569] italic">—</span>
-                  {/if}
-                </div>
-              {/each}
+      <div class="flex flex-col gap-3">
+        {#each EDIT_SCHEMAS[$editingNode.node_type] ?? [] as f}
+          <div class="flex flex-col gap-1">
+            <Label class="text-[10px] text-[#64748b] uppercase tracking-wide">{f.label}</Label>
+            {#if f.type === 'textarea'}
+              <MarkdownEditor bind:value={fieldValues[f.name]} />
+            {:else if f.type === 'select'}
+              <Select.Root
+                type="single"
+                value={fieldValues[f.name]}
+                onValueChange={(v) => { fieldValues[f.name] = v }}
+              >
+                <Select.Trigger class="w-full h-8 bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px]">
+                  {fieldValues[f.name] || '— select —'}
+                </Select.Trigger>
+                <Select.Content>
+                  {#each f.options ?? [] as opt}
+                    <Select.Item value={opt} label={opt} />
+                  {/each}
+                </Select.Content>
+              </Select.Root>
+            {:else}
+              <Input
+                type="text"
+                name={f.name}
+                bind:value={fieldValues[f.name]}
+                class="bg-[#252840] border-[#3d4165] text-[#e2e8f0] text-[13px] h-8"
+              />
             {/if}
           </div>
+        {/each}
 
-          <div class="mt-3 pt-2 border-t border-[#2d3148]">
-            <span
-              class="text-[9px] text-[#475569] font-mono break-all cursor-pointer hover:text-[#64748b]"
-              onclick={() => navigator.clipboard.writeText($editingNode.id).then(() => setStatus('ID copied', 'ok'))}
-            >{$editingNode.id}</span>
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+        {#if getExtraFields($editingNode).length > 0}
+          {#if (EDIT_SCHEMAS[$editingNode.node_type] ?? []).length > 0}
+            <Separator class="bg-[#2d3148]" />
+          {/if}
+          {#each getExtraFields($editingNode) as [key, value]}
+            <div class="flex flex-col gap-0.5">
+              <span class="text-[10px] text-[#64748b] uppercase tracking-wide">{toTitleCase(key)}</span>
+              {#if Array.isArray(value)}
+                <div class="flex flex-wrap gap-1">
+                  {#each value as item}
+                    <Badge variant="outline" class="text-[10px]">{item}</Badge>
+                  {/each}
+                </div>
+              {:else if typeof value === 'boolean'}
+                <span class="text-xs text-[#94a3b8]">{value ? '✓' : '✗'}</span>
+              {:else if value !== null && value !== undefined && value !== ''}
+                <span class="text-xs text-[#94a3b8] break-words">{value}</span>
+              {:else}
+                <span class="text-xs text-[#475569] italic">—</span>
+              {/if}
+            </div>
+          {/each}
+        {/if}
+      </div>
+
+      <div class="mt-auto pt-2 border-t border-[#2d3148]">
+        <span
+          class="text-[9px] text-[#475569] font-mono break-all cursor-pointer hover:text-[#64748b]"
+          onclick={() => navigator.clipboard.writeText($editingNode.id).then(() => setStatus('ID copied', 'ok'))}
+        >{$editingNode.id}</span>
+      </div>
+    </div>
   </div>
 {/if}

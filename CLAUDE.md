@@ -6,8 +6,8 @@
 
 ## Command Policy
 
+- **MANDATORY:** Use the `dn` binary from the project root.
 - **ALWAYS** use the `dn` binary directly. It is the only approved interface for project operations.
-- **ALWAYS** run the `dn` command from the project root.
 - **ONLY** use the exact `dn` subcommands documented in this file. Do NOT invent or guess subcommands.
 - If a step requires a `--project-id` you don't have, first run `dn project list` to get it.
 - When in doubt, use `--help` on the parent command and only use subcommands that appear in the output. Never chain made-up fallbacks.
@@ -40,6 +40,8 @@ Knowledge can be attached to any structural node:
 - **Persona**: AI agent persona definitions linked to a project
 - **Workflow**: Workflow definitions linked to a project
 - **Issue**: Bug or a problem, optionally linked to a task
+
+#### All entities have an id of the form `<entity>:<id>` never use just the `<id>` as the id.
 
 ### Edges
 
@@ -89,7 +91,8 @@ Knowledge can be attached to any structural node:
    - `dn user-story list --project-id <project_id>`
 1. Set a todo to `active` when you begin planning the associated work: `dn todo update <todo_id> --status active`
 1. If you have access to shell tool in Plan Mode switch to Plan Mode (if available) or remain in Agent Mode, but **DO NOT** create the task yet.
-1. **MANDATORY:** use the `dn ctx --general -p <project>` commmand to get the project structure.
+1. **MANDATORY:** use the `dn ctx --general -p <project>` commmand to get the project structure. It is the PRIMARY source for understanding the codebase structure.
+   Every exploation attempt after his should be intentional and educated.
 1. **MANDATORY:** Do complete research on the task. This includes:
    - Identifying the specific files that need to be modified or created.
    - Understanding the necessary schema or logic changes.
@@ -106,7 +109,9 @@ Knowledge can be attached to any structural node:
      touch any code, files, or run any implementation commands unless the user explicitly
      asks you to work on the task.
    - **MANDATORY follow-up:** `dn task add` does NOT support `--file-ids`. You MUST separately link each relevant file using:
-     `dn link --from-id <file_id> --edge belongs_to_task --to-ids <task_id>`
+     - Link single file with `dn link --from-id <file_id> --edge belongs_to_task --to-id <task_id>`.
+     - You may repeat the flags to link multiple files in the same command
+       `dn link --from-id <file_id> --edge belongs_to_task --to-id <task_id> --from-id <file_id> --edge belongs_to_task --to-id <task_id>`.
    - Do not consider the task fully created until all relevant files are linked.
 1. Mark the todo `completed`: `dn todo update <todo_id> --status completed` after the task is created.
 
@@ -130,16 +135,28 @@ When asked to "fetch a task" or "work on a task":
 6. **MANDATORY**: After completing the task, if the code architecture requires updating the database, do so using `dn` cli tool wihtout fail.
 7. When done, mark it as completed.
 
+## Reviewing a task to add an issue
+
+1. Only review tasks that are comleted. If the task is pendng or in progress just report, do not review it.
+2. Retrive the task context with `dn ctx --task-id <task:id> --full` to see the inherited context.
+3. Review all the code changes for code smells, security issues, and other issues.
+4. Report the finding to the use asking whether to create an issue or not.
+5. If prompted to create an issue, create it using `dn issue add --project-id <PROJECT_ID> <SHORT_DESCRIPTION> --task-id <TASK_ID> --plan <PLAN>`.
+
+## planning for an user added issue
+
+1. If given an issue id fetch using `dn issue get <id>` else an issue from the issue list to work on.
+2. Mark the issue active when you begin planning if it doesn't already have a plan.
+3. Update the issue after you have a plan using `dn issue update <issue_id> --plan "<plan>"`
+
 ## Working on an Issue
 
 1. If given an issue id fetch using `dn issue get <id>` else an issue from the issue list to work on.
    - `dn issue ls --project-id <project_id>` — all issues for a project
    - `dn issue ls --project-id <project_id> --task-id <task_id>` — issues for a specific task
-2. Mark the issue active when you begin planning.
+2. Mark the issue active to begin working on it.
    - `dn issue update <issue_id> --status active`
-3. Update the issue after you have a plan.
-   - `dn issue update <issue_id> --plan "<updated plan>"`
-4. Mark the issue completed when resolved.
+3. Mark the issue completed when resolved.
    - `dn issue update <issue_id> --status completed`
 
 Issue status values: `pending` (default on creation), `active`, `completed`.
