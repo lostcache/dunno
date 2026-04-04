@@ -629,7 +629,7 @@ pub enum TodoCommands {
 
 #[derive(clap::Subcommand, Debug)]
 pub enum IssueCommands {
-    #[command(name = "add")]
+    #[command(name = "add", about = "Create a new issue and optionally link it to a task.")]
     Create {
         /// Task ID to link this issue to. Optional.
         #[arg(long, visible_alias = "tid", value_name = "TASK_ID")]
@@ -640,19 +640,27 @@ pub enum IssueCommands {
         /// Resolution plan for the issue.
         #[arg(long, value_name = "PLAN")]
         plan: Option<String>,
+        /// Short description of the issue.
         description: String,
     },
-    #[command(name = "update")]
+    #[command(name = "update", about = "Update an existing issue's description, plan, or status.")]
     Update {
+        /// ID of the issue to update (e.g. issue:abc123).
         issue_id: String,
+        /// Updated description of the issue.
         #[arg(long, value_name = "DESC")]
         description: Option<String>,
+        /// Updated resolution plan for the issue.
         #[arg(long, value_name = "PLAN")]
         plan: Option<String>,
-        #[arg(long, value_name = "STATUS")]
+        #[arg(
+            long,
+            value_name = "STATUS",
+            help = "One of: pending, active, completed"
+        )]
         status: Option<String>,
     },
-    #[command(name = "list", visible_alias = "ls")]
+    #[command(name = "list", visible_alias = "ls", about = "List issues for a project, optionally filtered by task.")]
     List {
         /// Project ID to filter issues by.
         #[arg(long, visible_alias = "pid", value_name = "PROJECT_ID")]
@@ -661,12 +669,15 @@ pub enum IssueCommands {
         #[arg(long, visible_alias = "tid", value_name = "TASK_ID")]
         task_id: Option<String>,
     },
-    #[command(name = "rm")]
+    #[command(name = "rm", about = "Delete one or more issues by ID.")]
     Remove {
+        /// One or more issue IDs to delete (e.g. issue:abc123).
         #[arg(required = true)]
         issue_ids: Vec<String>,
     },
+    #[command(about = "Fetch a single issue by ID.")]
     Get {
+        /// ID of the issue to fetch (e.g. issue:abc123).
         id: String,
     },
 }
