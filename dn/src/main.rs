@@ -58,8 +58,8 @@ async fn dispatch_command(
         args::Commands::Link {
             from_id,
             edge,
-            to_ids,
-        } => handle_link(from_id, edge, to_ids, db, pretty).await,
+            to_id,
+        } => handle_link(from_id, edge, to_id, db, pretty).await,
         args::Commands::Project { command } => handle_project_command(command, db, pretty).await,
         args::Commands::Module { command } => {
             handle_module_command(command, db, pretty, ignore_case).await
@@ -201,9 +201,9 @@ async fn handle_rm(
 
 /// Validates edge types against allowed schema before creating links.
 async fn handle_link(
-    from_id: String,
-    edge: String,
-    to_ids: Vec<String>,
+    from_id: Vec<String>,
+    edge: Vec<String>,
+    to_id: Vec<String>,
     db: &dn_core::db::DB,
     pretty: bool,
 ) -> anyhow::Result<()> {
@@ -225,20 +225,39 @@ async fn handle_link(
         "belongs_to_epic",
     ];
 
-    if !ALLOWED_EDGES.contains(&edge.as_str()) {
+    for e in &edge {
+        if !ALLOWED_EDGES.contains(&e.as_str()) {
+            return Err(anyhow::anyhow!(
+                "Unknown edge {:?}. Allowed: {:?}",
+                e,
+                ALLOWED_EDGES
+            ));
+        }
+    }
+
+    if to_id.is_empty() {
+        return Err(anyhow::anyhow!("At least one --to-id is required"));
+    }
+
+    // Single-source mode: one from/edge, one or more to-ids.
+    if from_id.len() == 1 && edge.len() == 1 {
+        for t in &to_id {
+            db.link(&from_id[0], &edge[0], t).await?;
+        }
+    // Multi-triplet mode: equal counts of from/edge/to.
+    } else if from_id.len() == edge.len() && edge.len() == to_id.len() {
+        for ((f, e), t) in from_id.iter().zip(edge.iter()).zip(to_id.iter()) {
+            db.link(f, e, t).await?;
+        }
+    } else {
         return Err(anyhow::anyhow!(
-            "Unknown edge {:?}. Allowed: {:?}",
-            edge,
-            ALLOWED_EDGES
+            "Mismatched argument counts: --from-id ({}), --edge ({}), --to-id ({}). \
+             Either use a single --from-id and --edge with multiple --to-id values, \
+             or repeat all three flags the same number of times for multi-triplet mode.",
+            from_id.len(),
+            edge.len(),
+            to_id.len()
         ));
-    }
-
-    if to_ids.is_empty() {
-        return Err(anyhow::anyhow!("At least one --to ID is required"));
-    }
-
-    for to_id in &to_ids {
-        db.link(&from_id, &edge, to_id).await?;
     }
 
     print_json(serde_json::json!({ "status": "ok" }), pretty);

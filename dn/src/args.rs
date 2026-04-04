@@ -178,18 +178,18 @@ pub enum Commands {
         about = "Create an edge between existing nodes.",
         visible_alias = "ln",
         long_about = "Link a source node to one or more target nodes via a named edge.",
-        after_help = "Example:\n  dn link --from project:abc --edge contains --to module:def\n  dn link --from project:abc --edge has_todo --to todo_item:1 --to todo_item:2"
+        after_help = "Example:\n  dn link --from-id project:abc --edge contains --to-id module:def\n  dn link --from-id project:abc --edge has_todo --to-id todo_item:1 --to-id todo_item:2\n  dn link --from-id file:A --edge belongs_to_task --to-id task:X --from-id file:B --edge belongs_to_task --to-id task:X"
     )]
     Link {
-        /// Source record ID (e.g. project:abc, task:xyz).
+        /// Source record ID(s). Repeat for multiple triplets (e.g. project:abc, task:xyz).
         #[arg(short, long, value_name = "FROM_ID")]
-        from_id: String,
-        /// Edge name (e.g. contains, has_task, has_todo, has_context, belongs_to_project, belongs_to_module, belongs_to_task).
+        from_id: Vec<String>,
+        /// Edge name(s). Repeat for multiple triplets (e.g. contains, has_task, belongs_to_task).
         #[arg(short, long, value_name = "EDGE")]
-        edge: String,
+        edge: Vec<String>,
         /// Target record ID(s). Repeat for multiple.
         #[arg(short, long, value_name = "TO_ID")]
-        to_ids: Vec<String>,
+        to_id: Vec<String>,
     },
 
     #[command(
@@ -1109,7 +1109,7 @@ mod tests {
             "project:abc",
             "--edge",
             "contains",
-            "--to-ids",
+            "--to-id",
             "module:def",
         ]);
         assert!(args.is_ok(), "should parse --pretty with link command");
@@ -1746,14 +1746,55 @@ mod tests {
         if let Commands::Link {
             from_id,
             edge,
-            to_ids,
+            to_id,
         } = args.unwrap().command
         {
-            assert_eq!(from_id, "project:abc");
-            assert_eq!(edge, "contains");
-            assert_eq!(to_ids.len(), 2);
-            assert_eq!(to_ids[0], "module:def");
-            assert_eq!(to_ids[1], "module:ghi");
+            assert_eq!(from_id.len(), 1);
+            assert_eq!(from_id[0], "project:abc");
+            assert_eq!(edge.len(), 1);
+            assert_eq!(edge[0], "contains");
+            assert_eq!(to_id.len(), 2);
+            assert_eq!(to_id[0], "module:def");
+            assert_eq!(to_id[1], "module:ghi");
+        } else {
+            panic!("expected Link command");
+        }
+    }
+
+    #[test]
+    fn link_command_accepts_multiple_triplets() {
+        let args = Args::try_parse_from([
+            "dn",
+            "link",
+            "--from-id",
+            "file:A",
+            "--edge",
+            "belongs_to_task",
+            "--to-id",
+            "task:X",
+            "--from-id",
+            "file:B",
+            "--edge",
+            "belongs_to_task",
+            "--to-id",
+            "task:X",
+        ]);
+        assert!(args.is_ok(), "should parse multiple triplets for link");
+        if let Commands::Link {
+            from_id,
+            edge,
+            to_id,
+        } = args.unwrap().command
+        {
+            assert_eq!(from_id.len(), 2);
+            assert_eq!(from_id[0], "file:A");
+            assert_eq!(from_id[1], "file:B");
+            assert_eq!(edge.len(), 2);
+            assert_eq!(edge[0], "belongs_to_task");
+            assert_eq!(edge[1], "belongs_to_task");
+            assert_eq!(to_id.len(), 2);
+            assert_eq!(to_id[0], "task:X");
+            assert_eq!(to_id[1], "task:X");
         } else {
             panic!("expected Link command");
         }
