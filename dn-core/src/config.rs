@@ -32,7 +32,6 @@ pub struct Config {
     pub username: String,
     pub password: String,
     pub auth_type: String,
-    pub qdrant_url: String,
 }
 
 impl Default for Config {
@@ -46,7 +45,6 @@ impl Default for Config {
             username: "root".to_string(),
             password: "root".to_string(),
             auth_type: "root".to_string(),
-            qdrant_url: "mem://".to_string(),
         }
     }
 }
@@ -61,7 +59,6 @@ struct PartialConfig {
     username: Option<String>,
     password: Option<String>,
     auth_type: Option<String>,
-    qdrant_url: Option<String>,
 }
 
 impl Config {
@@ -140,7 +137,6 @@ impl Config {
             "username": self.username,
             "password": if self.password.is_empty() { "" } else { "***redacted***" },
             "auth_type": self.auth_type,
-            "qdrant_url": self.qdrant_url,
             "global_config_path": Self::global_config_path(),
             "local_config_path": Self::local_config_path(),
         })
@@ -180,7 +176,6 @@ impl Config {
         }
 
         output.push_str("\n--- Vector Store ---\n");
-        output.push_str(&format!("Qdrant URL: {}\n", self.qdrant_url));
 
         output.push_str("\n--- Config File Paths ---\n");
         output.push_str(&format!(
@@ -292,9 +287,6 @@ impl Config {
         if let Some(v) = partial.auth_type {
             self.auth_type = v;
         }
-        if let Some(v) = partial.qdrant_url {
-            self.qdrant_url = v;
-        }
         Ok(())
     }
 }
@@ -320,7 +312,6 @@ mod tests {
     fn test_config_parsing_new_format() {
         let toml_str = r#"
             backend = "cloud"
-            qdrant_url = "http://localhost:6333"
             local_path = "~/.local/share/dunno/data.db"
             url = "wss://example.surrealdb.com"
             namespace = "dunno"
@@ -354,7 +345,6 @@ mod tests {
         let config = Config::load_from_optional_paths(None, Some(&missing), None, true)
             .expect("load should succeed");
         assert!(matches!(config.backend, StorageBackend::Local));
-        assert_eq!(config.qdrant_url, "mem://");
     }
 
     #[test]
@@ -741,51 +731,6 @@ local_path = "/tmp/mixed.db"
         // Local should be just dunno.toml in current dir
         let local_str = local.to_string_lossy();
         assert_eq!(local_str, "dunno.toml");
-    }
-
-    #[test]
-    fn test_qdrant_url_configurable() {
-        let ts = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("time should be valid")
-            .as_millis();
-        let config_path = std::env::temp_dir().join(format!("dunno-qdrant-{ts}.toml"));
-
-        let config_raw = r#"
-qdrant_url = "http://localhost:6333"
-"#;
-
-        std::fs::write(&config_path, config_raw).expect("should write config");
-
-        let loaded = Config::load_from_optional_paths(None, Some(&config_path), None, true)
-            .expect("load should succeed");
-
-        assert_eq!(loaded.qdrant_url, "http://localhost:6333");
-
-        let _ = std::fs::remove_file(config_path);
-    }
-
-    #[test]
-    fn test_invalid_qdrant_url_in_config_is_accepted() {
-        let ts = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("time should be valid")
-            .as_millis();
-        let config_path = std::env::temp_dir().join(format!("dunno-qdrant-invalid-{ts}.toml"));
-
-        // Any string is accepted for qdrant_url (validation happens elsewhere)
-        let config_raw = r#"
-qdrant_url = "not-a-valid-url"
-"#;
-
-        std::fs::write(&config_path, config_raw).expect("should write config");
-
-        let loaded = Config::load_from_optional_paths(None, Some(&config_path), None, true)
-            .expect("load should succeed");
-
-        assert_eq!(loaded.qdrant_url, "not-a-valid-url");
-
-        let _ = std::fs::remove_file(config_path);
     }
 
     #[test]
