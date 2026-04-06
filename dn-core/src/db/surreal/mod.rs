@@ -58,7 +58,7 @@ impl DB {
                 }
                 Self::connect_remote(config).await
             }
-            crate::config::StorageBackend::Cloud => {
+            crate::config::StorageBackend::CloudServer => {
                 if config.url.trim().is_empty() {
                     return Err(anyhow::anyhow!(
                         "cloud backend requires `url` (or DUNNO_URL)"

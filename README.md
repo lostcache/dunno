@@ -53,7 +53,7 @@ An HTTP server that serves a browser UI and a REST API. Launches a browser tab a
 dn-server                   # starts on :7700, opens browser
 dn-server --port 8080       # custom port
 dn-server --no-open         # suppress auto-open
-dn-server --backend cloud   # override backend
+dn-server --backend cloud-server   # override backend
 ```
 
 The UI provides full CRUD for all entities and an interactive graph visualization of the knowledge hierarchy.
@@ -174,7 +174,7 @@ password = "root"
 **Cloud:**
 
 ```toml
-backend = "cloud"
+backend = "cloud-server"
 url = "wss://my-instance.surrealdb.com"
 namespace = "my-namespace"
 database = "dn"
@@ -187,7 +187,7 @@ auth_type = "root"
 
 | Variable           | Description                                    |
 | ------------------ | ---------------------------------------------- |
-| `DUNNO_BACKEND`    | Backend type: `local`, `local-server`, `cloud` |
+| `DUNNO_BACKEND`    | Backend type: `local`, `local-server`, `cloud-server` |
 | `DUNNO_LOCAL_PATH` | Local database file path                       |
 | `DUNNO_URL`        | SurrealDB instance URL                         |
 | `DUNNO_NS`         | Namespace                                      |
@@ -584,7 +584,7 @@ cargo test db::surreal
 # Shell integration tests (local backend)
 ./tests/sh/run_all.sh
 
-# Shell integration tests (cloud backend — requires credentials)
+# Shell integration tests (cloud-server backend — requires credentials)
 ./tests/sh/run_cloud.sh
 ```
 

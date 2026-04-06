@@ -256,7 +256,7 @@ async fn test_from_config_local_embedded_crud() {
 #[tokio::test]
 async fn test_from_config_cloud_validation() {
     let config = Config {
-        backend: crate::config::StorageBackend::Cloud,
+        backend: crate::config::StorageBackend::CloudServer,
         ..Config::default()
     };
     let err = match DB::from_config(&config).await {
@@ -1697,7 +1697,7 @@ async fn test_list_files_by_submodule() {
 #[tokio::test]
 async fn test_from_config_cloud_missing_namespace() {
     let config = Config {
-        backend: crate::config::StorageBackend::Cloud,
+        backend: crate::config::StorageBackend::CloudServer,
         url: "wss://test.surrealdb.com".to_string(),
         namespace: "".to_string(),
         database: "test".to_string(),
@@ -1713,7 +1713,7 @@ async fn test_from_config_cloud_missing_namespace() {
 #[tokio::test]
 async fn test_from_config_cloud_missing_database() {
     let config = Config {
-        backend: crate::config::StorageBackend::Cloud,
+        backend: crate::config::StorageBackend::CloudServer,
         url: "wss://test.surrealdb.com".to_string(),
         namespace: "test".to_string(),
         database: "".to_string(),
@@ -1729,7 +1729,7 @@ async fn test_from_config_cloud_missing_database() {
 #[tokio::test]
 async fn test_from_config_cloud_missing_username() {
     let config = Config {
-        backend: crate::config::StorageBackend::Cloud,
+        backend: crate::config::StorageBackend::CloudServer,
         url: "wss://test.surrealdb.com".to_string(),
         namespace: "test".to_string(),
         database: "test".to_string(),
@@ -1746,7 +1746,7 @@ async fn test_from_config_cloud_missing_username() {
 #[tokio::test]
 async fn test_from_config_cloud_missing_password() {
     let config = Config {
-        backend: crate::config::StorageBackend::Cloud,
+        backend: crate::config::StorageBackend::CloudServer,
         url: "wss://test.surrealdb.com".to_string(),
         namespace: "test".to_string(),
         database: "test".to_string(),
@@ -1763,7 +1763,7 @@ async fn test_from_config_cloud_missing_password() {
 #[tokio::test]
 async fn test_from_config_cloud_valid() {
     let config = Config {
-        backend: crate::config::StorageBackend::Cloud,
+        backend: crate::config::StorageBackend::CloudServer,
         url: "wss://test.surrealdb.com".to_string(),
         namespace: "test".to_string(),
         database: "test".to_string(),
