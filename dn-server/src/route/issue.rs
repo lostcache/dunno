@@ -1,5 +1,8 @@
 use crate::{AppState, service};
-use axum::{Router, routing::{get, patch}};
+use axum::{
+    Router,
+    routing::{get, patch},
+};
 use std::sync::Arc;
 
 pub(crate) fn routes() -> Router<Arc<AppState>> {

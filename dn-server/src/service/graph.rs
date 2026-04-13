@@ -1,6 +1,9 @@
-use crate::schema;
 use crate::AppState;
-use axum::{Json, extract::{Path, State}};
+use crate::schema;
+use axum::{
+    Json,
+    extract::{Path, State},
+};
 use std::sync::Arc;
 
 pub(crate) async fn get_graph(

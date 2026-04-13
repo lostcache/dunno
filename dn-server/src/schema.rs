@@ -1,172 +1,197 @@
+use axum::Json;
+use axum::{http::StatusCode, response::IntoResponse};
 use serde::Deserialize;
 
+impl From<anyhow::Error> for ApiError {
+    fn from(e: anyhow::Error) -> Self {
+        Self(e)
+    }
+}
+
+impl From<serde_json::Error> for ApiError {
+    fn from(e: serde_json::Error) -> Self {
+        Self(e.into())
+    }
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> axum::response::Response {
+        let body = serde_json::json!({ "error": self.0.to_string() });
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(body)).into_response()
+    }
+}
+
+pub(crate) struct ApiError(anyhow::Error);
+
+pub(crate) type ApiResult<T> = Result<Json<T>, ApiError>;
+
 #[derive(Deserialize)]
-pub struct CreateProjectBody {
-    pub name: String,
-    pub description: String,
+pub(crate) struct CreateProjectBody {
+    pub(crate) name: String,
+    pub(crate) description: String,
 }
 
 #[derive(Deserialize)]
-pub struct CreateModuleBody {
-    pub name: String,
-    pub description: String,
-    pub notes: Option<String>,
-    pub project_id: String,
-    pub parent_module_id: Option<String>,
+pub(crate) struct CreateModuleBody {
+    pub(crate) name: String,
+    pub(crate) description: String,
+    pub(crate) notes: Option<String>,
+    pub(crate) project_id: String,
+    pub(crate) parent_module_id: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct CreateFileBody {
-    pub name: String,
-    pub path: String,
-    pub description: Option<String>,
-    pub notes: Option<String>,
-    pub project_id: String,
-    pub parent_id: Option<String>,
+pub(crate) struct CreateFileBody {
+    pub(crate) name: String,
+    pub(crate) path: String,
+    pub(crate) description: Option<String>,
+    pub(crate) notes: Option<String>,
+    pub(crate) project_id: String,
+    pub(crate) parent_id: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct CreateTaskBody {
-    pub name: String,
-    pub description: String,
-    pub module_id: Option<String>,
-    pub project_id: Option<String>,
+pub(crate) struct CreateTaskBody {
+    pub(crate) name: String,
+    pub(crate) description: String,
+    pub(crate) module_id: Option<String>,
+    pub(crate) project_id: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct UpdateTaskBody {
-    pub name: Option<String>,
-    pub description: Option<String>,
-    pub status: Option<String>,
+pub(crate) struct UpdateTaskBody {
+    pub(crate) name: Option<String>,
+    pub(crate) description: Option<String>,
+    pub(crate) status: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct CreateTodoBody {
-    pub content: String,
-    pub project_id: String,
+pub(crate) struct CreateTodoBody {
+    pub(crate) content: String,
+    pub(crate) project_id: String,
 }
 
 #[derive(Deserialize)]
-pub struct CreateUserStoryBody {
-    pub title: String,
-    pub description: String,
-    pub project_id: String,
+pub(crate) struct CreateUserStoryBody {
+    pub(crate) title: String,
+    pub(crate) description: String,
+    pub(crate) project_id: String,
 }
 
 #[derive(Deserialize)]
-pub struct CreateEpicBody {
-    pub title: String,
-    pub description: String,
-    pub project_id: String,
+pub(crate) struct CreateEpicBody {
+    pub(crate) title: String,
+    pub(crate) description: String,
+    pub(crate) project_id: String,
 }
 
 #[derive(Deserialize)]
-pub struct CreatePersonaBody {
-    pub name: String,
-    pub content: String,
-    pub project_id: String,
+pub(crate) struct CreatePersonaBody {
+    pub(crate) name: String,
+    pub(crate) content: String,
+    pub(crate) project_id: String,
 }
 
 #[derive(Deserialize)]
-pub struct CreateWorkflowBody {
-    pub name: String,
-    pub content: String,
-    pub project_id: String,
+pub(crate) struct CreateWorkflowBody {
+    pub(crate) name: String,
+    pub(crate) content: String,
+    pub(crate) project_id: String,
 }
 
 #[derive(Deserialize)]
-pub struct CreateContextBody {
-    pub fields: serde_json::Map<String, serde_json::Value>,
-    pub link_to: String,
+pub(crate) struct CreateContextBody {
+    pub(crate) fields: serde_json::Map<String, serde_json::Value>,
+    pub(crate) link_to: String,
 }
 
 #[derive(Deserialize)]
-pub struct UpdateProjectBody {
-    pub name: Option<String>,
-    pub description: Option<String>,
+pub(crate) struct UpdateProjectBody {
+    pub(crate) name: Option<String>,
+    pub(crate) description: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct UpdateModuleBody {
-    pub name: Option<String>,
-    pub description: Option<String>,
-    pub notes: Option<String>,
+pub(crate) struct UpdateModuleBody {
+    pub(crate) name: Option<String>,
+    pub(crate) description: Option<String>,
+    pub(crate) notes: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct UpdateFileBody {
-    pub name: Option<String>,
-    pub path: Option<String>,
-    pub description: Option<String>,
-    pub notes: Option<String>,
+pub(crate) struct UpdateFileBody {
+    pub(crate) name: Option<String>,
+    pub(crate) path: Option<String>,
+    pub(crate) description: Option<String>,
+    pub(crate) notes: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct UpdateUserStoryBody {
-    pub title: Option<String>,
-    pub description: Option<String>,
+pub(crate) struct UpdateUserStoryBody {
+    pub(crate) title: Option<String>,
+    pub(crate) description: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct UpdateEpicBody {
-    pub title: Option<String>,
-    pub description: Option<String>,
+pub(crate) struct UpdateEpicBody {
+    pub(crate) title: Option<String>,
+    pub(crate) description: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct UpdateTodoBody {
-    pub content: Option<String>,
-    pub status: Option<String>,
+pub(crate) struct UpdateTodoBody {
+    pub(crate) content: Option<String>,
+    pub(crate) status: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct UpdatePersonaBody {
-    pub name: Option<String>,
-    pub content: Option<String>,
+pub(crate) struct UpdatePersonaBody {
+    pub(crate) name: Option<String>,
+    pub(crate) content: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct UpdateWorkflowBody {
-    pub name: Option<String>,
-    pub content: Option<String>,
+pub(crate) struct UpdateWorkflowBody {
+    pub(crate) name: Option<String>,
+    pub(crate) content: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct UpdateContextBody {
-    pub fields: serde_json::Map<String, serde_json::Value>,
+pub(crate) struct UpdateContextBody {
+    pub(crate) fields: serde_json::Map<String, serde_json::Value>,
 }
 
 #[derive(Deserialize)]
-pub struct ListIssuesQuery {
-    pub project_id: String,
-    pub task_id: Option<String>,
+pub(crate) struct ListIssuesQuery {
+    pub(crate) project_id: String,
+    pub(crate) task_id: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct CreateIssueBody {
-    pub description: String,
-    pub task_id: Option<String>,
-    pub project_id: String,
-    pub plan: Option<String>,
-    pub verification: Option<String>,
+pub(crate) struct CreateIssueBody {
+    pub(crate) description: String,
+    pub(crate) task_id: Option<String>,
+    pub(crate) project_id: String,
+    pub(crate) plan: Option<String>,
+    pub(crate) verification: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct UpdateIssueBody {
-    pub description: Option<String>,
-    pub plan: Option<String>,
-    pub verification: Option<String>,
-    pub status: Option<String>,
+pub(crate) struct UpdateIssueBody {
+    pub(crate) description: Option<String>,
+    pub(crate) plan: Option<String>,
+    pub(crate) verification: Option<String>,
+    pub(crate) status: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct LinkBody {
-    pub from_id: String,
-    pub edge: String,
-    pub to_id: String,
+pub(crate) struct LinkBody {
+    pub(crate) from_id: String,
+    pub(crate) edge: String,
+    pub(crate) to_id: String,
 }
 
 #[derive(Deserialize)]
-pub struct FullQuery {
-    pub full: Option<bool>,
+pub(crate) struct FullQuery {
+    pub(crate) full: Option<bool>,
 }
