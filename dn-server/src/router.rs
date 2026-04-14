@@ -1,4 +1,4 @@
-use crate::{AppState, route, static_handler};
+use crate::{AppState, route};
 use axum::{
     Router,
     http::{Method, header::CONTENT_TYPE},
@@ -26,7 +26,7 @@ pub(crate) fn build_router(state: Arc<AppState>) -> Router {
         .merge(route::issue::routes())
         .merge(route::link::routes())
         .merge(route::graph::routes())
-        .fallback(static_handler)
+        .fallback(crate::ui::static_handler)
         .with_state(state)
         .layer(cors)
 }
