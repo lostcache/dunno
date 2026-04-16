@@ -1,4 +1,4 @@
-use crate::{AppState, service};
+use crate::{server::AppState, service};
 use axum::{
     Router,
     routing::{get, patch, post},

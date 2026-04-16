@@ -1,7 +1,7 @@
 use crate::schema;
 use crate::{
-    AppState,
     schema::{CreateProjectBody, UpdateProjectBody},
+    server::AppState,
 };
 use axum::{Json, extract::Path, extract::State, http::StatusCode, response::IntoResponse};
 use std::sync::Arc;

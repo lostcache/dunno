@@ -1,5 +1,4 @@
-use crate::AppState;
-use crate::schema;
+use crate::{schema, server::AppState};
 use axum::{
     Json,
     extract::{Path, State},
