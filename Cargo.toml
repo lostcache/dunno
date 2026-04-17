@@ -1,5 +1,5 @@
 [workspace]
-members = ["dn-core", "dn", "dn-server"]
+members = ["dn-core", "dn-cli", "dn-server"]
 resolver = "2"
 
 [workspace.package]
