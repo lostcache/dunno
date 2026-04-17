@@ -44,7 +44,7 @@ impl Server {
             .install_default()
             .ok();
 
-        let config = Config::load(args.backend.as_deref())?;
+        let config = Config::load()?;
 
         let (db, db_process): (DB, Option<std::process::Child>) =
             if matches!(config.backend, dn_core::config::StorageBackend::Local) {

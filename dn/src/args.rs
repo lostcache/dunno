@@ -8,10 +8,6 @@
     propagate_version = true
 )]
 pub struct Args {
-    /// Optional storage backend override (`local` or `cloud`).
-    #[arg(long, visible_alias = "b", global = true, value_name = "BACKEND")]
-    pub backend: Option<String>,
-
     /// Format output with indentation for better readability.
     #[arg(long, visible_alias = "pp", global = true)]
     pub pretty: bool,
@@ -959,15 +955,6 @@ mod tests {
         ]);
         assert!(args2.is_ok(), "should parse --pretty with add command");
         assert!(args2.unwrap().pretty, "pretty should be true");
-    }
-
-    #[test]
-    fn pretty_flag_works_with_backend_flag() {
-        let args = Args::try_parse_from(["dn", "--backend", "cloud", "--pretty", "config", "show"]);
-        assert!(args.is_ok(), "should parse both --backend and --pretty");
-        let parsed = args.unwrap();
-        assert_eq!(parsed.backend, Some("cloud".to_string()));
-        assert!(parsed.pretty, "pretty should be true");
     }
 
     #[test]
@@ -2134,11 +2121,6 @@ mod tests {
         let args = Args::try_parse_from(["dn", "--pp", "config", "show"]);
         assert!(args.is_ok(), "should parse --pp alias");
         assert!(args.unwrap().pretty, "pretty should be true");
-
-        // Test --b alias for --backend
-        let args = Args::try_parse_from(["dn", "--b", "local", "config", "show"]);
-        assert!(args.is_ok(), "should parse --b alias");
-        assert_eq!(args.unwrap().backend, Some("local".to_string()));
     }
 
     #[test]

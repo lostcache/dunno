@@ -32,7 +32,7 @@ async fn main() {
 
 /// Main application logic dispatcher.
 async fn run(args: args::Args) -> anyhow::Result<()> {
-    let config = dn_core::config::Config::load(args.backend.as_deref())?;
+    let config = dn_core::config::Config::load()?;
 
     if let args::Commands::Config { command } = &args.command {
         return handle_config_command(command, &config, args.pretty);
