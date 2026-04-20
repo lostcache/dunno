@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Test: Verify configuration hierarchy and precedence.
-#   defaults  →  config file  →  env vars  →  CLI flags
+#   defaults  →  global config file  →  local config file
 #
 # Each layer should override the previous one.
 
@@ -34,45 +34,20 @@ run_cmd "$BIN" config show
 assert_exit_ok    "file: config show exits 0"              "$RC"
 assert_contains   "file: path overrides default"           "$OUT" 'hierarchy-test.db'
 
-# ── 3. Env var overrides config file ──────────────────────────────
-run_cmd env DUNNO_LOCAL_PATH="/tmp/env-override.db" "$BIN" config show
-assert_exit_ok    "env: config show exits 0"               "$RC"
-assert_contains   "env: path overrides file"               "$OUT" '/tmp/env-override.db'
-
-# ── 4. Config file sets cloud; env overrides to local ─────────────
+# ── 3. Config file sets cloud; fake URL should fail ───────────────
 write_config "$(cat <<TOML
 backend = "cloud"
-
-[cloud]
 url = "wss://fake.example.com"
 namespace = "dunno"
 database = "dunno"
 username = "user"
 password = "pass"
-
-[local]
-path = "$DB"
 TOML
 )"
 run_cmd "$BIN" config show
+assert_exit_ok    "cloud file: config show exits 0"        "$RC"
 assert_contains   "file says cloud"                        "$OUT" '"backend":"cloud"'
 
-run_cmd env DUNNO_BACKEND=local "$BIN" config show
-assert_exit_ok    "env overrides file: exits 0"            "$RC"
-assert_contains   "env overrides file to local"            "$OUT" '"backend":"local"'
-
-# ── 5. CLI flag overrides everything ──────────────────────────────
-# file=cloud, env=cloud, CLI=local → should resolve to local
-run_cmd env DUNNO_BACKEND=cloud "$BIN" --backend local config show
-assert_exit_ok    "cli overrides all: exits 0"             "$RC"
-assert_contains   "cli overrides all to local"             "$OUT" '"backend":"local"'
-
-# Verify it actually connects to local and works
-run_cmd env DUNNO_BACKEND=cloud "$BIN" --backend local project add "PrecedenceProject" "CLI wins"
-assert_exit_ok    "cli override: project add exits 0"   "$RC"
-assert_contains   "cli override: project created"          "$OUT" '"name":"PrecedenceProject"'
-
-# ── 6. Without CLI override, cloud should fail (fake URL) ─────────
 run_cmd "$BIN" project ls
 assert_exit_nonzero "cloud with fake URL fails"            "$RC"
 assert_contains   "cloud error is structured"              "$OUT" '"status":"error"'

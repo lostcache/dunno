@@ -19,7 +19,7 @@ dunno/
 
 The shared library consumed by both `dn` and `dn-server`. Contains:
 
-- `config.rs` — Layered config loading (defaults → env → global → local → CLI)
+- `config.rs` — Layered config loading (defaults → global → local)
 - `models.rs` — All entity types (Project, Module, File, Task, Epic, UserStory, Context, Todo, Persona, Workflow)
 - `db/surreal/` — SurrealDB implementation: connection, CRUD per entity, context queries, graph queries
 - `context.rs` — Context retrieval orchestration

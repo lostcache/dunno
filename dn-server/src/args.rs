@@ -6,6 +6,4 @@ pub(crate) struct Args {
     pub(crate) port: u16,
     #[arg(long)]
     pub(crate) no_open: bool,
-    #[arg(long)]
-    pub(crate) backend: Option<String>,
 }

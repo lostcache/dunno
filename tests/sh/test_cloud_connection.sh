@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Test: Cloud connection and authentication smoke test.
-# Verifies binary can connect and auth to Cloud using config/env/flags.
+# Verifies binary can connect and auth to Cloud using config file.
 # Required env vars: DUNNO_CLOUD_URL, DUNNO_CLOUD_NS, DUNNO_CLOUD_DB, DUNNO_CLOUD_USER, DUNNO_CLOUD_PASS
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -9,46 +9,44 @@ source "$SCRIPT_DIR/helpers.sh"
 require_cloud_env
 build_binary
 backup_config
-remove_config
 
 PREFIX="CloudSmoke_${CLOUD_TS}"
 
-# Helper for standard cloud env vars
-cloud_env() {
-    env \
-        DUNNO_CLOUD_URL="${DUNNO_CLOUD_URL}" \
-        DUNNO_CLOUD_NS="${DUNNO_CLOUD_NS}" \
-        DUNNO_CLOUD_DB="${DUNNO_CLOUD_DB}" \
-        DUNNO_CLOUD_USER="${DUNNO_CLOUD_USER}" \
-        DUNNO_CLOUD_PASS="${DUNNO_CLOUD_PASS}" \
-        DUNNO_CLOUD_AUTH_TYPE="${DUNNO_CLOUD_AUTH_TYPE:-namespace}" \
-        "$@"
-}
+write_config "$(cat <<TOML
+backend = "cloud"
+url = "${DUNNO_CLOUD_URL}"
+namespace = "${DUNNO_CLOUD_NS}"
+database = "${DUNNO_CLOUD_DB}"
+username = "${DUNNO_CLOUD_USER}"
+password = "${DUNNO_CLOUD_PASS}"
+auth_type = "${DUNNO_CLOUD_AUTH_TYPE:-namespace}"
+TOML
+)"
 
 print_header "Test: Cloud Backend Smoke Test"
 
-# ── 1. Connection via env vars ────────────────────────────────────
-echo "--- Testing connection via env vars ---"
-cloud_env DUNNO_BACKEND=cloud "$BIN" config show
-assert_exit_ok    "env: config show exits 0"                "$RC"
-assert_contains   "env: backend is cloud"                   "$OUT" '"backend":"cloud"'
+# ── 1. Config show reflects cloud settings ───────────────────────
+echo "--- Testing config show ---"
+run_cmd "$BIN" config show
+assert_exit_ok    "config show exits 0"                    "$RC"
+assert_contains   "backend is cloud"                       "$OUT" '"backend":"cloud"'
 
-cloud_env DUNNO_BACKEND=cloud "$BIN" project add "${PREFIX}_Env" "Smoke test"
-assert_exit_ok    "env: project add exits 0"                "$RC"
-assert_contains   "env: project created"                    "$OUT" "${PREFIX}_Env"
+# ── 2. Create projects ────────────────────────────────────────────
+echo "--- Testing project creation ---"
+run_cmd "$BIN" project add "${PREFIX}_A" "Smoke test"
+assert_exit_ok    "project add exits 0"                    "$RC"
+assert_contains   "project created"                        "$OUT" "${PREFIX}_A"
 
-# ── 2. Connection via CLI flags ───────────────────────────────────
-echo "--- Testing connection via CLI flags ---"
-cloud_env "$BIN" --backend cloud project add "${PREFIX}_Flag" "Smoke test"
-assert_exit_ok    "flag: project add exits 0"               "$RC"
-assert_contains   "flag: project created"                   "$OUT" "${PREFIX}_Flag"
+run_cmd "$BIN" project add "${PREFIX}_B" "Smoke test"
+assert_exit_ok    "second project add exits 0"             "$RC"
+assert_contains   "second project created"                 "$OUT" "${PREFIX}_B"
 
-# ── 3. Persistence Check ──────────────────────────────────────────
-echo "--- Testing persistence check ---"
-cloud_env DUNNO_BACKEND=cloud "$BIN" project ls
-assert_exit_ok    "cloud persistence: project ls exits 0"   "$RC"
-assert_contains   "cloud persistence: env project exists"   "$OUT" "${PREFIX}_Env"
-assert_contains   "cloud persistence: flag project exists"  "$OUT" "${PREFIX}_Flag"
+# ── 3. Persistence check ──────────────────────────────────────────
+echo "--- Testing persistence ---"
+run_cmd "$BIN" project ls
+assert_exit_ok    "project ls exits 0"                     "$RC"
+assert_contains   "project A persisted"                    "$OUT" "${PREFIX}_A"
+assert_contains   "project B persisted"                    "$OUT" "${PREFIX}_B"
 
 # ── teardown ───────────────────────────────────────────────────────
 restore_config

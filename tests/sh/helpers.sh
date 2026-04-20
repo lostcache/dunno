@@ -38,7 +38,6 @@ WRAPPER
 # ── Safe command runner ────────────────────────────────────────────
 # Captures stdout+stderr into $OUT and exit code into $RC.
 # Usage: run_cmd "$BIN" project ls
-#        run_cmd env DUNNO_BACKEND=local "$BIN" project ls
 
 run_cmd() {
     OUT="$("$@" 2>&1)" && RC=0 || RC=$?

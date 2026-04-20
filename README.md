@@ -53,7 +53,6 @@ An HTTP server that serves a browser UI and a REST API. Launches a browser tab a
 dn-server                   # starts on :7700, opens browser
 dn-server --port 8080       # custom port
 dn-server --no-open         # suppress auto-open
-dn-server --backend cloud-server   # override backend
 ```
 
 The UI provides full CRUD for all entities and an interactive graph visualization of the knowledge hierarchy.
@@ -140,11 +139,9 @@ dn ctx --tid task:ghi --full
 
 dn uses a layered config (highest priority first):
 
-1. CLI flags (`--backend`, `--pretty`)
-2. Local project config (`./dn.toml`)
-3. Global user config (`~/.config/dn/dn.toml`)
-4. Environment variables
-5. Built-in defaults
+1. Local project config (`./dn.toml`)
+2. Global user config (`~/.config/dn/dn.toml`)
+3. Built-in defaults
 
 #### Config Files
 
@@ -183,25 +180,11 @@ password = "root"
 auth_type = "root"
 ```
 
-#### Environment Variables
-
-| Variable           | Description                                    |
-| ------------------ | ---------------------------------------------- |
-| `DUNNO_BACKEND`    | Backend type: `local`, `local-server`, `cloud-server` |
-| `DUNNO_LOCAL_PATH` | Local database file path                       |
-| `DUNNO_URL`        | SurrealDB instance URL                         |
-| `DUNNO_NS`         | Namespace                                      |
-| `DUNNO_DB`         | Database name                                  |
-| `DUNNO_USER`       | Username                                       |
-| `DUNNO_PASS`       | Password                                       |
-| `DUNNO_AUTH_TYPE`  | Auth type: `root`, `namespace`, `database`     |
-
 #### Global CLI Flags
 
 ```bash
 dn [FLAGS] <COMMAND>
 
---backend, --b <BACKEND>   Override storage backend
 --pretty, --pp             Pretty-print JSON output
 -i, --ignore-case          Case-insensitive project name matching
 ```
@@ -369,7 +352,6 @@ dn link -f file:abc -e belongs_to_task -t task:ghi
 
 | Long                 | Short     |
 | -------------------- | --------- |
-| `--backend`          | `--b`     |
 | `--pretty`           | `--pp`    |
 | `--ignore-case`      | `-i`      |
 | `--field`            | `-f`      |
