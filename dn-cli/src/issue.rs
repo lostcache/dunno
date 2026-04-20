@@ -1,13 +1,56 @@
-use crate::args;
-use crate::commands::print_json;
+use crate::utils::print_json;
+
+#[derive(clap::Subcommand, Debug)]
+pub enum IssueCommands {
+    #[command(name = "add", about = "Create a new issue and optionally link it to a task.")]
+    Create {
+        #[arg(long, visible_alias = "tid", value_name = "TASK_ID")]
+        task_id: Option<String>,
+        #[arg(long, visible_alias = "pid", value_name = "PROJECT_ID")]
+        project_id: String,
+        #[arg(long, value_name = "PLAN")]
+        plan: Option<String>,
+        #[arg(long, value_name = "VERIFICATION")]
+        verification: Option<String>,
+        description: String,
+    },
+    #[command(name = "update", about = "Update an existing issue's description, plan, or status.")]
+    Update {
+        issue_id: String,
+        #[arg(long, value_name = "DESC")]
+        description: Option<String>,
+        #[arg(long, value_name = "PLAN")]
+        plan: Option<String>,
+        #[arg(long, value_name = "VERIFICATION")]
+        verification: Option<String>,
+        #[arg(long, value_name = "STATUS", help = "One of: pending, active, completed")]
+        status: Option<String>,
+    },
+    #[command(name = "list", visible_alias = "ls", about = "List issues for a project, optionally filtered by task.")]
+    List {
+        #[arg(long, visible_alias = "pid", value_name = "PROJECT_ID")]
+        project_id: String,
+        #[arg(long, visible_alias = "tid", value_name = "TASK_ID")]
+        task_id: Option<String>,
+    },
+    #[command(name = "rm", about = "Delete one or more issues by ID.")]
+    Remove {
+        #[arg(required = true)]
+        issue_ids: Vec<String>,
+    },
+    #[command(about = "Fetch a single issue by ID.")]
+    Get {
+        id: String,
+    },
+}
 
 pub(crate) async fn handle_issue_command(
-    command: args::IssueCommands,
+    command: IssueCommands,
     db: &dn_core::db::DB,
     pretty: bool,
 ) -> anyhow::Result<()> {
     match command {
-        args::IssueCommands::Create {
+        IssueCommands::Create {
             task_id,
             project_id,
             plan,
@@ -25,7 +68,7 @@ pub(crate) async fn handle_issue_command(
                 .await?;
             print_json(serde_json::json!(created), pretty);
         }
-        args::IssueCommands::Update {
+        IssueCommands::Update {
             issue_id,
             description,
             plan,
@@ -49,7 +92,7 @@ pub(crate) async fn handle_issue_command(
                 .await?;
             print_json(serde_json::json!(result), pretty);
         }
-        args::IssueCommands::List {
+        IssueCommands::List {
             project_id,
             task_id,
         } => {
@@ -59,7 +102,7 @@ pub(crate) async fn handle_issue_command(
             };
             print_json(serde_json::json!(issues), pretty);
         }
-        args::IssueCommands::Remove { issue_ids } => {
+        IssueCommands::Remove { issue_ids } => {
             let mut deleted = Vec::new();
             let mut not_found = Vec::new();
             for id in issue_ids {
@@ -78,7 +121,7 @@ pub(crate) async fn handle_issue_command(
                 pretty,
             );
         }
-        args::IssueCommands::Get { id } => {
+        IssueCommands::Get { id } => {
             let issue = db.get_issue(&id).await?;
             match issue {
                 Some(i) => print_json(serde_json::json!(i), pretty),

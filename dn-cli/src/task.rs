@@ -1,0 +1,150 @@
+use crate::utils::{parse_optional_status, print_json, resolve_project_id, validate_task_parents};
+
+#[derive(clap::Subcommand, Debug)]
+pub enum TaskCommands {
+    #[command(name = "add")]
+    Create {
+        #[arg(long, visible_alias = "mids", value_name = "MODULE_ID")]
+        module_ids: Vec<String>,
+        #[arg(
+            long,
+            visible_alias = "pid",
+            value_name = "PROJECT_ID",
+            conflicts_with = "project",
+            required_unless_present = "project"
+        )]
+        project_id: Option<String>,
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id",
+            required_unless_present = "project_id"
+        )]
+        project: Option<String>,
+        #[arg(long, visible_alias = "usids", value_name = "USER_STORY_ID")]
+        user_story_ids: Vec<String>,
+        #[arg(long, visible_alias = "eids", value_name = "EPIC_ID")]
+        epic_ids: Vec<String>,
+        name: String,
+        description: String,
+    },
+    Update {
+        task_id: String,
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(long)]
+        description: Option<String>,
+        #[arg(long, value_name = "STATUS", help = "One of: pending, active, completed")]
+        status: Option<String>,
+    },
+    #[command(name = "rm")]
+    Delete {
+        #[arg(required = true)]
+        task_ids: Vec<String>,
+    },
+    #[command(name = "list", visible_alias = "ls")]
+    List {
+        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
+        project_id: Option<String>,
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
+        project: Option<String>,
+    },
+    Get {
+        id: String,
+    },
+}
+
+pub(crate) async fn handle_task_command(
+    command: TaskCommands,
+    db: &dn_core::db::DB,
+    pretty: bool,
+    ignore_case: bool,
+) -> anyhow::Result<()> {
+    match command {
+        TaskCommands::Create {
+            module_ids,
+            project_id,
+            project,
+            user_story_ids,
+            epic_ids,
+            name,
+            description,
+        } => {
+            let resolved_project_id =
+                resolve_project_id(db, project_id, project, ignore_case).await?;
+
+            let project_ids: Vec<String> = resolved_project_id.into_iter().collect();
+            let (mid, pid) = validate_task_parents(&module_ids, &project_ids)?;
+            let created = db.create_task(&name, &description, mid, pid).await?;
+
+            if let Some(task_id) = &created.id {
+                for us_id in &user_story_ids {
+                    db.link_task_to_user_story(task_id, us_id).await?;
+                }
+                for epic_id in &epic_ids {
+                    db.link_task_to_epic(task_id, epic_id).await?;
+                }
+            }
+
+            print_json(serde_json::json!(created), pretty);
+        }
+        TaskCommands::Update {
+            task_id,
+            name,
+            description,
+            status,
+        } => {
+            let parsed_status = parse_optional_status(status)?;
+            let updated = db
+                .update_task(&task_id, name, description, parsed_status)
+                .await?;
+
+            match updated {
+                Some(task) => print_json(serde_json::json!(task), pretty),
+                None => return Err(anyhow::anyhow!("Task not found: {}", task_id)),
+            }
+        }
+        TaskCommands::List {
+            project_id,
+            project,
+        } => {
+            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
+            let tasks = match resolved_id {
+                Some(pid) => db.list_tasks_by_project(&pid).await?,
+                None => db.list_tasks().await?,
+            };
+            print_json(serde_json::json!(tasks), pretty);
+        }
+        TaskCommands::Delete { task_ids } => {
+            let mut deleted = Vec::new();
+            let mut not_found = Vec::new();
+            for id in task_ids {
+                if db.delete_task(&id).await? {
+                    deleted.push(id);
+                } else {
+                    not_found.push(id);
+                }
+            }
+            let result = serde_json::json!({
+                "status": "ok",
+                "deleted": deleted,
+                "not_found": not_found,
+            });
+            print_json(result, pretty);
+        }
+        TaskCommands::Get { id } => {
+            let task = db.get_task(&id).await?;
+            match task {
+                Some(t) => print_json(serde_json::json!(t), pretty),
+                None => return Err(anyhow::anyhow!("Task not found: {}", id)),
+            }
+        }
+    }
+    Ok(())
+}

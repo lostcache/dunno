@@ -1,14 +1,48 @@
-use crate::args;
-use crate::commands::{print_json, resolve_project_id};
+use crate::utils::{print_json, resolve_project_id};
+
+#[derive(clap::Subcommand, Debug)]
+pub enum PersonaCommands {
+    #[command(name = "add")]
+    Create {
+        #[arg(long, visible_alias = "pids", value_name = "PROJECT_ID")]
+        project_ids: Vec<String>,
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_ids"
+        )]
+        project: Option<String>,
+        name: String,
+        content: String,
+    },
+    #[command(name = "list", visible_alias = "ls")]
+    List {
+        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
+        project_id: Option<String>,
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
+        project: Option<String>,
+    },
+    #[command(name = "rm")]
+    Delete {
+        #[arg(required = true)]
+        persona_ids: Vec<String>,
+    },
+}
 
 pub(crate) async fn handle_persona_command(
-    command: args::PersonaCommands,
+    command: PersonaCommands,
     db: &dn_core::db::DB,
     pretty: bool,
     ignore_case: bool,
 ) -> anyhow::Result<()> {
     match command {
-        args::PersonaCommands::Create {
+        PersonaCommands::Create {
             project_ids,
             project,
             name,
@@ -22,7 +56,7 @@ pub(crate) async fn handle_persona_command(
             let created = db.create_persona(&name, &content, &pid).await?;
             print_json(serde_json::json!(created), pretty);
         }
-        args::PersonaCommands::List {
+        PersonaCommands::List {
             project_id,
             project,
         } => {
@@ -33,7 +67,7 @@ pub(crate) async fn handle_persona_command(
             };
             print_json(serde_json::json!(personas), pretty);
         }
-        args::PersonaCommands::Delete { persona_ids } => {
+        PersonaCommands::Delete { persona_ids } => {
             let mut deleted = Vec::new();
             let mut not_found = Vec::new();
             for id in persona_ids {

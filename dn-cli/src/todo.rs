@@ -1,14 +1,63 @@
-use crate::args;
-use crate::commands::{print_json, resolve_project_id};
+use crate::utils::{print_json, resolve_project_id};
+
+#[derive(clap::Subcommand, Debug)]
+pub enum TodoCommands {
+    #[command(name = "add")]
+    Create {
+        #[arg(
+            long,
+            visible_alias = "pids",
+            value_name = "PROJECT_ID",
+            conflicts_with = "project"
+        )]
+        project_ids: Vec<String>,
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_ids"
+        )]
+        project: Option<String>,
+        content: String,
+    },
+    #[command(name = "list", visible_alias = "ls")]
+    List {
+        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
+        project_id: Option<String>,
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            conflicts_with = "project_id"
+        )]
+        project: Option<String>,
+    },
+    #[command(name = "update")]
+    Update {
+        todo_id: String,
+        #[arg(long, value_name = "CONTENT")]
+        content: Option<String>,
+        #[arg(long, value_name = "STATUS", help = "One of: pending, active, completed")]
+        status: Option<String>,
+    },
+    #[command(name = "rm")]
+    Delete {
+        #[arg(required = true)]
+        todo_ids: Vec<String>,
+    },
+    Get {
+        id: String,
+    },
+}
 
 pub(crate) async fn handle_todo_command(
-    command: args::TodoCommands,
+    command: TodoCommands,
     db: &dn_core::db::DB,
     pretty: bool,
     ignore_case: bool,
 ) -> anyhow::Result<()> {
     match command {
-        args::TodoCommands::Create {
+        TodoCommands::Create {
             project_ids,
             project,
             content,
@@ -34,7 +83,7 @@ pub(crate) async fn handle_todo_command(
 
             print_json(serde_json::json!(created), pretty);
         }
-        args::TodoCommands::List {
+        TodoCommands::List {
             project_id,
             project,
         } => {
@@ -45,7 +94,7 @@ pub(crate) async fn handle_todo_command(
             let todos = db.list_todos_by_project(&pid).await?;
             print_json(serde_json::json!(todos), pretty);
         }
-        args::TodoCommands::Update {
+        TodoCommands::Update {
             todo_id,
             content,
             status,
@@ -65,7 +114,7 @@ pub(crate) async fn handle_todo_command(
             let result = db.update_todo(&todo_id, content, parsed_status).await?;
             print_json(serde_json::json!(result), pretty);
         }
-        args::TodoCommands::Delete { todo_ids } => {
+        TodoCommands::Delete { todo_ids } => {
             let mut deleted = Vec::new();
             let mut not_found = Vec::new();
             for id in todo_ids {
@@ -82,7 +131,7 @@ pub(crate) async fn handle_todo_command(
             });
             print_json(result, pretty);
         }
-        args::TodoCommands::Get { id } => {
+        TodoCommands::Get { id } => {
             let todo = db.get_todo(&id).await?;
             match todo {
                 Some(t) => print_json(serde_json::json!(t), pretty),
