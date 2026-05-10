@@ -84,9 +84,8 @@ dn-server --no-open         # does not open browser tab.
 
 The UI provides full CRUD for all entities and an interactive graph visualization.
 
+// use github link instead
+
 > To use both `dn` CLI and `dn-server` concurrently against the same local database instance, install the `surreal` binary (Recommended):
->
-> ```bash
-> curl -sSf https://install.surrealdb.com | sh
-> ```
+> [https://github.com/surrealdb/surrealdb](https://github.com/surrealdb/surrealdb)
 
