@@ -2,13 +2,21 @@ use crate::utils::print_json;
 
 #[derive(clap::Subcommand, Debug)]
 pub enum ProjectCommands {
-    #[command(name = "add")]
-    Create { name: String, description: String },
-    #[command(name = "list", visible_alias = "ls")]
+    #[command(name = "add", about = "Create a new project.")]
+    Create {
+        #[arg(help = "Project name.")]
+        name: String,
+        #[arg(help = "Short description of the project.")]
+        description: String,
+    },
+    #[command(name = "list", visible_alias = "ls", about = "List all projects.")]
     List,
-    #[command(name = "rm")]
+    #[command(name = "rm", about = "Delete one or more projects by ID.")]
     Delete {
-        #[arg(required = true)]
+        #[arg(
+            required = true,
+            help = "One or more project IDs to delete (e.g. project:abc)."
+        )]
         project_ids: Vec<String>,
     },
 }

@@ -2,12 +2,16 @@ use crate::utils::{print_json, resolve_project_id};
 
 #[derive(clap::Subcommand, Debug)]
 pub enum FileCommands {
-    #[command(name = "add")]
+    #[command(
+        name = "add",
+        about = "Register a file node and link it to a project and optional parent module."
+    )]
     Create {
         #[arg(
             long,
             visible_alias = "pids",
             value_name = "PROJECT_ID",
+            help = "Project ID(s) to link this file to. Repeatable. Conflicts with --project.",
             conflicts_with = "project"
         )]
         project_ids: Vec<String>,
@@ -15,35 +19,62 @@ pub enum FileCommands {
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
+            help = "Project name (resolved to ID). Conflicts with --project-ids.",
             conflicts_with = "project_ids"
         )]
         project: Option<String>,
-        #[arg(long, value_name = "PARENT_ID")]
+        #[arg(
+            long,
+            value_name = "PARENT_ID",
+            help = "Parent module ID(s) that contain this file. Repeatable."
+        )]
         parent_ids: Vec<String>,
+        #[arg(help = "Display name for the file.")]
         name: String,
+        #[arg(help = "Relative path to the file (e.g. src/main.rs).")]
         path: String,
-        #[arg(value_name = "DESCRIPTION")]
+        #[arg(
+            value_name = "DESCRIPTION",
+            help = "Optional short description of the file's purpose."
+        )]
         description: Option<String>,
-        #[arg(long, value_name = "NOTES")]
+        #[arg(
+            long,
+            value_name = "NOTES",
+            help = "Additional notes attached to this file."
+        )]
         notes: Option<String>,
     },
-    #[command(name = "list", visible_alias = "ls")]
+    #[command(
+        name = "list",
+        visible_alias = "ls",
+        about = "List files, optionally filtered by project or module."
+    )]
     List {
-        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
+        #[arg(
+            long,
+            visible_alias = "pid",
+            help = "Filter by project ID. Conflicts with --project.",
+            conflicts_with = "project"
+        )]
         project_id: Option<String>,
         #[arg(
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
+            help = "Filter by project name. Conflicts with --project-id.",
             conflicts_with = "project_id"
         )]
         project: Option<String>,
-        #[arg(long, visible_alias = "mid")]
+        #[arg(long, visible_alias = "mid", help = "Filter by module ID.")]
         module_id: Option<String>,
     },
-    #[command(name = "rm")]
+    #[command(name = "rm", about = "Delete one or more file nodes by ID.")]
     Delete {
-        #[arg(required = true)]
+        #[arg(
+            required = true,
+            help = "One or more file IDs to delete (e.g. file:abc)."
+        )]
         file_ids: Vec<String>,
     },
 }

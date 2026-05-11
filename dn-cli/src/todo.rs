@@ -2,12 +2,16 @@ use crate::utils::{print_json, resolve_project_id};
 
 #[derive(clap::Subcommand, Debug)]
 pub enum TodoCommands {
-    #[command(name = "add")]
+    #[command(
+        name = "add",
+        about = "Create a new todo item, optionally linked to a project."
+    )]
     Create {
         #[arg(
             long,
             visible_alias = "pids",
             value_name = "PROJECT_ID",
+            help = "Project ID(s) to link this todo to. Repeatable. Conflicts with --project.",
             conflicts_with = "project"
         )]
         project_ids: Vec<String>,
@@ -15,37 +19,59 @@ pub enum TodoCommands {
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
+            help = "Project name (resolved to ID). Conflicts with --project-ids.",
             conflicts_with = "project_ids"
         )]
         project: Option<String>,
+        #[arg(help = "Todo item content / description.")]
         content: String,
     },
-    #[command(name = "list", visible_alias = "ls")]
+    #[command(
+        name = "list",
+        visible_alias = "ls",
+        about = "List todo items for a project."
+    )]
     List {
-        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
+        #[arg(
+            long,
+            visible_alias = "pid",
+            help = "Project ID. Conflicts with --project.",
+            conflicts_with = "project"
+        )]
         project_id: Option<String>,
         #[arg(
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
+            help = "Project name (resolved to ID). Conflicts with --project-id.",
             conflicts_with = "project_id"
         )]
         project: Option<String>,
     },
-    #[command(name = "update")]
+    #[command(name = "update", about = "Update a todo item's content or status.")]
     Update {
+        #[arg(help = "Todo ID to update (e.g. todo_item:abc).")]
         todo_id: String,
-        #[arg(long, value_name = "CONTENT")]
+        #[arg(long, value_name = "CONTENT", help = "New content for the todo item.")]
         content: Option<String>,
-        #[arg(long, value_name = "STATUS", help = "One of: pending, active, completed")]
+        #[arg(
+            long,
+            value_name = "STATUS",
+            help = "One of: pending, active, completed"
+        )]
         status: Option<String>,
     },
-    #[command(name = "rm")]
+    #[command(name = "rm", about = "Delete one or more todo items by ID.")]
     Delete {
-        #[arg(required = true)]
+        #[arg(
+            required = true,
+            help = "One or more todo IDs to delete (e.g. todo_item:abc)."
+        )]
         todo_ids: Vec<String>,
     },
+    #[command(about = "Fetch a single todo item by ID.")]
     Get {
+        #[arg(help = "Todo ID to fetch (e.g. todo_item:abc).")]
         id: String,
     },
 }

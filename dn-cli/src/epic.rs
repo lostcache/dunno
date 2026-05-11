@@ -2,12 +2,13 @@ use crate::utils::{print_json, resolve_project_id};
 
 #[derive(clap::Subcommand, Debug)]
 pub enum EpicCommands {
-    #[command(name = "add")]
+    #[command(name = "add", about = "Create a new epic linked to a project.")]
     Create {
         #[arg(
             long,
             visible_alias = "pid",
             value_name = "PROJECT_ID",
+            help = "Project ID. Conflicts with --project.",
             conflicts_with = "project"
         )]
         project_id: Option<String>,
@@ -15,27 +16,43 @@ pub enum EpicCommands {
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
+            help = "Project name (resolved to ID). Conflicts with --project-id.",
             conflicts_with = "project_id"
         )]
         project: Option<String>,
+        #[arg(help = "Epic title.")]
         title: String,
+        #[arg(help = "Epic description.")]
         description: String,
     },
-    #[command(name = "list", visible_alias = "ls")]
+    #[command(
+        name = "list",
+        visible_alias = "ls",
+        about = "List epics, optionally filtered by project."
+    )]
     List {
-        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
+        #[arg(
+            long,
+            visible_alias = "pid",
+            help = "Filter by project ID. Conflicts with --project.",
+            conflicts_with = "project"
+        )]
         project_id: Option<String>,
         #[arg(
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
+            help = "Filter by project name. Conflicts with --project-id.",
             conflicts_with = "project_id"
         )]
         project: Option<String>,
     },
-    #[command(name = "rm")]
+    #[command(name = "rm", about = "Delete one or more epics by ID.")]
     Delete {
-        #[arg(required = true)]
+        #[arg(
+            required = true,
+            help = "One or more epic IDs to delete (e.g. epic:abc)."
+        )]
         epic_ids: Vec<String>,
     },
 }

@@ -2,35 +2,59 @@ use crate::utils::{print_json, resolve_project_id};
 
 #[derive(clap::Subcommand, Debug)]
 pub enum PersonaCommands {
-    #[command(name = "add")]
+    #[command(
+        name = "add",
+        about = "Create a new AI agent persona linked to a project."
+    )]
     Create {
-        #[arg(long, visible_alias = "pids", value_name = "PROJECT_ID")]
+        #[arg(
+            long,
+            visible_alias = "pids",
+            value_name = "PROJECT_ID",
+            help = "Project ID(s) to link this persona to. Repeatable. Conflicts with --project."
+        )]
         project_ids: Vec<String>,
         #[arg(
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
+            help = "Project name (resolved to ID). Conflicts with --project-ids.",
             conflicts_with = "project_ids"
         )]
         project: Option<String>,
+        #[arg(help = "Persona name.")]
         name: String,
+        #[arg(help = "Persona definition content (tone, rules, behaviour).")]
         content: String,
     },
-    #[command(name = "list", visible_alias = "ls")]
+    #[command(
+        name = "list",
+        visible_alias = "ls",
+        about = "List personas, optionally filtered by project."
+    )]
     List {
-        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
+        #[arg(
+            long,
+            visible_alias = "pid",
+            help = "Filter by project ID. Conflicts with --project.",
+            conflicts_with = "project"
+        )]
         project_id: Option<String>,
         #[arg(
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
+            help = "Filter by project name. Conflicts with --project-id.",
             conflicts_with = "project_id"
         )]
         project: Option<String>,
     },
-    #[command(name = "rm")]
+    #[command(name = "rm", about = "Delete one or more personas by ID.")]
     Delete {
-        #[arg(required = true)]
+        #[arg(
+            required = true,
+            help = "One or more persona IDs to delete (e.g. persona:abc)."
+        )]
         persona_ids: Vec<String>,
     },
 }

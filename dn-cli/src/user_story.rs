@@ -2,12 +2,16 @@ use crate::utils::{print_json, resolve_project_id};
 
 #[derive(clap::Subcommand, Debug)]
 pub enum UserStoryCommands {
-    #[command(name = "add")]
+    #[command(
+        name = "add",
+        about = "Create a new user story linked to a project and optional epic(s)."
+    )]
     Create {
         #[arg(
             long,
             visible_alias = "pid",
             value_name = "PROJECT_ID",
+            help = "Project ID. Conflicts with --project.",
             conflicts_with = "project"
         )]
         project_id: Option<String>,
@@ -15,34 +19,62 @@ pub enum UserStoryCommands {
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
+            help = "Project name (resolved to ID). Conflicts with --project-id.",
             conflicts_with = "project_id"
         )]
         project: Option<String>,
-        #[arg(long, visible_alias = "eids", value_name = "EPIC_ID")]
+        #[arg(
+            long,
+            visible_alias = "eids",
+            value_name = "EPIC_ID",
+            help = "Epic ID(s) to link this user story to. Repeatable."
+        )]
         epic_ids: Vec<String>,
+        #[arg(help = "User story title.")]
         title: String,
+        #[arg(help = "User story description.")]
         description: String,
     },
-    #[command(name = "list", visible_alias = "ls")]
+    #[command(
+        name = "list",
+        visible_alias = "ls",
+        about = "List user stories, optionally filtered by project or epic."
+    )]
     List {
-        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
+        #[arg(
+            long,
+            visible_alias = "pid",
+            help = "Filter by project ID. Conflicts with --project.",
+            conflicts_with = "project"
+        )]
         project_id: Option<String>,
         #[arg(
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
+            help = "Filter by project name. Conflicts with --project-id.",
             conflicts_with = "project_id"
         )]
         project: Option<String>,
-        #[arg(long, visible_alias = "eid", value_name = "EPIC_ID")]
+        #[arg(
+            long,
+            visible_alias = "eid",
+            value_name = "EPIC_ID",
+            help = "Filter by epic ID."
+        )]
         epic_id: Option<String>,
     },
-    #[command(name = "rm")]
+    #[command(name = "rm", about = "Delete one or more user stories by ID.")]
     Delete {
-        #[arg(required = true)]
+        #[arg(
+            required = true,
+            help = "One or more user story IDs to delete (e.g. user_story:abc)."
+        )]
         user_story_ids: Vec<String>,
     },
+    #[command(about = "Fetch a single user story by ID.")]
     Get {
+        #[arg(help = "User story ID to fetch (e.g. user_story:abc).")]
         id: String,
     },
 }

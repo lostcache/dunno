@@ -2,35 +2,59 @@ use crate::utils::{print_json, resolve_project_id};
 
 #[derive(clap::Subcommand, Debug)]
 pub enum WorkflowCommands {
-    #[command(name = "add")]
+    #[command(
+        name = "add",
+        about = "Create a new workflow definition linked to a project."
+    )]
     Create {
-        #[arg(long, visible_alias = "pids", value_name = "PROJECT_ID")]
+        #[arg(
+            long,
+            visible_alias = "pids",
+            value_name = "PROJECT_ID",
+            help = "Project ID(s) to link this workflow to. Repeatable. Conflicts with --project."
+        )]
         project_ids: Vec<String>,
         #[arg(
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
+            help = "Project name (resolved to ID). Conflicts with --project-ids.",
             conflicts_with = "project_ids"
         )]
         project: Option<String>,
+        #[arg(help = "Workflow name.")]
         name: String,
+        #[arg(help = "Workflow definition content (steps, rules, instructions).")]
         content: String,
     },
-    #[command(name = "list", visible_alias = "ls")]
+    #[command(
+        name = "list",
+        visible_alias = "ls",
+        about = "List workflows, optionally filtered by project."
+    )]
     List {
-        #[arg(long, visible_alias = "pid", conflicts_with = "project")]
+        #[arg(
+            long,
+            visible_alias = "pid",
+            help = "Filter by project ID. Conflicts with --project.",
+            conflicts_with = "project"
+        )]
         project_id: Option<String>,
         #[arg(
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
+            help = "Filter by project name. Conflicts with --project-id.",
             conflicts_with = "project_id"
         )]
         project: Option<String>,
     },
-    #[command(name = "rm")]
+    #[command(name = "rm", about = "Delete one or more workflows by ID.")]
     Delete {
-        #[arg(required = true)]
+        #[arg(
+            required = true,
+            help = "One or more workflow IDs to delete (e.g. workflow:abc)."
+        )]
         workflow_ids: Vec<String>,
     },
 }

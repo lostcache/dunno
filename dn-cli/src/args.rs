@@ -14,8 +14,7 @@ use crate::workflow::WorkflowCommands;
     name = "dn",
     author,
     version,
-    about = "Capture and retrieve coding knowledge from mistakes, style guides, and security details.",
-    long_about = "dunno stores coding knowledge in a graph database and retrieves context via deterministic hierarchy traversal.",
+    about = "Just a couple of binaries to replace all your (except one) md files",
     propagate_version = true
 )]
 pub struct Args {
@@ -34,9 +33,11 @@ pub struct Args {
 #[derive(clap::Subcommand, Debug)]
 pub enum Commands {
     #[command(
-        about = "Add a new knowledge entry.",
-        long_about = "Persist one knowledge entry with arbitrary fields and optionally link it to structural nodes.",
-        after_help = "Examples:\n  dn add --field type --value mistake --field content --value \"Avoid unwrap\" --field severity --value high\n  dn add --field type --value security --field content --value \"SQL injection risk\" --link-to module:abc\n  dn add --field custom_type --value performance --field content --value \"Use parallel iterators\" --field category --value optimization"
+        about = "Add a new knowledge entry and optionally link it to other nodes.",
+        after_help = "Examples:\
+            \n  dn add --field type --value mistake --field content --value \"Avoid unwrap\" --field severity --value high\
+            \n  dn add --field type --value security --field content --value \"SQL injection risk\" --link-to module:abc\
+            \n  dn add --field custom_type --value performance --field content --value \"Use parallel iterators\" --field category --value optimization"
     )]
     Add {
         #[arg(
@@ -145,30 +146,51 @@ pub enum Commands {
 
     #[command(
         name = "ctx",
-        about = "Retrieve coding context for a task, file, or subtask.",
-        long_about = "Find context directly linked to a task or file.",
-        after_help = "Example:\n  dn ctx --task-id task:123\n  dn ctx --file-id file:456\n  dn ctx --general -p MyProject"
+        about = "Retrieve context for a task, file, epic, or project.\n\
+            \n\
+            Traverses the knowledge graph and returns linked context.\n\
+            \n\
+            - Use --general -p <PROJECT> for the full project structure.\n\
+            - Use --full to retrieve all linked nodes.\n\
+            - Use --task-id, --file-id, or --epic-id for entity-scoped context.",
+        after_help = "Example:\
+            \n  dn ctx --task-id task:123\
+            \n  dn ctx --task-id task:123 --full\
+            \n  dn ctx --file-id file:456\
+            \n  dn ctx --epic-id epic:789\
+            \n  dn ctx --general -p MyProject"
     )]
     Context {
-        #[arg(long, visible_alias = "tid", value_name = "TASK_ID", conflicts_with_all = ["file_id", "epic_id", "general", "project"])]
+        #[arg(long, visible_alias = "tid", value_name = "TASK_ID", help = "Fetch context for this task (inherits from module and project).", conflicts_with_all = ["file_id", "epic_id", "general", "project"])]
         task_id: Option<String>,
-        #[arg(long, visible_alias = "fid", value_name = "FILE_ID", conflicts_with_all = ["task_id", "epic_id", "general", "project"])]
+        #[arg(long, visible_alias = "fid", value_name = "FILE_ID", help = "Fetch context for this file (inherits from module and project).", conflicts_with_all = ["task_id", "epic_id", "general", "project"])]
         file_id: Option<String>,
-        #[arg(long, visible_alias = "eid", value_name = "EPIC_ID", conflicts_with_all = ["task_id", "file_id", "general", "project"])]
+        #[arg(long, visible_alias = "eid", value_name = "EPIC_ID", help = "Fetch context for this epic.", conflicts_with_all = ["task_id", "file_id", "general", "project"])]
         epic_id: Option<String>,
-        #[arg(long)]
+        #[arg(
+            long,
+            help = "Include the full inherited hierarchy (modules, project) not just direct context."
+        )]
         full: bool,
-        #[arg(long, conflicts_with_all = ["task_id", "file_id", "epic_id"])]
+        #[arg(long, help = "Return the full project structure (modules, files, tasks). Requires --project.", conflicts_with_all = ["task_id", "file_id", "epic_id"])]
         general: bool,
-        #[arg(short = 'p', long, value_name = "PROJECT", requires = "general")]
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT",
+            help = "Project name or ID. Required with --general.",
+            requires = "general"
+        )]
         project: Option<String>,
     },
 
     #[command(
-        about = "Create an edge between existing nodes.",
+        about = "Link a source node to one or more target nodes via a named edge.",
         visible_alias = "ln",
-        long_about = "Link a source node to one or more target nodes via a named edge.",
-        after_help = "Example:\n  dn link --from-id project:abc --edge contains --to-id module:def\n  dn link --from-id project:abc --edge has_todo --to-id todo_item:1 --to-id todo_item:2\n  dn link --from-id file:A --edge belongs_to_task --to-id task:X --from-id file:B --edge belongs_to_task --to-id task:X"
+        after_help = "Example:\
+            \n  dn link --from-id project:abc --edge contains --to-id module:def\
+            \n  dn link --from-id project:abc --edge has_todo --to-id todo_item:1 --to-id todo_item:2\
+            \n  dn link --from-id file:A --edge belongs_to_task --to-id task:X --from-id file:B --edge belongs_to_task --to-id task:X"
     )]
     Link {
         #[arg(short, long, value_name = "FROM_ID")]
@@ -180,9 +202,10 @@ pub enum Commands {
     },
 
     #[command(
-        about = "Remove one or more context entries.",
-        long_about = "Delete context records by their IDs.",
-        after_help = "Example:\n  dn rm context:abc\n  dn rm context:abc context:def"
+        about = "Delete one or more context entries by ID.",
+        after_help = "Example:\
+            \n  dn rm context:abc\
+            \n  dn rm context:abc context:def"
     )]
     Rm {
         #[arg(required = true, value_name = "CONTEXT_ID")]
@@ -190,8 +213,7 @@ pub enum Commands {
     },
 
     #[command(
-        about = "Purge the database (DANGER).",
-        long_about = "Delete all records from the database. This action is irreversible.",
+        about = "Delete all records from the database. This action is irreversible. (DANGER)",
         hide = true
     )]
     Purge,

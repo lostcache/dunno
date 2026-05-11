@@ -2,7 +2,10 @@ use crate::utils::print_json;
 
 #[derive(clap::Subcommand, Debug)]
 pub enum IssueCommands {
-    #[command(name = "add", about = "Create a new issue and optionally link it to a task.")]
+    #[command(
+        name = "add",
+        about = "Create a new issue and optionally link it to a task."
+    )]
     Create {
         #[arg(long, visible_alias = "tid", value_name = "TASK_ID")]
         task_id: Option<String>,
@@ -14,7 +17,10 @@ pub enum IssueCommands {
         verification: Option<String>,
         description: String,
     },
-    #[command(name = "update", about = "Update an existing issue's description, plan, or status.")]
+    #[command(
+        name = "update",
+        about = "Update an existing issue's description, plan, or status."
+    )]
     Update {
         issue_id: String,
         #[arg(long, value_name = "DESC")]
@@ -23,10 +29,18 @@ pub enum IssueCommands {
         plan: Option<String>,
         #[arg(long, value_name = "VERIFICATION")]
         verification: Option<String>,
-        #[arg(long, value_name = "STATUS", help = "One of: pending, active, completed")]
+        #[arg(
+            long,
+            value_name = "STATUS",
+            help = "One of: pending, active, completed"
+        )]
         status: Option<String>,
     },
-    #[command(name = "list", visible_alias = "ls", about = "List issues for a project, optionally filtered by task.")]
+    #[command(
+        name = "list",
+        visible_alias = "ls",
+        about = "List issues for a project, optionally filtered by task."
+    )]
     List {
         #[arg(long, visible_alias = "pid", value_name = "PROJECT_ID")]
         project_id: String,
@@ -40,6 +54,7 @@ pub enum IssueCommands {
     },
     #[command(about = "Fetch a single issue by ID.")]
     Get {
+        #[arg(help = "Issue ID to fetch (e.g. issue:abc).")]
         id: String,
     },
 }
