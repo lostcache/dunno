@@ -1,14 +1,19 @@
+# Why?
+
+![](static/dunno_tried.jpg)
+
+1. I want LLMs to know the high-level structure and intent of files in codebase before using grep like tools to investigate the details.
+2. I don't like having to commit all the md files with the sourcecode as it's not sourcecode.
+3. I want to solve the problem in a way that enables multiple people or agents fetch the latest updated context without having to sync using github.
+
+---
+
 # dn
 
 A cli tool to:
-1) Manage codebase knowledge at file level to prevent fuzzy reads while vibe-coding in a new session.
-2) Manages TODOs, Tasks, Plans, Skills, Persona and all other md files meant for Agents.
-3) Just two binaries and nothing else.
 
-# Why?
-1) I hate when LLM used grep or rg to read codebase while working in a new session.
-2) I hate to commit all the md files with the sourcecode as it's not sourcecode.
-3) I wanted to solve the above problems in a way such that enables multiple people or agents could work at the same time and to sync the md files in real time without having to sync on github.
+1. Manage codebase knowledge at file level to avoid fuzzy reads while vibe-coding.
+2. Manages TODOs, Tasks, Plans, Skills, Persona and all other md files meant for Agents.
 
 ---
 
@@ -46,7 +51,6 @@ dn uses a layered config (highest priority first):
 2. Global user config (`~/.config/dn/dn.toml`)
 3. Built-in defaults
 
-
 ```toml
 backend    = "local"                        # local | local-server | cloud
 local_path = "~/.local/share/dunno/data.db" # used when backend = "local"
@@ -55,12 +59,13 @@ namespace  = "dunno"                        # used when backend = local-server |
 database   = "dunno"                        # used when backend = local-server | cloud
 username   = "root"                         # used when backend = local-server | cloud
 password   = "root"                         # used when backend = local-server | cloud
-auth_type  = "root"                         # used when backend = cloud
+auth_type  = "database"                     # used when backend = cloud
 ```
 
 > Note: Only requires the SurrealDB binary for `local-server` backend as it spawns a local SurrealDB instance.
 
 > Note: To use the Web UI and CLI concurrently must use `local-server` or `cloud` backend to avoid DB-file lock contention.
+
 ---
 
 ## CLI (`dn`)
@@ -84,8 +89,5 @@ dn-server --no-open         # does not open browser tab.
 
 The UI provides full CRUD for all entities and an interactive graph visualization.
 
-// use github link instead
-
 > To use both `dn` CLI and `dn-server` concurrently against the same local database instance, install the `surreal` binary (Recommended):
 > [https://github.com/surrealdb/surrealdb](https://github.com/surrealdb/surrealdb)
-
