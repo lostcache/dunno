@@ -199,10 +199,12 @@
       </div>
 
       <div class="mt-auto pt-2 border-t border-[#2d3148]">
-        <span
-          class="text-[9px] text-[#475569] font-mono break-all cursor-pointer hover:text-[#64748b]"
-          onclick={() => navigator.clipboard.writeText($editingNode.id).then(() => setStatus('ID copied', 'ok'))}
-        >{$editingNode.id}</span>
+        <Button
+          onclick={() =>
+            navigator.clipboard
+              .writeText($editingNode.id)
+              .then(() => setStatus('ID copied', 'ok'))}
+        >{$editingNode.id}</Button>
       </div>
     </div>
   </div>
