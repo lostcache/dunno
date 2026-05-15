@@ -1,68 +1,68 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte'
-  import { Editor } from '@milkdown/kit/core'
-  import { commonmark } from '@milkdown/kit/preset/commonmark'
-  import { listener, listenerCtx } from '@milkdown/kit/plugin/listener'
-  import { rootCtx, defaultValueCtx } from '@milkdown/kit/core'
-  import { replaceAll } from '@milkdown/kit/utils'
+  import { onDestroy } from "svelte";
+  import { Editor } from "@milkdown/kit/core";
+  import { commonmark } from "@milkdown/kit/preset/commonmark";
+  import { listener, listenerCtx } from "@milkdown/kit/plugin/listener";
+  import { rootCtx, defaultValueCtx } from "@milkdown/kit/core";
+  import { replaceAll } from "@milkdown/kit/utils";
 
-  import '@milkdown/kit/prose/view/style/prosemirror.css'
+  import "@milkdown/kit/prose/view/style/prosemirror.css";
 
-  let { value = $bindable('') }: { value: string } = $props()
+  let { value = $bindable("") }: { value: string } = $props();
 
-  let editor: Editor | null = null
-  let editorReady = $state(false)
-  let prevValue = value
+  let editor: Editor | null = null;
+  let editorReady = $state(false);
+  let prevValue = value;
 
   function milkdown(node: HTMLElement) {
-    const initialValue = value
+    const initialValue = value;
     editor = Editor.make()
       .config((ctx) => {
-        ctx.set(rootCtx, node)
-        ctx.set(defaultValueCtx, initialValue ?? '')
+        ctx.set(rootCtx, node);
+        ctx.set(defaultValueCtx, initialValue ?? "");
         ctx.get(listenerCtx).markdownUpdated((_ctx, md) => {
-          prevValue = md
-          value = md
-        })
+          prevValue = md;
+          value = md;
+        });
       })
       .use(commonmark)
-      .use(listener)
+      .use(listener);
 
-    editor.create().then(() => {
-      editorReady = true
-      // If value was updated before the editor finished initializing, apply it now
-      if (value !== initialValue) {
-        editor?.action(replaceAll(value ?? ''))
-        prevValue = value
-      }
-    }).catch(console.error)
+    editor
+      .create()
+      .then(() => {
+        editorReady = true;
+        // If value was updated before the editor finished initializing, apply it now
+        if (value !== initialValue) {
+          editor?.action(replaceAll(value ?? ""));
+          prevValue = value;
+        }
+      })
+      .catch(console.error);
 
     return {
       destroy() {
-        editorReady = false
-        editor?.destroy()
-        editor = null
+        editorReady = false;
+        editor?.destroy();
+        editor = null;
       },
-    }
+    };
   }
 
   $effect(() => {
     if (editorReady && value !== prevValue) {
-      editor?.action(replaceAll(value ?? ''))
-      prevValue = value
+      editor?.action(replaceAll(value ?? ""));
+      prevValue = value;
     }
-  })
+  });
 
   onDestroy(() => {
-    editor?.destroy()
-    editor = null
-  })
+    editor?.destroy();
+    editor = null;
+  });
 </script>
 
-<div
-  use:milkdown
-  class="milkdown-editor"
-></div>
+<div use:milkdown class="milkdown-editor"></div>
 
 <style>
   .milkdown-editor {

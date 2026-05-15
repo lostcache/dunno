@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
+    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
+    "format": "prettier --write ."
   },
   "devDependencies": {
     "@internationalized/date": "^3.12.0",
@@ -17,6 +18,8 @@
     "@tsconfig/svelte": "^5.0.8",
     "@types/cytoscape": "^3.21.9",
     "@types/node": "^24.12.0",
+    "prettier": "^3.8.3",
+    "prettier-plugin-svelte": "^3.5.2",
     "svelte": "^5.53.12",
     "svelte-check": "^4.4.5",
     "tailwind-variants": "^3.2.2",
