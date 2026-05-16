@@ -59,6 +59,11 @@
     }
   });
 
+  function labelDuplicatesField(node: Record<string, unknown>): boolean {
+    const schema = EDIT_SCHEMAS[node.node_type as string] ?? [];
+    return schema.some((f) => String(node[f.name] ?? "") === String(node.label ?? ""));
+  }
+
   function toTitleCase(key: string): string {
     return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   }
@@ -129,9 +134,11 @@
       <div class="flex items-start justify-between gap-2">
         <div class="flex flex-col gap-1 min-w-0 overflow-hidden">
           <Badge variant="secondary" class="w-fit text-[10px]">{$editingNode.node_type}</Badge>
-          <span class="text-sm text-[#a78bfa] leading-tight break-words font-semibold"
-            >{$editingNode.label}</span
-          >
+          {#if !labelDuplicatesField($editingNode)}
+            <span class="text-sm text-[#a78bfa] leading-tight break-words font-semibold"
+              >{$editingNode.label}</span
+            >
+          {/if}
         </div>
         <div class="flex flex-col gap-1 shrink-0">
           <Button size="sm" class="h-6 px-2 text-xs" onclick={saveNode}>Save</Button>
