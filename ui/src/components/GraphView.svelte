@@ -85,6 +85,11 @@
     renderPerNode(
       htmlLayer,
       (elem, node) => {
+        if (node.hidden()) {
+          elem.style.display = "none";
+          return;
+        }
+        elem.style.display = "";
         const data = node.data() as NodeData;
         const content = truncateLabel(data.label ?? "", 80);
         const cardH = measureCardHeight(content);
@@ -148,7 +153,10 @@
   $effect(() => {
     const hn = $hiddenNodeTypes;
     const he = $hiddenEdgeTypes;
-    if (cy) applyFilters(cy, hn, he);
+    if (cy) {
+      applyFilters(cy, hn, he);
+      htmlLayer?.update();
+    }
   });
 </script>
 
