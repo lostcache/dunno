@@ -145,9 +145,12 @@ When asked to "fetch a task" or "work on a task":
 
 ## planning for an user added issue
 
-1. If given an issue id fetch using `dn issue get <id>` else an issue from the issue list to work on.
-2. Mark the issue active when you begin planning if it doesn't already have a plan.
-3. Update the issue after you have a plan using `dn issue update <issue_id> --plan "<plan>"`
+1. **MANDATORY**: If given an issue id fetch using `dn issue get <id>` else an issue from the issue list to work on.
+2. **MANDATORY**: Then get the general context to avoid fuzzy reads using `dn ctx --general -p <project_id>`.
+3. **MANDATORY**: Mark the issue active when you begin planning if it doesn't already have a plan.
+4. **MANDATORY**: Ask the user whether the plan looks good before updating the issue.
+5. **MANDATORY**: Update the issue after you have a plan using `dn issue update <issue_id> --plan "<plan>"`
+6. **Note**: Do not work on the issue unless the user explicitly requests it.
 
 ## Working on an Issue
 
