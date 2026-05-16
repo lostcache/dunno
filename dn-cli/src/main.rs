@@ -104,7 +104,9 @@ async fn dispatch_command(
         args::Commands::Todo { command } => {
             todo::handle_todo_command(command, db, pretty, ignore_case).await
         }
-        args::Commands::Issue { command } => issue::handle_issue_command(command, db, pretty).await,
+        args::Commands::Issue { command } => {
+            issue::handle_issue_command(command, db, pretty, ignore_case).await
+        }
         args::Commands::UserStory { command } => {
             user_story::handle_user_story_command(command, db, pretty, ignore_case).await
         }

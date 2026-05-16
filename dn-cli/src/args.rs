@@ -1709,12 +1709,6 @@ mod tests {
     }
 
     #[test]
-    fn issue_add_requires_project_id() {
-        let args = Args::try_parse_from(["dn", "issue", "add", "Users cannot log in"]);
-        assert!(args.is_err(), "should require --project-id");
-    }
-
-    #[test]
     fn issue_add_parses_description() {
         let args = Args::try_parse_from([
             "dn",
@@ -1837,13 +1831,66 @@ mod tests {
         assert!(args.is_ok(), "should parse issue add with --project-id");
         if let Commands::Issue { command } = args.unwrap().command {
             if let IssueCommands::Create { project_id, .. } = command {
-                assert_eq!(project_id, "project:abc".to_string());
+                assert_eq!(project_id, Some("project:abc".to_string()));
             } else {
                 panic!("expected Create command");
             }
         } else {
             panic!("expected Issue command");
         }
+    }
+
+    #[test]
+    fn issue_add_accepts_project_name() {
+        let args =
+            Args::try_parse_from(["dn", "issue", "add", "--project", "My Project", "Desc"]);
+        assert!(args.is_ok(), "should parse issue add with --project");
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::Create {
+                project, description, ..
+            } = command
+            {
+                assert_eq!(project, Some("My Project".to_string()));
+                assert_eq!(description, "Desc".to_string());
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
+
+    #[test]
+    fn issue_add_accepts_project_name_short_flag() {
+        let args = Args::try_parse_from(["dn", "issue", "add", "-p", "My Project", "Desc"]);
+        assert!(args.is_ok(), "should parse issue add with -p");
+        if let Commands::Issue { command } = args.unwrap().command {
+            if let IssueCommands::Create { project, .. } = command {
+                assert_eq!(project, Some("My Project".to_string()));
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Issue command");
+        }
+    }
+
+    #[test]
+    fn issue_add_rejects_both_project_and_project_id() {
+        let args = Args::try_parse_from([
+            "dn",
+            "issue",
+            "add",
+            "--project",
+            "My Project",
+            "--project-id",
+            "project:abc",
+            "Desc",
+        ]);
+        assert!(
+            args.is_err(),
+            "should reject both --project and --project-id"
+        );
     }
 
     #[test]

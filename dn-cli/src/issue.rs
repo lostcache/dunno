@@ -1,4 +1,4 @@
-use crate::utils::print_json;
+use crate::utils::{print_json, resolve_project_id};
 
 #[derive(clap::Subcommand, Debug)]
 pub enum IssueCommands {
@@ -9,8 +9,22 @@ pub enum IssueCommands {
     Create {
         #[arg(long, visible_alias = "tid", value_name = "TASK_ID")]
         task_id: Option<String>,
-        #[arg(long, visible_alias = "pid", value_name = "PROJECT_ID")]
-        project_id: String,
+        #[arg(
+            long,
+            visible_alias = "pid",
+            value_name = "PROJECT_ID",
+            help = "Project ID. Conflicts with --project.",
+            conflicts_with = "project"
+        )]
+        project_id: Option<String>,
+        #[arg(
+            short = 'p',
+            long,
+            value_name = "PROJECT_NAME",
+            help = "Project name (resolved to ID). Conflicts with --project-id.",
+            conflicts_with = "project_id"
+        )]
+        project: Option<String>,
         #[arg(long, value_name = "PLAN")]
         plan: Option<String>,
         #[arg(long, value_name = "VERIFICATION")]
@@ -63,21 +77,28 @@ pub(crate) async fn handle_issue_command(
     command: IssueCommands,
     db: &dn_core::db::DB,
     pretty: bool,
+    ignore_case: bool,
 ) -> anyhow::Result<()> {
     match command {
         IssueCommands::Create {
             task_id,
             project_id,
+            project,
             plan,
             verification,
             description,
         } => {
+            let resolved_project_id = resolve_project_id(db, project_id, project, ignore_case)
+                .await?
+                .ok_or_else(|| {
+                    anyhow::anyhow!("Either --project-id or --project must be provided")
+                })?;
             let created = db
                 .create_issue(
                     &description,
                     task_id.as_deref(),
                     plan.as_deref(),
-                    &project_id,
+                    &resolved_project_id,
                     verification.as_deref(),
                 )
                 .await?;
