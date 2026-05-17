@@ -17,6 +17,16 @@ A cli tool to:
 
 ---
 
+## Using dn for an issue
+
+
+
+https://github.com/user-attachments/assets/a967057b-b16d-46c5-a485-21cb70d329e8
+
+
+
+---
+
 ## Installation
 
 ### Build from Source
@@ -91,3 +101,5 @@ The UI provides full CRUD for all entities and an interactive graph visualizatio
 
 > To use both `dn` CLI and `dn-server` concurrently against the same local database instance, install the `surreal` binary (Recommended):
 > [https://github.com/surrealdb/surrealdb](https://github.com/surrealdb/surrealdb)
+
+---
