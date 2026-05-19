@@ -17,13 +17,13 @@ A cli tool to:
 
 ---
 
+## Vibe-coding responsibly with dn
+
+https://github.com/user-attachments/assets/f94c6514-aba1-498d-aa5d-4a7007550108
+
 ## Using dn for an issue
 
-
-
 https://github.com/user-attachments/assets/a967057b-b16d-46c5-a485-21cb70d329e8
-
-
 
 ---
 
