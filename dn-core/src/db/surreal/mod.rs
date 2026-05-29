@@ -32,7 +32,7 @@ impl DB {
     /// Creates a DB client from runtime config (local embedded or cloud).
     pub async fn from_config(config: &crate::config::Config) -> anyhow::Result<Self> {
         match config.backend {
-            crate::config::StorageBackend::Local => {
+            crate::config::StorageBackend::Embedded => {
                 let path = config.local_data_path();
                 if let Some(parent) = path.parent() {
                     std::fs::create_dir_all(parent)?;
@@ -50,7 +50,7 @@ impl DB {
                     }
                 })
             }
-            crate::config::StorageBackend::LocalServer => {
+            crate::config::StorageBackend::Local => {
                 if config.url.trim().is_empty() {
                     return Err(anyhow::anyhow!(
                         "local-server backend requires `url` (or DUNNO_URL)"
@@ -58,7 +58,7 @@ impl DB {
                 }
                 Self::connect_remote(config).await
             }
-            crate::config::StorageBackend::CloudServer => {
+            crate::config::StorageBackend::Cloud => {
                 if config.url.trim().is_empty() {
                     return Err(anyhow::anyhow!(
                         "cloud backend requires `url` (or DUNNO_URL)"

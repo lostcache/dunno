@@ -47,7 +47,7 @@ impl Server {
         let config = Config::load()?;
 
         let (db, db_process): (DB, Option<std::process::Child>) =
-            if matches!(config.backend, dn_core::config::StorageBackend::Local) {
+            if matches!(config.backend, dn_core::config::StorageBackend::Embedded) {
                 let db_path = config.local_data_path();
                 if let Some(parent) = db_path.parent() {
                     std::fs::create_dir_all(parent)?;

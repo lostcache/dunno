@@ -1,19 +1,19 @@
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum StorageBackend {
-    Local,
+    Embedded,
     #[serde(rename = "local-server")]
-    LocalServer,
+    Local,
     #[serde(rename = "cloud-server")]
-    CloudServer,
+    Cloud,
 }
 
 impl StorageBackend {
     fn parse(value: &str) -> anyhow::Result<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
+            "embedded" => Ok(Self::Embedded),
             "local" => Ok(Self::Local),
-            "local-server" => Ok(Self::LocalServer),
-            "cloud" => Ok(Self::CloudServer),
+            "cloud" => Ok(Self::Cloud),
             other => Err(anyhow::anyhow!(
                 "Invalid backend '{}'. Expected one of: local, local-server, cloud",
                 other
@@ -37,7 +37,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            backend: StorageBackend::Local,
+            backend: StorageBackend::Embedded,
             local_path: "~/.local/share/dunno/data.db".to_string(),
             url: String::new(),
             namespace: "dunno".to_string(),
@@ -112,9 +112,9 @@ impl Config {
     pub fn redacted_json(&self) -> serde_json::Value {
         serde_json::json!({
             "backend": match self.backend {
-                StorageBackend::Local => "local",
-                StorageBackend::LocalServer => "local-server",
-                StorageBackend::CloudServer => "cloud",
+                StorageBackend::Embedded => "local",
+                StorageBackend::Local => "local-server",
+                StorageBackend::Cloud => "cloud",
             },
             "local_path": self.local_path,
             "url": self.url,
@@ -130,9 +130,9 @@ impl Config {
 
     pub fn formatted(&self) -> String {
         let backend_str = match self.backend {
-            StorageBackend::Local => "local",
-            StorageBackend::LocalServer => "local-server",
-            StorageBackend::CloudServer => "cloud",
+            StorageBackend::Embedded => "local",
+            StorageBackend::Local => "local-server",
+            StorageBackend::Cloud => "cloud",
         };
 
         let mut output = String::new();
@@ -140,11 +140,11 @@ impl Config {
         output.push_str(&format!("Backend: {}\n\n", backend_str));
 
         match self.backend {
-            StorageBackend::Local => {
+            StorageBackend::Embedded => {
                 output.push_str("--- Local Storage ---\n");
                 output.push_str(&format!("Database Path: {}\n", self.local_path));
             }
-            StorageBackend::LocalServer | StorageBackend::CloudServer => {
+            StorageBackend::Local | StorageBackend::Cloud => {
                 output.push_str(&format!("URL: {}\n", self.url));
                 output.push_str(&format!("Namespace: {}\n", self.namespace));
                 output.push_str(&format!("Database: {}\n", self.database));
@@ -155,7 +155,7 @@ impl Config {
                     "***redacted***".to_string()
                 };
                 output.push_str(&format!("Password: {}\n", password_display));
-                if matches!(self.backend, StorageBackend::CloudServer) {
+                if matches!(self.backend, StorageBackend::Cloud) {
                     output.push_str(&format!("Auth Type: {}\n", self.auth_type));
                 }
             }
@@ -253,7 +253,7 @@ mod tests {
             .merge_partial(parsed)
             .expect("Failed to merge partial config");
 
-        assert!(matches!(config.backend, StorageBackend::CloudServer));
+        assert!(matches!(config.backend, StorageBackend::Cloud));
         assert_eq!(config.local_path, "~/.local/share/dunno/data.db");
         assert_eq!(config.url, "wss://example.surrealdb.com");
         assert_eq!(config.username, "user");
@@ -271,7 +271,7 @@ mod tests {
         let missing = std::path::PathBuf::from("/tmp/definitely-missing-dunno-config.toml");
         let config =
             Config::load_from_optional_paths(None, Some(&missing)).expect("load should succeed");
-        assert!(matches!(config.backend, StorageBackend::Local));
+        assert!(matches!(config.backend, StorageBackend::Embedded));
     }
 
     #[test]
@@ -303,7 +303,7 @@ password = "global"
 "#;
 
         let local_raw = r#"
-backend = "local"
+backend = "embedded"
 local_path = "/tmp/local-override.db"
 "#;
 
@@ -313,7 +313,7 @@ local_path = "/tmp/local-override.db"
         // Local config should override global
         let loaded = Config::load_from_optional_paths(Some(&global_path), Some(&local_path))
             .expect("load should succeed");
-        assert!(matches!(loaded.backend, StorageBackend::Local));
+        assert!(matches!(loaded.backend, StorageBackend::Embedded));
         assert_eq!(loaded.local_path, "/tmp/local-override.db");
 
         let _ = std::fs::remove_file(global_path);
@@ -344,7 +344,7 @@ local_path = "/tmp/local-override.db"
         let mut config = Config::default();
         config.merge_partial(parsed).expect("Failed to merge");
 
-        assert!(matches!(config.backend, StorageBackend::CloudServer));
+        assert!(matches!(config.backend, StorageBackend::Cloud));
         assert_eq!(config.url, "wss://my-instance.surreal.cloud");
         assert_eq!(config.namespace, "dunno");
         assert_eq!(config.database, "dunno");
@@ -370,7 +370,7 @@ local_path = "/tmp/local-override.db"
             .expect("load should succeed with defaults");
 
         // Should have defaults since no files exist and env is skipped
-        assert!(matches!(loaded.backend, StorageBackend::Local));
+        assert!(matches!(loaded.backend, StorageBackend::Embedded));
         assert_eq!(loaded.local_path, "~/.local/share/dunno/data.db");
     }
 
@@ -397,7 +397,7 @@ password = "global-pass"
         let loaded = Config::load_from_optional_paths(Some(&global_path), Some(&missing_local))
             .expect("load should succeed");
 
-        assert!(matches!(loaded.backend, StorageBackend::CloudServer));
+        assert!(matches!(loaded.backend, StorageBackend::Cloud));
         assert_eq!(loaded.url, "wss://global-only.example.com");
         assert_eq!(loaded.namespace, "global-ns");
 
@@ -434,7 +434,7 @@ namespace = "local-ns"
             .expect("load should succeed");
 
         // Local should override specific fields
-        assert!(matches!(loaded.backend, StorageBackend::CloudServer)); // From global
+        assert!(matches!(loaded.backend, StorageBackend::Cloud)); // From global
         assert_eq!(loaded.url, "wss://local.example.com"); // Overridden by local
         assert_eq!(loaded.namespace, "local-ns"); // Overridden by local
         assert_eq!(loaded.database, "global-db"); // From global (not in local)
@@ -474,7 +474,7 @@ url = "wss://example.com"
     }
 
     #[test]
-    fn test_local_backend_config_with_cloud_in_global() {
+    fn test_embedded_backend_config_with_cloud_in_global() {
         let ts = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("time should be valid")
@@ -488,7 +488,7 @@ url = "wss://cloud.example.com"
 "#;
 
         let local_raw = r#"
-backend = "local"
+backend = "embedded"
 local_path = "/tmp/mixed.db"
 "#;
 
@@ -499,7 +499,7 @@ local_path = "/tmp/mixed.db"
             .expect("load should succeed");
 
         // Local backend setting should win
-        assert!(matches!(loaded.backend, StorageBackend::Local));
+        assert!(matches!(loaded.backend, StorageBackend::Embedded));
         assert_eq!(loaded.local_path, "/tmp/mixed.db");
         // Connection values from global are still loaded even when backend = local
         assert_eq!(loaded.url, "wss://cloud.example.com");
@@ -524,7 +524,7 @@ local_path = "/tmp/mixed.db"
             .expect("load should succeed with defaults");
 
         // Should use defaults
-        assert!(matches!(loaded.backend, StorageBackend::Local));
+        assert!(matches!(loaded.backend, StorageBackend::Embedded));
 
         let _ = std::fs::remove_file(whitespace_path);
     }
@@ -563,7 +563,7 @@ url = "wss://partial.example.com"
         let loaded = Config::load_from_optional_paths(Some(&config_path), None)
             .expect("load should succeed");
 
-        assert!(matches!(loaded.backend, StorageBackend::CloudServer));
+        assert!(matches!(loaded.backend, StorageBackend::Cloud));
         assert_eq!(loaded.url, "wss://partial.example.com");
         // Other fields should use defaults
         assert_eq!(loaded.username, "root");
@@ -588,7 +588,7 @@ url = "wss://partial.example.com"
     #[test]
     fn test_formatted_output_cloud_backend() {
         let mut config = Config::default();
-        config.backend = StorageBackend::CloudServer;
+        config.backend = StorageBackend::Cloud;
         config.url = "wss://test.surrealdb.com".to_string();
         config.namespace = "test_ns".to_string();
         config.database = "test_db".to_string();
