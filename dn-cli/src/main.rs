@@ -61,7 +61,7 @@ fn handle_config_command(
 ) -> anyhow::Result<()> {
     match command {
         args::ConfigCommands::Show => {
-            print!("{}", config.formatted());
+            print!("{}", config);
         }
     }
     Ok(())

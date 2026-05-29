@@ -107,35 +107,6 @@ impl Config {
         expand_tilde_path(&self.local_path)
     }
 
-    pub fn formatted(&self) -> String {
-        let backend_str = match self.backend {
-            StorageBackend::Embedded => "embedded",
-            StorageBackend::Local => "local",
-            StorageBackend::Cloud => "cloud",
-        };
-
-        let mut output = String::new();
-        output.push_str(&format!("backend: {}\n", backend_str));
-
-        match self.backend {
-            StorageBackend::Embedded => {
-                output.push_str(&format!("database path: {}\n", self.local_path));
-            }
-            StorageBackend::Local | StorageBackend::Cloud => {
-                output.push_str(&format!("url: {}\n", self.url));
-                output.push_str(&format!("namespace: {}\n", self.namespace));
-                output.push_str(&format!("database: {}\n", self.database));
-                output.push_str(&format!("username: {}\n", self.username));
-                output.push_str(&format!("password: **********\n"));
-                if matches!(self.backend, StorageBackend::Cloud) {
-                    output.push_str(&format!("auth type: {}\n", self.auth_type));
-                }
-            }
-        }
-
-        output
-    }
-
     fn apply_config_file(&mut self, path: &std::path::Path) -> anyhow::Result<()> {
         if !path.exists() {
             return Ok(());
@@ -178,6 +149,41 @@ impl Config {
             self.auth_type = v;
         }
         Ok(())
+    }
+
+    fn to_string(&self) -> String {
+        let backend_str = match self.backend {
+            StorageBackend::Embedded => "embedded",
+            StorageBackend::Local => "local",
+            StorageBackend::Cloud => "cloud",
+        };
+
+        let mut output = String::new();
+        output.push_str(&format!("backend: {}\n", backend_str));
+
+        match self.backend {
+            StorageBackend::Embedded => {
+                output.push_str(&format!("database path: {}\n", self.local_path));
+            }
+            StorageBackend::Local | StorageBackend::Cloud => {
+                output.push_str(&format!("url: {}\n", self.url));
+                output.push_str(&format!("namespace: {}\n", self.namespace));
+                output.push_str(&format!("database: {}\n", self.database));
+                output.push_str(&format!("username: {}\n", self.username));
+                output.push_str(&format!("password: **********\n"));
+                if matches!(self.backend, StorageBackend::Cloud) {
+                    output.push_str(&format!("auth type: {}\n", self.auth_type));
+                }
+            }
+        }
+
+        output
+    }
+}
+
+impl std::fmt::Display for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
     }
 }
 
@@ -538,10 +544,10 @@ url = "wss://partial.example.com"
     }
 
     #[test]
-    fn test_formatted_output_local_backend() {
+    fn test_to_string_output_local_backend() {
         let mut config = Config::default();
         config.backend = StorageBackend::Local;
-        let formatted = config.formatted();
+        let formatted = config.to_string();
 
         let mut lines = formatted.lines();
 
@@ -555,7 +561,7 @@ url = "wss://partial.example.com"
     }
 
     #[test]
-    fn test_formatted_output_cloud_backend() {
+    fn test_to_string_output_cloud_backend() {
         let mut config = Config::default();
         config.backend = StorageBackend::Cloud;
         config.url = "wss://test.surrealdb.com".to_string();
@@ -564,7 +570,7 @@ url = "wss://partial.example.com"
         config.username = "test_user".to_string();
         config.password = "secret_password".to_string();
 
-        let formatted = config.formatted();
+        let formatted = config.to_string();
 
         let mut lines = formatted.lines();
 
