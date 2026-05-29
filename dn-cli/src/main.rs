@@ -48,7 +48,7 @@ async fn run(args: args::Args) -> anyhow::Result<()> {
     let config = dn_core::config::Config::load()?;
 
     if let args::Commands::Config { command } = &args.command {
-        return handle_config_command(command, &config, args.pretty);
+        return handle_config_command(command, &config);
     }
 
     let db = dn_core::db::DB::from_config(&config).await?;
@@ -58,15 +58,10 @@ async fn run(args: args::Args) -> anyhow::Result<()> {
 fn handle_config_command(
     command: &args::ConfigCommands,
     config: &dn_core::config::Config,
-    pretty: bool,
 ) -> anyhow::Result<()> {
     match command {
         args::ConfigCommands::Show => {
-            if pretty {
-                print!("{}", config.formatted());
-            } else {
-                println!("{}", config.redacted_json());
-            }
+            print!("{}", config.formatted());
         }
     }
     Ok(())

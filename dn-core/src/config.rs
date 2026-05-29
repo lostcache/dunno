@@ -109,23 +109,6 @@ impl Config {
         expand_tilde_path(&self.local_path)
     }
 
-    pub fn redacted_json(&self) -> serde_json::Value {
-        serde_json::json!({
-            "backend": match self.backend {
-                StorageBackend::Embedded => "embedded",
-                StorageBackend::Local => "local",
-                StorageBackend::Cloud => "cloud",
-            },
-            "local_path": self.local_path,
-            "url": self.url,
-            "namespace": self.namespace,
-            "database": self.database,
-            "username": self.username,
-            "password":  "**********",
-            "auth_type": self.auth_type,
-        })
-    }
-
     pub fn formatted(&self) -> String {
         let backend_str = match self.backend {
             StorageBackend::Embedded => "embedded",
