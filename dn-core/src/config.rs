@@ -2,9 +2,7 @@
 #[serde(rename_all = "lowercase")]
 pub enum StorageBackend {
     Embedded,
-    #[serde(rename = "local-server")]
     Local,
-    #[serde(rename = "cloud-server")]
     Cloud,
 }
 
