@@ -1842,12 +1842,13 @@ mod tests {
 
     #[test]
     fn issue_add_accepts_project_name() {
-        let args =
-            Args::try_parse_from(["dn", "issue", "add", "--project", "My Project", "Desc"]);
+        let args = Args::try_parse_from(["dn", "issue", "add", "--project", "My Project", "Desc"]);
         assert!(args.is_ok(), "should parse issue add with --project");
         if let Commands::Issue { command } = args.unwrap().command {
             if let IssueCommands::Create {
-                project, description, ..
+                project,
+                description,
+                ..
             } = command
             {
                 assert_eq!(project, Some("My Project".to_string()));
