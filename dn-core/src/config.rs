@@ -112,8 +112,8 @@ impl Config {
     pub fn redacted_json(&self) -> serde_json::Value {
         serde_json::json!({
             "backend": match self.backend {
-                StorageBackend::Embedded => "local",
-                StorageBackend::Local => "local-server",
+                StorageBackend::Embedded => "embedded",
+                StorageBackend::Local => "local",
                 StorageBackend::Cloud => "cloud",
             },
             "local_path": self.local_path,
@@ -121,54 +121,36 @@ impl Config {
             "namespace": self.namespace,
             "database": self.database,
             "username": self.username,
-            "password": if self.password.is_empty() { "" } else { "***redacted***" },
+            "password":  "**********",
             "auth_type": self.auth_type,
-            "global_config_path": Self::global_config_path(),
-            "local_config_path": Self::local_config_path(),
         })
     }
 
     pub fn formatted(&self) -> String {
         let backend_str = match self.backend {
-            StorageBackend::Embedded => "local",
-            StorageBackend::Local => "local-server",
+            StorageBackend::Embedded => "embedded",
+            StorageBackend::Local => "local",
             StorageBackend::Cloud => "cloud",
         };
 
         let mut output = String::new();
-        output.push_str("=== Configuration ===\n\n");
-        output.push_str(&format!("Backend: {}\n\n", backend_str));
+        output.push_str(&format!("backend: {}\n", backend_str));
 
         match self.backend {
             StorageBackend::Embedded => {
-                output.push_str("--- Local Storage ---\n");
-                output.push_str(&format!("Database Path: {}\n", self.local_path));
+                output.push_str(&format!("database path: {}\n", self.local_path));
             }
             StorageBackend::Local | StorageBackend::Cloud => {
-                output.push_str(&format!("URL: {}\n", self.url));
-                output.push_str(&format!("Namespace: {}\n", self.namespace));
-                output.push_str(&format!("Database: {}\n", self.database));
-                output.push_str(&format!("Username: {}\n", self.username));
-                let password_display = if self.password.is_empty() {
-                    "(not set)".to_string()
-                } else {
-                    "***redacted***".to_string()
-                };
-                output.push_str(&format!("Password: {}\n", password_display));
+                output.push_str(&format!("url: {}\n", self.url));
+                output.push_str(&format!("namespace: {}\n", self.namespace));
+                output.push_str(&format!("database: {}\n", self.database));
+                output.push_str(&format!("username: {}\n", self.username));
+                output.push_str(&format!("password: **********\n"));
                 if matches!(self.backend, StorageBackend::Cloud) {
-                    output.push_str(&format!("Auth Type: {}\n", self.auth_type));
+                    output.push_str(&format!("auth type: {}\n", self.auth_type));
                 }
             }
         }
-
-        output.push_str("\n--- Vector Store ---\n");
-
-        output.push_str("\n--- Config File Paths ---\n");
-        output.push_str(&format!(
-            "Global: {}\n",
-            Self::global_config_path().display()
-        ));
-        output.push_str(&format!("Local: {}\n", Self::local_config_path().display()));
 
         output
     }
@@ -576,13 +558,19 @@ url = "wss://partial.example.com"
 
     #[test]
     fn test_formatted_output_local_backend() {
-        let config = Config::default();
+        let mut config = Config::default();
+        config.backend = StorageBackend::Local;
         let formatted = config.formatted();
 
-        assert!(formatted.contains("Backend: local"));
-        assert!(formatted.contains("Local Storage"));
-        assert!(formatted.contains("Database Path:"));
-        assert!(formatted.contains("Config File Paths"));
+        let mut lines = formatted.lines();
+
+        assert_eq!(lines.next(), Some("backend: local"));
+        assert_eq!(lines.next(), Some("url: "));
+        assert_eq!(lines.next(), Some("namespace: dunno"));
+        assert_eq!(lines.next(), Some("database: dunno"));
+        assert_eq!(lines.next(), Some("username: root"));
+        assert_eq!(lines.next(), Some("password: **********"));
+        assert_eq!(lines.next(), None);
     }
 
     #[test]
@@ -597,11 +585,15 @@ url = "wss://partial.example.com"
 
         let formatted = config.formatted();
 
-        assert!(formatted.contains("Backend: cloud"));
-        assert!(formatted.contains("wss://test.surrealdb.com"));
-        assert!(formatted.contains("test_ns"));
-        assert!(formatted.contains("test_db"));
-        assert!(formatted.contains("test_user"));
-        assert!(formatted.contains("***redacted***"));
+        let mut lines = formatted.lines();
+
+        assert_eq!(lines.next(), Some("backend: cloud"));
+        assert_eq!(lines.next(), Some("url: wss://test.surrealdb.com"));
+        assert_eq!(lines.next(), Some("namespace: test_ns"));
+        assert_eq!(lines.next(), Some("database: test_db"));
+        assert_eq!(lines.next(), Some("username: test_user"));
+        assert_eq!(lines.next(), Some("password: **********"));
+        assert_eq!(lines.next(), Some("auth type: root"));
+        assert_eq!(lines.next(), None);
     }
 }
