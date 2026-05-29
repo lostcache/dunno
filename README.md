@@ -62,19 +62,19 @@ dn uses a layered config (highest priority first):
 3. Built-in defaults
 
 ```toml
-backend    = "local"                        # local | local-server | cloud
-local_path = "~/.local/share/dunno/data.db" # used when backend = "local"
-url        = ""                             # used when backend = local-server (default: ws://127.0.0.1:8000/rpc) | cloud
-namespace  = "dunno"                        # used when backend = local-server | cloud
-database   = "dunno"                        # used when backend = local-server | cloud
-username   = "root"                         # used when backend = local-server | cloud
-password   = "root"                         # used when backend = local-server | cloud
+backend    = "local"                        # embedded | local | cloud
+local_path = "~/.local/share/dunno/data.db" # used when backend = embedded
+url        = ""                             # used when backend = local (default: ws://127.0.0.1:8000/rpc) | cloud
+namespace  = "dunno"                        # used when backend = local | cloud
+database   = "dunno"                        # used when backend = local | cloud
+username   = "root"                         # used when backend = local | cloud
+password   = "root"                         # used when backend = local | cloud
 auth_type  = "database"                     # used when backend = cloud
 ```
 
-> Note: Only requires the SurrealDB binary for `local-server` backend as it spawns a local SurrealDB instance.
+> Note: Only requires the SurrealDB binary for `local` backend as it spawns a local SurrealDB instance.
 
-> Note: To use the Web UI and CLI concurrently must use `local-server` or `cloud` backend to avoid DB-file lock contention.
+> Note: To use the Web UI and CLI concurrently must use `local` or `cloud` backend to avoid DB-file lock contention.
 
 ---
 
