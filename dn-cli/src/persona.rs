@@ -61,7 +61,7 @@ pub enum PersonaCommands {
 
 pub(crate) async fn handle_persona_command(
     command: PersonaCommands,
-    db: &dn_core::db::DB,
+    db: &dn_core::db::surreal::DB,
     pretty: bool,
     ignore_case: bool,
 ) -> anyhow::Result<()> {

@@ -1,9 +1,14 @@
-//! SurrealDB backend: client, connection, and generic helpers.
-
-mod entities;
+pub mod entities;
 mod hierarchy;
 mod schema;
 mod util;
+
+pub use entities::{
+    epics::get_epic_context_json as get_epic_context,
+    files::get_file_context_json as get_file_context,
+    projects::get_project_structure_json as get_project_structure,
+    tasks::get_task_context_json as get_task_context,
+};
 
 #[derive(Clone, Debug)]
 pub struct DB {
@@ -278,8 +283,3 @@ impl DB {
 
 #[cfg(test)]
 mod tests;
-
-pub use entities::epics::get_epic_context_json;
-pub use entities::files::get_file_context_json;
-pub use entities::projects::get_project_structure_json;
-pub use entities::tasks::get_task_context_json;

@@ -81,7 +81,7 @@ pub enum UserStoryCommands {
 
 pub(crate) async fn handle_user_story_command(
     command: UserStoryCommands,
-    db: &dn_core::db::DB,
+    db: &dn_core::db::surreal::DB,
     pretty: bool,
     ignore_case: bool,
 ) -> anyhow::Result<()> {

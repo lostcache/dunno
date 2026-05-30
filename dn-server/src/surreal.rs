@@ -55,7 +55,7 @@ impl Surreal {
                     "  - Install surreal and restart dn-server: curl -sSf https://install.surrealdb.com | sh"
                 );
                 eprintln!(
-                    "  - Or set backend = \"local-server\" in your config and run SurrealDB separately"
+                    "  - Or set backend = \"local\" in your config and run SurrealDB separately"
                 );
                 let db = DB::from_config(config).await?;
                 Ok((db, None))

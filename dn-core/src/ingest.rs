@@ -1,3 +1,5 @@
+use crate::db::surreal::DB;
+
 #[derive(Debug)]
 pub struct KnowledgeResult {
     pub kind: String,
@@ -8,7 +10,7 @@ pub struct KnowledgeResult {
 pub async fn add_knowledge_schemaless(
     fields: serde_json::Map<String, serde_json::Value>,
     link_to: Vec<String>,
-    db: &crate::db::DB,
+    db: &DB,
 ) -> anyhow::Result<KnowledgeResult> {
     if fields.is_empty() {
         return Err(anyhow::anyhow!(
@@ -52,14 +54,13 @@ pub async fn add_knowledge_schemaless(
 
 #[cfg(test)]
 mod tests {
+    use crate::db::surreal::DB;
     use serde_json::json;
 
     // Schemaless mode tests
     #[tokio::test]
     async fn test_add_knowledge_schemaless_basic() {
-        let db = crate::db::DB::new("mem://")
-            .await
-            .expect("Failed to init DB");
+        let db = DB::new("mem://").await.expect("Failed to init DB");
 
         let mut fields = serde_json::Map::new();
         fields.insert(
@@ -95,9 +96,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_knowledge_schemaless_with_link() {
-        let db = crate::db::DB::new("mem://")
-            .await
-            .expect("Failed to init DB");
+        let db = DB::new("mem://").await.expect("Failed to init DB");
 
         let project = db
             .create_project(&crate::models::Project {
@@ -133,9 +132,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_knowledge_schemaless_empty_fields() {
-        let db = crate::db::DB::new("mem://")
-            .await
-            .expect("Failed to init DB");
+        let db = DB::new("mem://").await.expect("Failed to init DB");
 
         let fields = serde_json::Map::new();
 
@@ -151,9 +148,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_knowledge_schemaless_defaults() {
-        let db = crate::db::DB::new("mem://")
-            .await
-            .expect("Failed to init DB");
+        let db = DB::new("mem://").await.expect("Failed to init DB");
 
         let mut fields = serde_json::Map::new();
         // Only content, no type
@@ -173,9 +168,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_knowledge_schemaless_multiple_links() {
-        let db = crate::db::DB::new("mem://")
-            .await
-            .expect("Failed to init DB");
+        let db = DB::new("mem://").await.expect("Failed to init DB");
 
         let project = db
             .create_project(&crate::models::Project {
@@ -222,9 +215,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_knowledge_schemaless_complex_types() {
-        let db = crate::db::DB::new("mem://")
-            .await
-            .expect("Failed to init DB");
+        let db = DB::new("mem://").await.expect("Failed to init DB");
 
         let mut fields = serde_json::Map::new();
         fields.insert("type".to_string(), json!("performance"));
@@ -246,9 +237,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_knowledge_schemaless_no_content() {
-        let db = crate::db::DB::new("mem://")
-            .await
-            .expect("Failed to init DB");
+        let db = DB::new("mem://").await.expect("Failed to init DB");
 
         let mut fields = serde_json::Map::new();
         // Only type, no content
@@ -265,9 +254,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_add_knowledge_schemaless_unicode_and_special_chars() {
-        let db = crate::db::DB::new("mem://")
-            .await
-            .expect("Failed to init DB");
+        let db = DB::new("mem://").await.expect("Failed to init DB");
 
         let mut fields = serde_json::Map::new();
         fields.insert("type".to_string(), json!("mistake"));

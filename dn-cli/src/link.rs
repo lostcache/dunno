@@ -1,10 +1,11 @@
 use crate::utils::print_json;
+use dn_core::db::surreal::DB;
 
 pub(crate) async fn handle_link(
     from_id: Vec<String>,
     edge: Vec<String>,
     to_id: Vec<String>,
-    db: &dn_core::db::DB,
+    db: &DB,
     pretty: bool,
 ) -> anyhow::Result<()> {
     const ALLOWED_EDGES: &[&str] = &[

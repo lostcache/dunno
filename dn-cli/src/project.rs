@@ -23,7 +23,7 @@ pub enum ProjectCommands {
 
 pub(crate) async fn handle_project_command(
     command: ProjectCommands,
-    db: &dn_core::db::DB,
+    db: &dn_core::db::surreal::DB,
     pretty: bool,
 ) -> anyhow::Result<()> {
     match command {

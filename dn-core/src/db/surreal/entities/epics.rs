@@ -274,7 +274,7 @@ impl DB {
 pub async fn get_epic_context_json(
     epic_id: &str,
     full: bool,
-    db: &crate::db::DB,
+    db: &DB,
 ) -> anyhow::Result<crate::models::EpicContext> {
     db.get_epic_context(epic_id, full).await
 }

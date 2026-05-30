@@ -206,7 +206,7 @@ impl DB {
 
 pub async fn get_project_structure_json(
     project_id: &str,
-    db: &crate::db::DB,
+    db: &DB,
 ) -> anyhow::Result<crate::models::ProjectStructure> {
     db.get_project_structure(project_id).await
 }

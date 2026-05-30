@@ -381,7 +381,7 @@ mod tests {
 pub async fn get_file_context_json(
     file_id: &str,
     full: bool,
-    db: &crate::db::DB,
+    db: &DB,
 ) -> anyhow::Result<crate::models::FileContext> {
     db.get_file_context(file_id, full).await
 }

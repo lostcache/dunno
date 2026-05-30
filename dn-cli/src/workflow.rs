@@ -61,7 +61,7 @@ pub enum WorkflowCommands {
 
 pub(crate) async fn handle_workflow_command(
     command: WorkflowCommands,
-    db: &dn_core::db::DB,
+    db: &dn_core::db::surreal::DB,
     pretty: bool,
     ignore_case: bool,
 ) -> anyhow::Result<()> {

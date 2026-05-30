@@ -78,7 +78,7 @@ pub enum TodoCommands {
 
 pub(crate) async fn handle_todo_command(
     command: TodoCommands,
-    db: &dn_core::db::DB,
+    db: &dn_core::db::surreal::DB,
     pretty: bool,
     ignore_case: bool,
 ) -> anyhow::Result<()> {

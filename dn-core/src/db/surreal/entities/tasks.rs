@@ -305,7 +305,7 @@ impl DB {
 pub async fn get_task_context_json(
     task_id: &str,
     full: bool,
-    db: &crate::db::DB,
+    db: &DB,
 ) -> anyhow::Result<crate::models::TaskContext> {
     db.get_task_context(task_id, full).await
 }

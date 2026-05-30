@@ -1,10 +1,11 @@
 use crate::utils::print_json;
+use dn_core::db::surreal::DB;
 
 pub(crate) async fn handle_add(
     field_names: Vec<String>,
     field_values: Vec<String>,
     link_to: Vec<String>,
-    db: &dn_core::db::DB,
+    db: &DB,
     pretty: bool,
 ) -> anyhow::Result<()> {
     if field_names.len() != field_values.len() {
@@ -26,7 +27,7 @@ pub(crate) async fn handle_add(
 
 pub(crate) async fn handle_rm(
     context_ids: Vec<String>,
-    db: &dn_core::db::DB,
+    db: &DB,
     pretty: bool,
 ) -> anyhow::Result<()> {
     let mut deleted = Vec::new();

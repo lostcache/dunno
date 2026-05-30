@@ -52,7 +52,7 @@ pub(crate) fn parse_optional_status(
 }
 
 pub(crate) async fn resolve_project_id(
-    db: &dn_core::db::DB,
+    db: &dn_core::db::surreal::DB,
     project_id: Option<String>,
     project_name: Option<String>,
     ignore_case: bool,

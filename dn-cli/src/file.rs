@@ -1,4 +1,5 @@
 use crate::utils::{print_json, resolve_project_id};
+use dn_core::db::surreal::DB;
 
 #[derive(clap::Subcommand, Debug)]
 pub enum FileCommands {
@@ -81,7 +82,7 @@ pub enum FileCommands {
 
 pub(crate) async fn handle_file_command(
     command: FileCommands,
-    db: &dn_core::db::DB,
+    db: &DB,
     pretty: bool,
     ignore_case: bool,
 ) -> anyhow::Result<()> {

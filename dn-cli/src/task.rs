@@ -105,7 +105,7 @@ pub enum TaskCommands {
 
 pub(crate) async fn handle_task_command(
     command: TaskCommands,
-    db: &dn_core::db::DB,
+    db: &dn_core::db::surreal::DB,
     pretty: bool,
     ignore_case: bool,
 ) -> anyhow::Result<()> {

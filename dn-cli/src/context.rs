@@ -1,4 +1,5 @@
 use crate::utils::print_json;
+use dn_core::db::surreal::DB;
 
 pub(crate) async fn handle_context(
     task_id: Option<String>,
@@ -7,7 +8,7 @@ pub(crate) async fn handle_context(
     full: bool,
     general: bool,
     project: Option<String>,
-    db: &dn_core::db::DB,
+    db: &DB,
     pretty: bool,
 ) -> anyhow::Result<()> {
     if general {
@@ -61,7 +62,7 @@ pub(crate) async fn handle_context(
     Ok(())
 }
 
-pub(crate) async fn handle_purge(db: &dn_core::db::DB, pretty: bool) -> anyhow::Result<()> {
+pub(crate) async fn handle_purge(db: &DB, pretty: bool) -> anyhow::Result<()> {
     db.purge_database().await?;
     print_json(
         serde_json::json!({
