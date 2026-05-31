@@ -4,7 +4,6 @@ mod router;
 mod schema;
 mod server;
 mod service;
-mod surreal;
 mod ui;
 
 #[tokio::main]
