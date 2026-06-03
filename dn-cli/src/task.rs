@@ -119,10 +119,15 @@ pub(crate) async fn handle_task_command(
             name,
             description,
         } => {
-            let resolved_project_id =
-                resolve_project_id(db, project_id, project, ignore_case).await?;
+            if project.is_none() && project_id.is_none() {
+                anyhow::bail!("Either --project-id or --project must be provided");
+            }
+            let resolved_project_id = match project_id {
+                Some(id) => id,
+                None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
+            };
 
-            let project_ids: Vec<String> = resolved_project_id.into_iter().collect();
+            let project_ids: Vec<String> = vec![resolved_project_id];
             let (mid, pid) = validate_task_parents(&module_ids, &project_ids)?;
             let created = db.create_task(&name, &description, mid, pid).await?;
 
@@ -157,11 +162,14 @@ pub(crate) async fn handle_task_command(
             project_id,
             project,
         } => {
-            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
-            let tasks = match resolved_id {
-                Some(pid) => db.list_tasks_by_project(&pid).await?,
-                None => db.list_tasks().await?,
+            if project.is_none() && project_id.is_none() {
+                anyhow::bail!("Either --project-id or --project must be provided");
+            }
+            let resolved_id = match project_id {
+                Some(id) => id,
+                None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
             };
+            let tasks = db.list_tasks_by_project(&resolved_id).await?;
             print_json(serde_json::json!(tasks), pretty);
         }
         TaskCommands::Delete { task_ids } => {

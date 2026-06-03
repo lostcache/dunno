@@ -18,7 +18,9 @@ pub async fn create_project(
     Json(body): Json<CreateProjectBody>,
 ) -> schema::ApiResult<serde_json::Value> {
     let project = dn_core::models::Project {
-        id: None,
+        // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+        // Use `String::new()` as a placeholder when creating a new project.
+        id: String::new(),
         name: body.name,
         description: body.description,
     };

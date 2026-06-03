@@ -89,11 +89,15 @@ pub(crate) async fn handle_issue_command(
             verification,
             description,
         } => {
-            let resolved_project_id = resolve_project_id(db, project_id, project, ignore_case)
-                .await?
-                .ok_or_else(|| {
-                    anyhow::anyhow!("Either --project-id or --project must be provided")
-                })?;
+            if project.is_none() && project_id.is_none() {
+                anyhow::bail!("Either --project-id or --project must be provided");
+            }
+
+            let resolved_project_id = match project_id {
+                Some(id) => id,
+                None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
+            };
+
             let created = db
                 .create_issue(
                     &description,

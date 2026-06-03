@@ -15,7 +15,7 @@ pub enum FileCommands {
             help = "Project ID(s) to link this file to. Repeatable. Conflicts with --project.",
             conflicts_with = "project"
         )]
-        project_id: String,
+        project_id: Option<String>,
         #[arg(
             short = 'p',
             long,
@@ -88,7 +88,7 @@ pub(crate) async fn handle_file_command(
 ) -> anyhow::Result<()> {
     match command {
         FileCommands::Add {
-            project_ids,
+            project_id,
             project,
             parent_ids,
             name,
@@ -96,18 +96,22 @@ pub(crate) async fn handle_file_command(
             description,
             notes,
         } => {
-            let resolved_project_id =
-                resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
-            let project_id = resolved_project_id.ok_or_else(|| {
-                anyhow::anyhow!("Either --project-ids/--pids or --project/-p must be provided")
-            })?;
+            if project_id.is_none() && project.is_none() {
+                anyhow::bail!("Either --project-id/--pid or --project/-p must be provided");
+            }
+
+            let resolved_project_id = match project_id {
+                Some(id) => id,
+                None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
+            };
+
             let created = db
                 .create_file(
                     &name,
                     &path,
                     description.as_deref(),
                     notes.as_deref(),
-                    &project_id,
+                    &resolved_project_id,
                     parent_ids.first().map(String::as_str),
                 )
                 .await?;
@@ -134,12 +138,14 @@ pub(crate) async fn handle_file_command(
             let files = match module_id {
                 Some(mid) => db.list_files_by_module(&mid).await?,
                 None => {
-                    let resolved_id =
-                        resolve_project_id(db, project_id, project, ignore_case).await?;
-                    match resolved_id {
-                        Some(pid) => db.list_files_by_project(&pid).await?,
-                        None => db.list_files().await?,
+                    if project.is_none() && project_id.is_none() {
+                        anyhow::bail!("Either --project-id or --project must be provided");
                     }
+                    let resolved_id = match project_id {
+                        Some(id) => id,
+                        None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
+                    };
+                    db.list_files_by_project(&resolved_id).await?
                 }
             };
             print_json(serde_json::json!(files), pretty);

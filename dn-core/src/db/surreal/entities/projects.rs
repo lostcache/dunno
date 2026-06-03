@@ -22,12 +22,11 @@ impl DB {
         &self,
         project: &crate::models::Project,
     ) -> anyhow::Result<crate::models::Project> {
-        // Check for duplicate project name
         if let Some(existing) = self.get_project_by_name(&project.name, false).await? {
             return Err(anyhow::anyhow!(
                 "Project with name '{}' already exists (id: {})",
                 project.name,
-                existing.id.as_deref().unwrap_or("unknown")
+                existing.id,
             ));
         }
         self.create_project_record(project).await
@@ -222,7 +221,9 @@ mod tests {
         // Create a project with mixed case name
         let _project = db
             .create_project(&crate::models::Project {
-                id: None,
+                // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+                // Use `String::new()` as a placeholder when creating a new project.
+                id: String::new(),
                 name: "MyProject".to_string(),
                 description: "Test".to_string(),
             })
@@ -252,7 +253,9 @@ mod tests {
         // Create a project with mixed case name
         let _project = db
             .create_project(&crate::models::Project {
-                id: None,
+                // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+                // Use `String::new()` as a placeholder when creating a new project.
+                id: String::new(),
                 name: "MyProject".to_string(),
                 description: "Test".to_string(),
             })
@@ -286,7 +289,9 @@ mod tests {
 
         // Create first project
         db.create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "UniqueProject".to_string(),
             description: "First".to_string(),
         })
@@ -296,7 +301,9 @@ mod tests {
         // Try to create second project with same name
         let result = db
             .create_project(&crate::models::Project {
-                id: None,
+                // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+                // Use `String::new()` as a placeholder when creating a new project.
+                id: String::new(),
                 name: "UniqueProject".to_string(),
                 description: "Second".to_string(),
             })
@@ -330,13 +337,15 @@ mod tests {
         let db = DB::new("mem://").await.expect("Failed to init DB");
         let project = db
             .create_project(&crate::models::Project {
-                id: None,
+                // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+                // Use `String::new()` as a placeholder when creating a new project.
+                id: String::new(),
                 name: "DeleteMe".to_string(),
                 description: "test".to_string(),
             })
             .await
             .expect("create");
-        let id = project.id.unwrap();
+        let id = project.id;
 
         let deleted = db.delete_project(&id).await.expect("delete");
         assert!(deleted);

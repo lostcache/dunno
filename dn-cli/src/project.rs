@@ -29,7 +29,9 @@ pub(crate) async fn handle_project_command(
     match command {
         ProjectCommands::Create { name, description } => {
             let project = dn_core::models::Project {
-                id: None,
+                // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+                // Use `String::new()` as a placeholder when creating a new project.
+                id: String::new(),
                 name,
                 description,
             };

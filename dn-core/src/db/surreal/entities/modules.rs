@@ -223,13 +223,15 @@ mod tests {
         let db = DB::new("mem://").await.expect("Failed to init DB");
         let project = db
             .create_project(&crate::models::Project {
-                id: None,
+                // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+                // Use `String::new()` as a placeholder when creating a new project.
+                id: String::new(),
                 name: "P".to_string(),
                 description: "d".to_string(),
             })
             .await
             .expect("create project");
-        let project_id = project.id.unwrap();
+        let project_id = project.id;
         let module = db
             .create_module("DeleteModule", "test", None, &project_id, None)
             .await
@@ -248,13 +250,15 @@ mod tests {
         let db = DB::new("mem://").await.expect("Failed to init DB");
         let project = db
             .create_project(&crate::models::Project {
-                id: None,
+                // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+                // Use `String::new()` as a placeholder when creating a new project.
+                id: String::new(),
                 name: "P".to_string(),
                 description: "d".to_string(),
             })
             .await
             .expect("create project");
-        let project_id = project.id.unwrap();
+        let project_id = project.id;
         let parent = db
             .create_module("Parent", "parent module", None, &project_id, None)
             .await

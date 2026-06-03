@@ -156,14 +156,15 @@ mod tests {
 
     async fn make_project(db: &DB, name: &str) -> String {
         db.create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: name.to_string(),
             description: "desc".to_string(),
         })
         .await
         .expect("create project")
         .id
-        .unwrap()
     }
 
     #[tokio::test]

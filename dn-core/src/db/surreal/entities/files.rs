@@ -271,13 +271,15 @@ mod tests {
         let db = DB::new("mem://").await.expect("init db");
         let project = db
             .create_project(&crate::models::Project {
-                id: None,
+                // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+                // Use `String::new()` as a placeholder when creating a new project.
+                id: String::new(),
                 name: "proj".to_string(),
                 description: "desc".to_string(),
             })
             .await
             .expect("create project");
-        let project_id = project.id.unwrap();
+        let project_id = project.id;
 
         let task = db
             .create_task("My Task", "desc", None, Some(&project_id))
@@ -318,13 +320,15 @@ mod tests {
         let db = DB::new("mem://").await.expect("init db");
         let project = db
             .create_project(&crate::models::Project {
-                id: None,
+                // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+                // Use `String::new()` as a placeholder when creating a new project.
+                id: String::new(),
                 name: "proj".to_string(),
                 description: "desc".to_string(),
             })
             .await
             .expect("create project");
-        let project_id = project.id.unwrap();
+        let project_id = project.id;
 
         let task = db
             .create_task("Empty Task", "desc", None, Some(&project_id))
@@ -356,13 +360,15 @@ mod tests {
         let db = DB::new("mem://").await.expect("Failed to init DB");
         let project = db
             .create_project(&crate::models::Project {
-                id: None,
+                // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+                // Use `String::new()` as a placeholder when creating a new project.
+                id: String::new(),
                 name: "test project".to_string(),
                 description: "desc".to_string(),
             })
             .await
             .expect("create project");
-        let project_id = project.id.unwrap();
+        let project_id = project.id;
         let file = db
             .create_file("delete_me.rs", "path", None, None, &project_id, None)
             .await

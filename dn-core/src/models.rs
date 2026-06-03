@@ -51,6 +51,9 @@ impl TaskStatus {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct Project {
+    /// Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+    /// Use `String::new()` as a placeholder when creating a new project.
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub id: String,
     pub name: String,
     pub description: String,

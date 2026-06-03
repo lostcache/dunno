@@ -93,12 +93,15 @@ pub(crate) async fn handle_user_story_command(
             title,
             description,
         } => {
-            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
-            let pid = resolved_id.ok_or_else(|| {
-                anyhow::anyhow!("Either --project-id or --project must be provided")
-            })?;
+            if project.is_none() && project_id.is_none() {
+                anyhow::bail!("Either --project-id or --project must be provided");
+            }
+            let resolved_id = match project_id {
+                Some(id) => id,
+                None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
+            };
 
-            let created = db.create_user_story(&title, &description, &pid).await?;
+            let created = db.create_user_story(&title, &description, &resolved_id).await?;
 
             if let Some(us_id) = &created.id {
                 for epic_id in &epic_ids {
@@ -113,11 +116,18 @@ pub(crate) async fn handle_user_story_command(
             project,
             epic_id,
         } => {
-            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
-            let user_stories = match (epic_id, resolved_id) {
-                (Some(eid), _) => db.list_user_stories_by_epic(&eid).await?,
-                (_, Some(pid)) => db.list_user_stories_by_project(&pid).await?,
-                (None, None) => db.list_user_stories().await?,
+            let user_stories = match epic_id {
+                Some(eid) => db.list_user_stories_by_epic(&eid).await?,
+                None => {
+                    if project.is_none() && project_id.is_none() {
+                        anyhow::bail!("Either --project-id or --project must be provided");
+                    }
+                    let resolved_id = match project_id {
+                        Some(id) => id,
+                        None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
+                    };
+                    db.list_user_stories_by_project(&resolved_id).await?
+                }
             };
             print_json(serde_json::json!(user_stories), pretty);
         }

@@ -88,11 +88,16 @@ pub(crate) async fn handle_todo_command(
             project,
             content,
         } => {
-            let resolved_project_id =
-                resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
+            if project.is_none() && project_ids.is_empty() {
+                anyhow::bail!("Either --project-ids/--pids or --project/-p must be provided");
+            }
+            let resolved_project_id = match project_ids.len() {
+                0 => resolve_project_id(db, project.unwrap(), ignore_case).await?,
+                _ => project_ids.first().unwrap().to_string(),
+            };
 
             let created = db
-                .create_todo(&content, resolved_project_id.as_deref())
+                .create_todo(&content, Some(&resolved_project_id))
                 .await?;
 
             let todo_id = match &created.id {
@@ -113,11 +118,14 @@ pub(crate) async fn handle_todo_command(
             project_id,
             project,
         } => {
-            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
-            let pid = resolved_id.ok_or_else(|| {
-                anyhow::anyhow!("Either --project-id or --project must be provided")
-            })?;
-            let todos = db.list_todos_by_project(&pid).await?;
+            if project.is_none() && project_id.is_none() {
+                anyhow::bail!("Either --project-id or --project must be provided");
+            }
+            let resolved_id = match project_id {
+                Some(id) => id,
+                None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
+            };
+            let todos = db.list_todos_by_project(&resolved_id).await?;
             print_json(serde_json::json!(todos), pretty);
         }
         TodoCommands::Update {

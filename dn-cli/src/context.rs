@@ -21,7 +21,6 @@ pub(crate) async fn handle_context(
                 .await?
                 .ok_or_else(|| anyhow::anyhow!("Project not found: {}", proj))?
                 .id
-                .ok_or_else(|| anyhow::anyhow!("Project has no ID"))?
         };
         let results = dn_core::context::get_project_structure(&project_id, db).await?;
         print_json(

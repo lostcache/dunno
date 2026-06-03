@@ -71,23 +71,29 @@ pub(crate) async fn handle_epic_command(
             title,
             description,
         } => {
-            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
-            let pid = resolved_id.ok_or_else(|| {
-                anyhow::anyhow!("Either --project-id or --project must be provided")
-            })?;
+            if project.is_none() && project_id.is_none() {
+                anyhow::bail!("Either --project-id or --project must be provided");
+            }
 
-            let created = db.create_epic(&title, &description, &pid).await?;
+            let resolved_id = match project_id {
+                Some(id) => id,
+                None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
+            };
+            let created = db.create_epic(&title, &description, &resolved_id).await?;
             print_json(serde_json::json!(created), pretty);
         }
         EpicCommands::List {
             project_id,
             project,
         } => {
-            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
-            let epics = match resolved_id {
-                Some(pid) => db.list_epics_by_project(&pid).await?,
-                None => db.list_epics().await?,
+            if project.is_none() && project_id.is_none() {
+                anyhow::bail!("Either --project-id or --project must be provided");
+            }
+            let resolved_id = match project_id {
+                Some(id) => id,
+                None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
             };
+            let epics = db.list_epics_by_project(&resolved_id).await?;
             print_json(serde_json::json!(epics), pretty);
         }
         EpicCommands::Delete { epic_ids } => {

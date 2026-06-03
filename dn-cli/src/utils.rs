@@ -53,23 +53,16 @@ pub(crate) fn parse_optional_status(
 
 pub(crate) async fn resolve_project_id(
     db: &dn_core::db::surreal::DB,
-    project_id: Option<String>,
-    project_name: Option<String>,
+    project_name: String,
     ignore_case: bool,
-) -> anyhow::Result<Option<String>> {
-    match (project_id, project_name) {
-        (Some(id), _) => Ok(Some(id)),
-        (None, Some(name)) => {
-            let project = db
-                .get_project_by_name(&name, ignore_case)
-                .await
-                .map_err(|e| anyhow::anyhow!("Failed to lookup project by name: {}", e))?;
-            match project {
-                Some(p) => Ok(p.id),
-                None => Err(anyhow::anyhow!("Project not found: {}", name)),
-            }
-        }
-        (None, None) => Ok(None),
+) -> anyhow::Result<String> {
+    let project = db
+        .get_project_by_name(&project_name, ignore_case)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to lookup project by name: {}", e))?;
+    match project {
+        Some(p) => Ok(p.id),
+        None => Err(anyhow::anyhow!("Project not found: {}", project_name)),
     }
 }
 

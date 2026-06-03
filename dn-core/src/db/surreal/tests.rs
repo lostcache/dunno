@@ -37,13 +37,15 @@ async fn test_link_context_all_levels() {
 
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     let module = db
         .create_module("M", "d", None, &project_id, None)
@@ -135,13 +137,15 @@ async fn test_link_context_reverse_belongs_to() {
     let db = DB::new("mem://").await.expect("init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     let module = db
         .create_module("M", "d", None, &project_id, None)
@@ -242,13 +246,15 @@ async fn test_from_config_local_embedded_crud() {
         .expect("local embedded config should surrealdb::engine::any::connect");
     let created = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Embedded".to_string(),
             description: "embedded local test".to_string(),
         })
         .await
         .expect("project create should work");
-    assert!(created.id.is_some());
+    assert!(!created.id.is_empty());
 
     let _ = cleanup_temp_db(db_path);
 }
@@ -284,13 +290,15 @@ async fn test_get_task_context() {
 
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Testcrate::models::Project".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
@@ -343,13 +351,15 @@ async fn test_list_tasks_by_project() {
 
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Testcrate::models::Project".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let module = db
         .create_module(
@@ -400,13 +410,15 @@ async fn test_create_task_bidirectional_edges() {
 
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Testcrate::models::Project".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let module = db
         .create_module(
@@ -450,13 +462,15 @@ async fn test_get_task_context_no_linked_knowledge() {
 
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Testcrate::models::Project".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
@@ -490,13 +504,15 @@ async fn test_get_task_context_all_knowledge_types() {
 
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Testcrate::models::Project".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
@@ -596,13 +612,15 @@ async fn test_get_task_context_under_submodule() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "TestProject".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
         .await
@@ -634,13 +652,15 @@ async fn test_get_task_context_files_from_module() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "TestProject".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
         .await
@@ -668,13 +688,15 @@ async fn test_project_operations() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "TestProject".to_string(),
             description: "Test description".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
     let fetched = db
         .get_project(&project_id)
         .await
@@ -690,13 +712,15 @@ async fn test_module_operations() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "TestProject".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
         .await
@@ -719,13 +743,15 @@ async fn test_submodule_operations() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "TestProject".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
         .await
@@ -756,13 +782,15 @@ async fn test_file_operations() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "TestProject".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
         .await
@@ -797,13 +825,15 @@ async fn test_todo_operations() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "TestProject".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
     let todo = db
         .create_todo("Buy milk", Some(&project_id))
         .await
@@ -828,13 +858,15 @@ async fn test_list_tasks_by_module() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "TestProject".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
         .await
@@ -948,13 +980,15 @@ async fn test_create_module_with_project() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let module = db
         .create_module("M", "module with project", None, &project_id, None)
@@ -992,13 +1026,15 @@ async fn test_freestanding_file() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
     let module = db
         .create_module("M", "d", None, &project_id, None)
         .await
@@ -1049,13 +1085,15 @@ async fn test_freestanding_todo() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let todo = db
         .create_todo("Freestanding todo", None)
@@ -1081,23 +1119,27 @@ async fn test_link_after_create_module() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project1 = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P1".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project1");
-    let project1_id = project1.id.expect("project1 id");
+    let project1_id = project1.id;
 
     let project2 = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P2".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project2");
-    let project2_id = project2.id.expect("project2 id");
+    let project2_id = project2.id;
 
     let module = db
         .create_module("LaterLinked", "d", None, &project1_id, None)
@@ -1130,13 +1172,15 @@ async fn test_link_after_create_task_hierarchy() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
     let module = db
         .create_module("M", "d", None, &project_id, None)
         .await
@@ -1172,13 +1216,15 @@ async fn test_create_with_link_ids_preserves_hierarchy() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
     let module = db
         .create_module("M", "d", None, &project_id, None)
         .await
@@ -1221,7 +1267,9 @@ async fn test_purge_database() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let _project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Purge Test".to_string(),
             description: "To be purged".to_string(),
         })
@@ -1243,13 +1291,15 @@ async fn test_update_task_name() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test Project".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
@@ -1285,13 +1335,15 @@ async fn test_update_task_description() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test Project".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
@@ -1329,13 +1381,15 @@ async fn test_update_task_status() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test Project".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
@@ -1390,13 +1444,15 @@ async fn test_update_task_all_fields() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test Project".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
@@ -1436,13 +1492,15 @@ async fn test_update_task_empty_patch_returns_current() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test Project".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
@@ -1503,13 +1561,15 @@ async fn test_list_tasks_unfiltered() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test Project".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
@@ -1625,13 +1685,15 @@ async fn test_list_files_by_submodule() {
     let db = DB::new("mem://").await.expect("Failed to init DB");
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test Project".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
@@ -1881,13 +1943,15 @@ async fn test_link_context_with_invalid_context_id() {
 
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let err = db
         .link_context(&project_id, "not_a_context_id")
@@ -1903,13 +1967,15 @@ async fn test_user_story_crud() {
     // Create a project
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test Project".to_string(),
             description: "For user story testing".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     // Create a user story
     let user_story = db
@@ -1955,13 +2021,15 @@ async fn test_user_story_task_linking() {
     // Create project, module, and user story
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
@@ -2016,13 +2084,15 @@ async fn test_user_story_module_linking() {
     // Create project, module, and user story
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     let module = db
         .create_module("Core", "Core module", None, &project_id, None)
@@ -2068,13 +2138,15 @@ async fn test_epic_crud() {
     // Create a project
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test Project".to_string(),
             description: "For epic testing".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     // Create an epic
     let epic = db
@@ -2113,13 +2185,15 @@ async fn test_epic_user_story_linking() {
     // Create project and epic
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     let epic = db
         .create_epic("Auth Epic", "Authentication features", &project_id)
@@ -2163,13 +2237,15 @@ async fn test_epic_task_linking() {
     // Create project, module, and epic
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     let module = db
         .create_module("Auth", "Auth module", None, &project_id, None)
@@ -2224,13 +2300,15 @@ async fn test_epic_context() {
     // Create project and epic
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "Test".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     let epic = db
         .create_epic("Security Epic", "Security hardening", &project_id)
@@ -2275,13 +2353,15 @@ async fn test_get_task_context_with_files_and_linked_context() {
     // Create project
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "TestProject".to_string(),
             description: "Test".to_string(),
         })
         .await
         .expect("Failed to create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     // Create module with context (this should NOT appear in task context)
     let module = db
@@ -2452,13 +2532,15 @@ async fn test_list_submodules_by_project() {
     // Create project
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     // Create module linked to project
     let module = db
@@ -2502,13 +2584,15 @@ async fn test_list_files_by_project() {
     // Create project
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     // Create module linked to project
     let module = db
@@ -2587,13 +2671,15 @@ async fn test_module_belongs_to_project_edge() {
     // Create project
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     // Create module linked to project
     let module = db
@@ -2627,13 +2713,15 @@ async fn test_submodule_belongs_to_edges() {
     // Create project
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     // Create module linked to project
     let module = db
@@ -2691,13 +2779,15 @@ async fn test_file_belongs_to_edges() {
     // Create project
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     // Create module linked to project
     let module = db
@@ -2762,13 +2852,15 @@ async fn test_file_belongs_to_edges_with_submodule() {
     // Create project
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("id");
+    let project_id = project.id;
 
     // Create module linked to project
     let module = db
@@ -2838,13 +2930,15 @@ async fn test_context_inheritance_project() {
     let db = DB::new("mem://").await.expect("init db");
     let p = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "p".into(),
             description: "d".into(),
         })
         .await
         .unwrap();
-    let pid = p.id.unwrap();
+    let pid = p.id;
 
     let ctx1 = db
         .create_context(&crate::models::Context {
@@ -2872,13 +2966,15 @@ async fn test_context_inheritance_module() {
     let db = DB::new("mem://").await.expect("init db");
     let p = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "p".into(),
             description: "d".into(),
         })
         .await
         .unwrap();
-    let pid = p.id.unwrap();
+    let pid = p.id;
     let m = db.create_module("m", "d", None, &pid, None).await.unwrap();
     let mid = m.id.unwrap();
 
@@ -2921,13 +3017,15 @@ async fn test_context_inheritance_submodule() {
     let db = DB::new("mem://").await.expect("init db");
     let p = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "p".into(),
             description: "d".into(),
         })
         .await
         .unwrap();
-    let pid = p.id.unwrap();
+    let pid = p.id;
     let m = db.create_module("m", "d", None, &pid, None).await.unwrap();
     let mid = m.id.unwrap();
     let s = db
@@ -2989,13 +3087,15 @@ async fn test_context_inheritance_task() {
 
     let p = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "p".into(),
             description: "d".into(),
         })
         .await
         .unwrap();
-    let pid = p.id.unwrap();
+    let pid = p.id;
     let m = db.create_module("m", "d", None, &pid, None).await.unwrap();
     let mid = m.id.unwrap();
     let s = db
@@ -3091,13 +3191,15 @@ async fn test_context_inheritance_file() {
 
     let p = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "p".into(),
             description: "d".into(),
         })
         .await
         .unwrap();
-    let pid = p.id.unwrap();
+    let pid = p.id;
     let m = db.create_module("m", "d", None, &pid, None).await.unwrap();
     let mid = m.id.unwrap();
     let f = db
@@ -3162,13 +3264,15 @@ async fn test_context_inheritance_epic() {
 
     let p = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "p".into(),
             description: "d".into(),
         })
         .await
         .unwrap();
-    let pid = p.id.unwrap();
+    let pid = p.id;
     let e = db.create_epic("e", "d", &pid).await.unwrap();
     let eid = e.id.unwrap();
 
@@ -3216,13 +3320,15 @@ async fn test_task_ctx_full_includes_persona_workflow() {
 
     let p = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "proj".into(),
             description: "d".into(),
         })
         .await
         .unwrap();
-    let pid = p.id.unwrap();
+    let pid = p.id;
     let m = db
         .create_module("mod", "d", None, &pid, None)
         .await
@@ -3256,13 +3362,15 @@ async fn test_task_ctx_full_includes_persona_workflow() {
     // Isolation: another project's persona must not appear
     let p2 = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "other".into(),
             description: "d".into(),
         })
         .await
         .unwrap();
-    db.create_persona("P2", "other persona", &p2.id.unwrap())
+    db.create_persona("P2", "other persona", &p2.id)
         .await
         .unwrap();
     let full_ctx2 = db.get_task_context(&tid, true).await.expect("full ctx2");
@@ -3275,13 +3383,15 @@ async fn test_file_ctx_full_includes_persona_workflow() {
 
     let p = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "proj".into(),
             description: "d".into(),
         })
         .await
         .unwrap();
-    let pid = p.id.unwrap();
+    let pid = p.id;
     let f = db
         .create_file("f", "src/f.rs", None, None, &pid, None)
         .await
@@ -3314,13 +3424,15 @@ async fn test_epic_ctx_full_includes_persona_workflow() {
 
     let p = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "proj".into(),
             description: "d".into(),
         })
         .await
         .unwrap();
-    let pid = p.id.unwrap();
+    let pid = p.id;
     let e = db.create_epic("epic", "d", &pid).await.unwrap();
     let eid = e.id.unwrap();
 
@@ -3350,13 +3462,15 @@ async fn test_child_module_belongs_to_module_edge_and_graph() {
 
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let parent = db
         .create_module("Parent", "d", None, &project_id, None)
@@ -3410,13 +3524,15 @@ async fn test_child_module_has_module_edge_and_graph() {
 
     let project = db
         .create_project(&crate::models::Project {
-            id: None,
+            // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+            // Use `String::new()` as a placeholder when creating a new project.
+            id: String::new(),
             name: "P".to_string(),
             description: "d".to_string(),
         })
         .await
         .expect("create project");
-    let project_id = project.id.expect("project id");
+    let project_id = project.id;
 
     let parent = db
         .create_module("Parent", "d", None, &project_id, None)

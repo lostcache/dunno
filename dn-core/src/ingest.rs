@@ -100,13 +100,15 @@ mod tests {
 
         let project = db
             .create_project(&crate::models::Project {
-                id: None,
+                // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+                // Use `String::new()` as a placeholder when creating a new project.
+                id: String::new(),
                 name: "Test".to_string(),
                 description: "Test".to_string(),
             })
             .await
             .expect("create project");
-        let project_id = project.id.expect("project id");
+        let project_id = project.id;
 
         let mut fields = serde_json::Map::new();
         fields.insert(
@@ -172,13 +174,15 @@ mod tests {
 
         let project = db
             .create_project(&crate::models::Project {
-                id: None,
+                // Empty string is skipped during serialization so SurrealDB auto-generates the record ID.
+                // Use `String::new()` as a placeholder when creating a new project.
+                id: String::new(),
                 name: "Test".to_string(),
                 description: "Test".to_string(),
             })
             .await
             .expect("create project");
-        let project_id = project.id.expect("project id");
+        let project_id = project.id;
 
         let module = db
             .create_module(

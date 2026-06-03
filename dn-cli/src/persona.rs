@@ -72,23 +72,28 @@ pub(crate) async fn handle_persona_command(
             name,
             content,
         } => {
-            let resolved_id =
-                resolve_project_id(db, project_ids.first().cloned(), project, ignore_case).await?;
-            let pid = resolved_id.ok_or_else(|| {
-                anyhow::anyhow!("Either --project-ids/--pids or --project/-p must be provided")
-            })?;
-            let created = db.create_persona(&name, &content, &pid).await?;
+            if project.is_none() && project_ids.is_empty() {
+                anyhow::bail!("Either --project-ids/--pids or --project/-p must be provided");
+            }
+            let resolved_id = match project_ids.len() {
+                0 => resolve_project_id(db, project.unwrap(), ignore_case).await?,
+                _ => project_ids.first().unwrap().to_string(),
+            };
+            let created = db.create_persona(&name, &content, &resolved_id).await?;
             print_json(serde_json::json!(created), pretty);
         }
         PersonaCommands::List {
             project_id,
             project,
         } => {
-            let resolved_id = resolve_project_id(db, project_id, project, ignore_case).await?;
-            let personas = match resolved_id {
-                Some(pid) => db.list_personas_by_project(&pid).await?,
-                None => db.list_personas().await?,
+            if project.is_none() && project_id.is_none() {
+                anyhow::bail!("Either --project-id or --project must be provided");
+            }
+            let resolved_id = match project_id {
+                Some(id) => id,
+                None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
             };
+            let personas = db.list_personas_by_project(&resolved_id).await?;
             print_json(serde_json::json!(personas), pretty);
         }
         PersonaCommands::Delete { persona_ids } => {
