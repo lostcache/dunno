@@ -7,7 +7,7 @@ pub enum FileCommands {
         name = "add",
         about = "Register a file node and link it to a project and optional parent module."
     )]
-    Create {
+    Add {
         #[arg(
             long,
             visible_alias = "pids",
@@ -87,7 +87,7 @@ pub(crate) async fn handle_file_command(
     ignore_case: bool,
 ) -> anyhow::Result<()> {
     match command {
-        FileCommands::Create {
+        FileCommands::Add {
             project_ids,
             project,
             parent_ids,
