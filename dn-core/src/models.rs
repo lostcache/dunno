@@ -51,8 +51,7 @@ impl TaskStatus {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct Project {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
+    pub id: String,
     pub name: String,
     pub description: String,
 }
@@ -281,7 +280,7 @@ mod tests {
     #[test]
     fn test_project_model() {
         let project = Project {
-            id: None,
+            id: "123".to_string(),
             name: "My Project".to_string(),
             description: "A description".to_string(),
         };
