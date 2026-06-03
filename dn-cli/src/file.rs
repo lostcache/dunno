@@ -10,18 +10,18 @@ pub enum FileCommands {
     Add {
         #[arg(
             long,
-            visible_alias = "pids",
+            visible_alias = "pid",
             value_name = "PROJECT_ID",
             help = "Project ID(s) to link this file to. Repeatable. Conflicts with --project.",
             conflicts_with = "project"
         )]
-        project_ids: Vec<String>,
+        project_id: String,
         #[arg(
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
-            help = "Project name (resolved to ID). Conflicts with --project-ids.",
-            conflicts_with = "project_ids"
+            help = "Project name (resolved to ID). Conflicts with --project-id.",
+            conflicts_with = "project_id"
         )]
         project: Option<String>,
         #[arg(
