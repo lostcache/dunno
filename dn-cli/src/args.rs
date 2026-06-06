@@ -679,7 +679,7 @@ mod tests {
         ]);
         assert!(args.is_ok(), "should parse --project with module create");
         if let Commands::Module { command } = args.unwrap().command {
-            if let ModuleCommands::Create { project, name, .. } = command {
+            if let ModuleCommands::Add { project, name, .. } = command {
                 assert_eq!(project, Some("My Project".to_string()));
                 assert_eq!(name, "Auth");
             } else {
@@ -1352,7 +1352,7 @@ mod tests {
             "should parse -p short flag for project name in module add"
         );
         if let Commands::Module { command } = args.unwrap().command {
-            if let ModuleCommands::Create { project, .. } = command {
+            if let ModuleCommands::Add { project, .. } = command {
                 assert_eq!(project, Some("My Project".to_string()));
             } else {
                 panic!("expected Create command");
@@ -1386,7 +1386,7 @@ mod tests {
         ]);
         assert!(args.is_ok(), "should parse --pids alias for module add");
         if let Commands::Module { command } = args.unwrap().command {
-            if let ModuleCommands::Create { project_ids, .. } = command {
+            if let ModuleCommands::Add { project_ids, .. } = command {
                 assert_eq!(project_ids.len(), 2);
                 assert_eq!(project_ids[0], "project:abc");
                 assert_eq!(project_ids[1], "project:def");

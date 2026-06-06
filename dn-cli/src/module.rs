@@ -3,7 +3,7 @@ use crate::utils::{print_json, resolve_project_id};
 #[derive(clap::Subcommand, Debug)]
 pub enum ModuleCommands {
     #[command(name = "add", about = "Create a new module and link it to a project.")]
-    Create {
+    Add {
         #[arg(
             long,
             visible_alias = "pids",
@@ -74,7 +74,7 @@ pub(crate) async fn handle_module_command(
     ignore_case: bool,
 ) -> anyhow::Result<()> {
     match command {
-        ModuleCommands::Create {
+        ModuleCommands::Add {
             project_ids,
             project,
             parent_module_id,
