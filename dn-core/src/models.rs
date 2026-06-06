@@ -66,7 +66,7 @@ pub struct Module {
     pub name: String,
     pub description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub notes: Option<String>,
+    pub parent_module_id: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -297,7 +297,7 @@ mod tests {
             id: None,
             name: "Core".to_string(),
             description: "Core module".to_string(),
-            notes: None,
+            parent_module_id: None,
         };
         let json = to_string(&module).expect("Failed to serialize Module");
         assert!(json.contains("Core module"));

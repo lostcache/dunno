@@ -188,7 +188,6 @@ mod tests {
             .create_module(
                 &"Auth".to_string(),
                 &"Auth module".to_string(),
-                None,
                 &project_id,
                 None,
             )

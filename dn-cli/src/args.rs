@@ -674,14 +674,16 @@ mod tests {
             "add",
             "--project",
             "My Project",
+            "--name",
             "Auth",
+            "--desc",
             "Auth module",
         ]);
         assert!(args.is_ok(), "should parse --project with module create");
         if let Commands::Module { command } = args.unwrap().command {
             if let ModuleCommands::Add { project, name, .. } = command {
                 assert_eq!(project, Some("My Project".to_string()));
-                assert_eq!(name, "Auth");
+                assert_eq!(name[0], "Auth");
             } else {
                 panic!("expected Create command");
             }
@@ -1344,7 +1346,9 @@ mod tests {
             "add",
             "-p",
             "My Project",
+            "--name",
             "Auth",
+            "--desc",
             "Auth module",
         ]);
         assert!(

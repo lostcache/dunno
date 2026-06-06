@@ -40,9 +40,8 @@ pub(crate) async fn create_module(
         .create_module(
             &body.name,
             &body.description,
-            body.notes.as_deref(),
             &body.project_id,
-            body.parent_module_id.as_deref(),
+            body.parent_module_id,
         )
         .await?;
     Ok(Json(serde_json::to_value(created)?))

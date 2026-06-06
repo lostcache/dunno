@@ -24,19 +24,22 @@ pub enum ModuleCommands {
             long,
             visible_alias = "pmid",
             value_name = "PARENT_MODULE_ID",
-            help = "Parent module ID for nested modules."
+            help = "Parent module ID for nested modules. Repeat for multiple modules, empty string for none."
         )]
-        parent_module_id: Option<String>,
-        #[arg(help = "Module name.")]
-        name: String,
-        #[arg(help = "Short description of the module.")]
-        description: String,
+        parent_module_id: Vec<String>,
         #[arg(
             long,
-            value_name = "NOTES",
-            help = "Additional notes attached to this module."
+            required = true,
+            help = "Module name. Repeat for multiple modules."
         )]
-        notes: Option<String>,
+        name: Vec<String>,
+        #[arg(
+            long,
+            visible_alias = "desc",
+            required = true,
+            help = "Module description. Repeat for multiple modules."
+        )]
+        description: Vec<String>,
     },
     #[command(
         name = "list",
@@ -80,10 +83,16 @@ pub(crate) async fn handle_module_command(
             parent_module_id,
             name,
             description,
-            notes,
         } => {
             if project.is_none() && project_id.is_none() {
                 anyhow::bail!("Either --project-id/--pid or --project/-p must be provided");
+            }
+
+            let num_modules = name.len();
+            if description.len() != num_modules || parent_module_id.len() != num_modules {
+                anyhow::bail!(
+                    "Must provide --name, --desc and --pmid for every module, pass empty --pmid if none"
+                )
             }
 
             let resolved_project_id = match project_id {
@@ -91,26 +100,16 @@ pub(crate) async fn handle_module_command(
                 Some(id) => id,
             };
 
-            let project_id = resolved_project_id;
-
-            let created = db
-                .create_module(
-                    &name,
-                    &description,
-                    notes.as_deref(),
-                    &project_id,
-                    parent_module_id.as_deref(),
-                )
-                .await?;
-            let module_id = match &created.id {
-                Some(id) => id.as_str(),
-                None => {
-                    print_json(serde_json::json!(created), pretty);
-                    return Ok(());
-                }
-            };
-
-            db.link(&project_id, "contains", module_id).await?;
+            let mut created = vec![];
+            for ((n, desc), paren) in
+                std::iter::zip(std::iter::zip(name, description), parent_module_id)
+            {
+                let maybe_paren_module = if paren.len() > 0 { Some(paren) } else { None };
+                created.push(
+                    db.create_module(&n, &desc, &resolved_project_id, maybe_paren_module)
+                        .await?,
+                );
+            }
 
             print_json(serde_json::json!(created), pretty);
         }

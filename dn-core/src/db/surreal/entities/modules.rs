@@ -26,28 +26,29 @@ impl DB {
         &self,
         name: &str,
         description: &str,
-        notes: Option<&str>,
         project_id: &str,
-        parent_module_id: Option<&str>,
+        parent_module_id: Option<String>,
     ) -> anyhow::Result<crate::models::Module> {
         let module = crate::models::Module {
             id: None,
             name: name.to_string(),
             description: description.to_string(),
-            notes: notes.map(|s| s.to_string()),
+            parent_module_id: parent_module_id,
         };
         let result = self.create_module_record(&module).await?;
         if let Some(mid) = result.id.as_ref() {
             ensure_record_id("project", project_id)?;
             self.link(mid, "belongs_to_project", project_id).await?;
-            if let Some(parent_mid) = parent_module_id {
-                ensure_record_id("module", parent_mid)?;
-                self.link(parent_mid, "has_module", mid).await?;
-                self.link(mid, "belongs_to_module", parent_mid).await?;
+            if let Some(pm) = module.parent_module_id {
+                ensure_record_id("module", &pm)?;
+                self.link(&pm, "has_module", mid).await?;
+                self.link(mid, "belongs_to_module", &pm).await?;
             } else {
                 self.link(project_id, "has_module", mid).await?;
             }
+            self.link(&project_id, "contains", &mid).await?;
         }
+
         Ok(result)
     }
 
@@ -233,7 +234,7 @@ mod tests {
             .expect("create project");
         let project_id = project.id;
         let module = db
-            .create_module("DeleteModule", "test", None, &project_id, None)
+            .create_module("DeleteModule", "test", &project_id, None)
             .await
             .expect("create");
         let id = module.id.unwrap();
@@ -260,13 +261,18 @@ mod tests {
             .expect("create project");
         let project_id = project.id;
         let parent = db
-            .create_module("Parent", "parent module", None, &project_id, None)
+            .create_module("Parent", "parent module", &project_id, None)
             .await
             .expect("create parent");
         let parent_id = parent.id.unwrap();
 
         let child = db
-            .create_module("Child", "child module", None, &project_id, Some(&parent_id))
+            .create_module(
+                "Child",
+                "child module",
+                &project_id,
+                Some(parent_id.clone()),
+            )
             .await
             .expect("create child");
         let child_id = child.id.unwrap();

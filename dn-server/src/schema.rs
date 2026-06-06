@@ -35,7 +35,6 @@ pub(crate) struct CreateProjectBody {
 pub(crate) struct CreateModuleBody {
     pub(crate) name: String,
     pub(crate) description: String,
-    pub(crate) notes: Option<String>,
     pub(crate) project_id: String,
     pub(crate) parent_module_id: Option<String>,
 }
