@@ -96,9 +96,7 @@ pub(crate) async fn handle_todo_command(
                 _ => project_ids.first().unwrap().to_string(),
             };
 
-            let created = db
-                .create_todo(&content, Some(&resolved_project_id))
-                .await?;
+            let created = db.create_todo(&content, Some(&resolved_project_id)).await?;
 
             let todo_id = match &created.id {
                 Some(id) => id.as_str(),

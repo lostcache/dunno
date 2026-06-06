@@ -101,7 +101,9 @@ pub(crate) async fn handle_user_story_command(
                 None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
             };
 
-            let created = db.create_user_story(&title, &description, &resolved_id).await?;
+            let created = db
+                .create_user_story(&title, &description, &resolved_id)
+                .await?;
 
             if let Some(us_id) = &created.id {
                 for epic_id in &epic_ids {
