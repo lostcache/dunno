@@ -691,21 +691,21 @@ mod tests {
     }
 
     #[test]
-    fn module_create_rejects_both_project_and_project_ids() {
+    fn module_create_rejects_both_project_and_project_id() {
         let args = Args::try_parse_from([
             "dn",
             "module",
             "add",
             "--project",
             "My Project",
-            "--project-ids",
+            "--project-id",
             "project:abc",
             "Auth",
             "Auth module",
         ]);
         assert!(
             args.is_err(),
-            "should reject both --project and --project-ids"
+            "should reject both --project and --project-id"
         );
     }
 
@@ -1368,30 +1368,6 @@ mod tests {
                 assert_eq!(project_id, Some("project:abc".to_string()));
             } else {
                 panic!("expected List command");
-            }
-        } else {
-            panic!("expected Module command");
-        }
-
-        let args = Args::try_parse_from([
-            "dn",
-            "module",
-            "add",
-            "--pids",
-            "project:abc",
-            "--pids",
-            "project:def",
-            "Auth",
-            "Auth module",
-        ]);
-        assert!(args.is_ok(), "should parse --pids alias for module add");
-        if let Commands::Module { command } = args.unwrap().command {
-            if let ModuleCommands::Add { project_ids, .. } = command {
-                assert_eq!(project_ids.len(), 2);
-                assert_eq!(project_ids[0], "project:abc");
-                assert_eq!(project_ids[1], "project:def");
-            } else {
-                panic!("expected Create command");
             }
         } else {
             panic!("expected Module command");

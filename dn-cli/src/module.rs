@@ -6,18 +6,18 @@ pub enum ModuleCommands {
     Add {
         #[arg(
             long,
-            visible_alias = "pids",
+            visible_alias = "pid",
             value_name = "PROJECT_ID",
-            help = "Project ID(s) to link this module to. Repeatable. Conflicts with --project.",
+            help = "Project ID to link this module to. Repeatable. Conflicts with --project.",
             conflicts_with = "project"
         )]
-        project_ids: Vec<String>,
+        project_id: Option<String>,
         #[arg(
             short = 'p',
             long,
             value_name = "PROJECT_NAME",
-            help = "Project name (resolved to ID). Conflicts with --project-ids.",
-            conflicts_with = "project_ids"
+            help = "Project name (resolved to ID). Conflicts with --project-id.",
+            conflicts_with = "project_id"
         )]
         project: Option<String>,
         #[arg(
@@ -75,20 +75,20 @@ pub(crate) async fn handle_module_command(
 ) -> anyhow::Result<()> {
     match command {
         ModuleCommands::Add {
-            project_ids,
+            project_id,
             project,
             parent_module_id,
             name,
             description,
             notes,
         } => {
-            if project.is_none() && project_ids.is_empty() {
+            if project.is_none() && project_id.is_none() {
                 anyhow::bail!("Either --project-id/--pid or --project/-p must be provided");
             }
 
-            let resolved_project_id = match project_ids.len() {
-                0 => resolve_project_id(db, project.unwrap(), ignore_case).await?,
-                _ => project_ids.first().unwrap().to_string(),
+            let resolved_project_id = match project_id {
+                None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
+                Some(id) => id,
             };
 
             let project_id = resolved_project_id;
@@ -110,9 +110,7 @@ pub(crate) async fn handle_module_command(
                 }
             };
 
-            for pid in project_ids.iter().skip(1) {
-                db.link(pid, "contains", module_id).await?;
-            }
+            db.link(&project_id, "contains", module_id).await?;
 
             print_json(serde_json::json!(created), pretty);
         }
