@@ -38,6 +38,7 @@ pub(crate) fn json_to_surreal(json: serde_json::Value) -> surrealdb::types::Valu
         serde_json::Value::Object(o) => {
             let mut map = std::collections::BTreeMap::new();
             for (k, v) in o {
+                // surreal will populate the id field when left as None while creating a record
                 if k == "id" && v.is_null() {
                     continue;
                 }
