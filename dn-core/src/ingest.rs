@@ -185,14 +185,15 @@ mod tests {
         let project_id = project.id;
 
         let module = db
-            .create_module(
-                &"Auth".to_string(),
-                &"Auth module".to_string(),
+            .create_modules(
+                vec!["Auth".to_string()],
+                vec!["Auth module".to_string()],
                 &project_id,
-                None,
+                vec!["".to_string()],
             )
             .await
             .expect("create module");
+        let module = module.into_iter().next().expect("module created");
         let module_id = module.id.expect("module id");
 
         let mut fields = serde_json::Map::new();

@@ -100,18 +100,11 @@ pub(crate) async fn handle_module_command(
                 Some(id) => id,
             };
 
-            let mut created = vec![];
-            for ((n, desc), paren) in
-                std::iter::zip(std::iter::zip(name, description), parent_module_id)
-            {
-                let maybe_paren_module = if paren.len() > 0 { Some(paren) } else { None };
-                created.push(
-                    db.create_module(&n, &desc, &resolved_project_id, maybe_paren_module)
-                        .await?,
-                );
-            }
+            let created_modules = db
+                .create_modules(name, description, &resolved_project_id, parent_module_id)
+                .await?;
 
-            print_json(serde_json::json!(created), pretty);
+            print_json(serde_json::json!(created_modules), pretty);
         }
         ModuleCommands::List {
             project_id,

@@ -37,11 +37,11 @@ pub(crate) async fn create_module(
 ) -> schema::ApiResult<serde_json::Value> {
     let created = state
         .db
-        .create_module(
-            &body.name,
-            &body.description,
+        .create_modules(
+            vec![body.name],
+            vec![body.description],
             &body.project_id,
-            body.parent_module_id,
+            vec![body.parent_module_id.unwrap_or_default()],
         )
         .await?;
     Ok(Json(serde_json::to_value(created)?))

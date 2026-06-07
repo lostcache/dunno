@@ -2,54 +2,108 @@ use crate::db::surreal::DB;
 use crate::db::surreal::util::{ensure_record_id, json_to_surreal, surreal_to_json};
 
 impl DB {
-    /// Internal helper: creates a module record without any relationships.
-    pub(crate) async fn create_module_record(
-        &self,
-        module: &crate::models::Module,
-    ) -> anyhow::Result<crate::models::Module> {
-        let json = serde_json::to_value(module)?;
-        let value = json_to_surreal(json);
-        let created: Option<surrealdb::types::Value> =
-            self.client.create("module").content(value).await?;
-        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create module"))?;
-        let result: crate::models::Module = serde_json::from_value(surreal_to_json(val))?;
-        Ok(result)
-    }
-
     /// Creates a module and RELATEs it to its parent project and optionally a parent module.
+    /// All operations run inside a transaction; if any step fails, the transaction is cancelled.
     ///
     /// - If `parent_module_id` is provided: `parent_module contains child_module` +
     ///   `child_module belongs_to_module parent_module`
     /// - Top-level only (no parent module): `project contains module`
     /// - Always: `module belongs_to_project project`
-    pub async fn create_module(
+    pub async fn create_modules(
         &self,
-        name: &str,
-        description: &str,
+        names: Vec<String>,
+        descriptions: Vec<String>,
         project_id: &str,
-        parent_module_id: Option<String>,
-    ) -> anyhow::Result<crate::models::Module> {
-        let module = crate::models::Module {
-            id: None,
-            name: name.to_string(),
-            description: description.to_string(),
-            parent_module_id: parent_module_id,
-        };
-        let result = self.create_module_record(&module).await?;
-        if let Some(mid) = result.id.as_ref() {
-            ensure_record_id("project", project_id)?;
-            self.link(mid, "belongs_to_project", project_id).await?;
-            if let Some(pm) = module.parent_module_id {
-                ensure_record_id("module", &pm)?;
-                self.link(&pm, "has_module", mid).await?;
-                self.link(mid, "belongs_to_module", &pm).await?;
-            } else {
-                self.link(project_id, "has_module", mid).await?;
+        parent_module_ids: Vec<String>,
+    ) -> anyhow::Result<Vec<crate::models::Module>> {
+        let tx = self.client.clone().begin().await?;
+
+        let mut results: Vec<crate::models::Module> = vec![];
+
+        for ((n, desc), paren) in
+            std::iter::zip(std::iter::zip(names, descriptions), parent_module_ids)
+        {
+            let res = async {
+                let maybe_paren_module = if paren.len() > 0 { Some(paren) } else { None };
+                let module = crate::models::Module {
+                    id: None,
+                    name: n.to_string(),
+                    description: desc.to_string(),
+                    parent_module_id: maybe_paren_module,
+                };
+                let json = serde_json::to_value(&module)?;
+                let value = json_to_surreal(json);
+                let created = tx.create("module").content(value).await?;
+                match created {
+                    Some(val) => {
+                        let created_module: crate::models::Module =
+                            serde_json::from_value(surreal_to_json(val))?;
+                        if let Some(mid) = created_module.id.as_ref() {
+                            // Always create belongs_to_project edge
+                            let from_rid = surrealdb::types::RecordId::parse_simple(mid)
+                                .map_err(|_| anyhow::anyhow!("Invalid record id: {}", mid))?;
+                            let to_rid = surrealdb::types::RecordId::parse_simple(project_id)
+                                .map_err(|_| {
+                                    anyhow::anyhow!("Invalid record id: {}", project_id)
+                                })?;
+                            tx.query("RELATE $from->belongs_to_project->$to")
+                                .bind(("from", from_rid))
+                                .bind(("to", to_rid))
+                                .await?;
+
+                            if let Some(pm) = module.parent_module_id {
+                                ensure_record_id("module", &pm)?;
+                                let from_rid = surrealdb::types::RecordId::parse_simple(&pm)
+                                    .map_err(|_| anyhow::anyhow!("Invalid record id: {}", pm))?;
+                                let to_rid = surrealdb::types::RecordId::parse_simple(mid)
+                                    .map_err(|_| anyhow::anyhow!("Invalid record id: {}", mid))?;
+                                tx.query("RELATE $from->has_module->$to")
+                                    .bind(("from", from_rid))
+                                    .bind(("to", to_rid))
+                                    .await?;
+
+                                let from_rid = surrealdb::types::RecordId::parse_simple(mid)
+                                    .map_err(|_| anyhow::anyhow!("Invalid record id: {}", mid))?;
+                                let to_rid = surrealdb::types::RecordId::parse_simple(&pm)
+                                    .map_err(|_| anyhow::anyhow!("Invalid record id: {}", pm))?;
+                                tx.query("RELATE $from->belongs_to_module->$to")
+                                    .bind(("from", from_rid))
+                                    .bind(("to", to_rid))
+                                    .await?;
+                            } else {
+                                let from_rid = surrealdb::types::RecordId::parse_simple(project_id)
+                                    .map_err(|_| {
+                                        anyhow::anyhow!("Invalid record id: {}", project_id)
+                                    })?;
+                                let to_rid = surrealdb::types::RecordId::parse_simple(mid)
+                                    .map_err(|_| anyhow::anyhow!("Invalid record id: {}", mid))?;
+                                tx.query("RELATE $from->has_module->$to")
+                                    .bind(("from", from_rid))
+                                    .bind(("to", to_rid))
+                                    .await?;
+                            }
+                        }
+                        Ok(created_module)
+                    }
+                    None => {
+                        anyhow::bail!("Failed to create module/s")
+                    }
+                }
+            };
+
+            match res.await {
+                Ok(module) => {
+                    results.push(module);
+                }
+                Err(e) => {
+                    tx.cancel().await?;
+                    anyhow::bail!("Failed to create module/s: {}", e)
+                }
             }
-            self.link(&project_id, "contains", &mid).await?;
         }
 
-        Ok(result)
+        tx.commit().await?;
+        Ok(results)
     }
 
     /// Fetches a module by record id.
@@ -234,9 +288,15 @@ mod tests {
             .expect("create project");
         let project_id = project.id;
         let module = db
-            .create_module("DeleteModule", "test", &project_id, None)
+            .create_modules(
+                vec!["DeleteModule".to_string()],
+                vec!["test".to_string()],
+                &project_id,
+                vec!["".to_string()],
+            )
             .await
             .expect("create");
+        let module = module.into_iter().next().expect("module created");
         let id = module.id.unwrap();
 
         let deleted = db.delete_module(&id).await.expect("delete");
@@ -261,20 +321,27 @@ mod tests {
             .expect("create project");
         let project_id = project.id;
         let parent = db
-            .create_module("Parent", "parent module", &project_id, None)
+            .create_modules(
+                vec!["Parent".to_string()],
+                vec!["parent module".to_string()],
+                &project_id,
+                vec!["".to_string()],
+            )
             .await
             .expect("create parent");
+        let parent = parent.into_iter().next().expect("module created");
         let parent_id = parent.id.unwrap();
 
         let child = db
-            .create_module(
-                "Child",
-                "child module",
+            .create_modules(
+                vec!["Child".to_string()],
+                vec!["child module".to_string()],
                 &project_id,
-                Some(parent_id.clone()),
+                vec![parent_id.clone()],
             )
             .await
             .expect("create child");
+        let child = child.into_iter().next().expect("module created");
         let child_id = child.id.unwrap();
 
         let children = db.list_modules_by_module(&parent_id).await.expect("list");

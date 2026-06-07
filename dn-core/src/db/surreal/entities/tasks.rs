@@ -378,9 +378,15 @@ mod tests {
         let project_id = project.id;
 
         let module = db
-            .create_module("Auth", "Auth module", &project_id, None)
+            .create_modules(
+                vec!["Auth".to_string()],
+                vec!["Auth module".to_string()],
+                &project_id,
+                vec!["".to_string()],
+            )
             .await
             .expect("Failed to create module");
+        let module = module.into_iter().next().expect("module created");
         let module_id = module.id.expect("module id");
 
         let task = db
@@ -452,9 +458,15 @@ mod tests {
         let project_id = project.id;
 
         let module = db
-            .create_module("Auth", "Auth module", &project_id, None)
+            .create_modules(
+                vec!["Auth".to_string()],
+                vec!["Auth module".to_string()],
+                &project_id,
+                vec!["".to_string()],
+            )
             .await
             .expect("Failed to create module");
+        let module = module.into_iter().next().expect("module created");
         let module_id = module.id.expect("module id");
 
         let task = db
@@ -523,9 +535,15 @@ mod tests {
         let project_id = project.id;
 
         let module = db
-            .create_module("core", "core module", &project_id, None)
+            .create_modules(
+                vec!["core".to_string()],
+                vec!["core module".to_string()],
+                &project_id,
+                vec!["".to_string()],
+            )
             .await
             .expect("create module");
+        let module = module.into_iter().next().expect("module created");
         let module_id = module.id.unwrap();
 
         // File attached to the module (should NOT appear in task context)
@@ -584,9 +602,15 @@ mod tests {
         let project_id = project.id;
 
         let module = db
-            .create_module("core", "core module", &project_id, None)
+            .create_modules(
+                vec!["core".to_string()],
+                vec!["core module".to_string()],
+                &project_id,
+                vec!["".to_string()],
+            )
             .await
             .expect("create module");
+        let module = module.into_iter().next().expect("module created");
         let module_id = module.id.unwrap();
 
         // File attached to the module only

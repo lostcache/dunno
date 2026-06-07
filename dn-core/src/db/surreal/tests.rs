@@ -48,9 +48,15 @@ async fn test_link_context_all_levels() {
     let project_id = project.id;
 
     let module = db
-        .create_module("M", "d", &project_id, None)
+        .create_modules(
+            vec!["M".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("id");
 
     let task = db
@@ -60,9 +66,15 @@ async fn test_link_context_all_levels() {
     let task_id = task.id.expect("id");
 
     let submodule = db
-        .create_module("SM", "d", &project_id, Some(module_id))
+        .create_modules(
+            vec!["SM".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec![module_id],
+        )
         .await
         .expect("create submodule");
+    let submodule = submodule.into_iter().next().expect("module created");
     let submodule_id = submodule.id.expect("id");
 
     let file = db
@@ -148,9 +160,15 @@ async fn test_link_context_reverse_belongs_to() {
     let project_id = project.id;
 
     let module = db
-        .create_module("M", "d", &project_id, None)
+        .create_modules(
+            vec!["M".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("id");
 
     let task = db
@@ -301,9 +319,15 @@ async fn test_get_task_context() {
     let project_id = project.id;
 
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let task = db
@@ -362,9 +386,15 @@ async fn test_list_tasks_by_project() {
     let project_id = project.id;
 
     let module = db
-        .create_module("crate::models::Module1", "First module", &project_id, None)
+        .create_modules(
+            vec!["crate::models::Module1".to_string()],
+            vec!["First module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let _task1 = db
@@ -415,9 +445,15 @@ async fn test_create_task_bidirectional_edges() {
     let project_id = project.id;
 
     let module = db
-        .create_module("crate::models::Module1", "First module", &project_id, None)
+        .create_modules(
+            vec!["crate::models::Module1".to_string()],
+            vec!["First module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let task = db
@@ -461,9 +497,15 @@ async fn test_get_task_context_no_linked_knowledge() {
     let project_id = project.id;
 
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let task = db
@@ -503,9 +545,15 @@ async fn test_get_task_context_all_knowledge_types() {
     let project_id = project.id;
 
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let task = db
@@ -610,14 +658,26 @@ async fn test_get_task_context_under_submodule() {
         .expect("Failed to create project");
     let project_id = project.id;
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
     let _submodule = db
-        .create_module("JWT", "JWT submodule", &project_id, Some(module_id.clone()))
+        .create_modules(
+            vec!["JWT".to_string()],
+            vec!["JWT submodule".to_string()],
+            &project_id,
+            vec![module_id.clone()],
+        )
         .await
         .expect("Failed to create submodule");
+    let _submodule = _submodule.into_iter().next().expect("module created");
     let task = db
         .create_task(
             "Implement JWT",
@@ -650,9 +710,15 @@ async fn test_get_task_context_files_from_module() {
         .expect("Failed to create project");
     let project_id = project.id;
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
     let task = db
         .create_task(
@@ -710,22 +776,32 @@ async fn test_module_operations() {
         .expect("Failed to create project");
     let project_id = project.id;
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
     let fetched = db.get_module(&module_id).await.expect("get_module failed");
     assert!(fetched.is_some());
     assert_eq!(fetched.unwrap().name, "Auth");
     let module_with_parent = db
-        .create_module(
-            "Auth2",
-            "Auth2 module",
+        .create_modules(
+            vec!["Auth2".to_string()],
+            vec!["Auth2 module".to_string()],
             &project_id,
-            Some(module_id.clone()),
+            vec![module_id.clone()],
         )
         .await
         .expect("Failed to create module");
+    let module_with_parent = module_with_parent
+        .into_iter()
+        .next()
+        .expect("module created");
     let module_with_parent_id = module_with_parent.id.expect("module id");
     let fetched_with_parent = db
         .get_module(&module_with_parent_id)
@@ -761,19 +837,26 @@ async fn test_submodule_operations() {
         .expect("Failed to create project");
     let project_id = project.id;
     let module = db
-        .create_module("Auth", "Auth module", project_id.as_ref(), None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            project_id.as_ref(),
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
     let submodule = db
-        .create_module(
-            "JWT",
-            "JWT submodule",
+        .create_modules(
+            vec!["JWT".to_string()],
+            vec!["JWT submodule".to_string()],
             project_id.as_ref(),
-            Some(module_id.clone()),
+            vec![module_id.clone()],
         )
         .await
         .expect("Failed to create submodule");
+    let submodule = submodule.into_iter().next().expect("module created");
     let submodule_id = submodule.id.expect("submodule id");
     let fetched = db
         .get_module(&submodule_id)
@@ -805,9 +888,15 @@ async fn test_file_operations() {
         .expect("Failed to create project");
     let project_id = project.id;
     let module = db
-        .create_module("Auth", "Auth module", project_id.as_ref(), None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            project_id.as_ref(),
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
     let file = db
         .create_file(
@@ -881,9 +970,15 @@ async fn test_list_tasks_by_module() {
         .expect("Failed to create project");
     let project_id = project.id;
     let module = db
-        .create_module("Auth", "Auth module", project_id.as_ref(), None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            project_id.as_ref(),
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
     let _task = db
         .create_task("Task1", "Task 1", Some(&module_id), Some(&project_id))
@@ -1004,9 +1099,15 @@ async fn test_create_module_with_project() {
     let project_id = project.id;
 
     let module = db
-        .create_module("M", "module with project", project_id.as_ref(), None)
+        .create_modules(
+            vec!["M".to_string()],
+            vec!["module with project".to_string()],
+            project_id.as_ref(),
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     assert!(
@@ -1049,9 +1150,15 @@ async fn test_freestanding_file() {
         .expect("create project");
     let project_id = project.id;
     let module = db
-        .create_module("M", "d", &project_id, None)
+        .create_modules(
+            vec!["M".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let file = db
@@ -1155,9 +1262,15 @@ async fn test_link_after_create_module() {
     let project2_id = project2.id;
 
     let module = db
-        .create_module("LaterLinked", "d", &project1_id, None)
+        .create_modules(
+            vec!["LaterLinked".to_string()],
+            vec!["d".to_string()],
+            &project1_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     // Module is linked to project1 at creation; not yet linked to project2
@@ -1195,9 +1308,15 @@ async fn test_link_after_create_task_hierarchy() {
         .expect("create project");
     let project_id = project.id;
     let module = db
-        .create_module("M", "d", &project_id, None)
+        .create_modules(
+            vec!["M".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let task = db
@@ -1239,9 +1358,15 @@ async fn test_create_with_link_ids_preserves_hierarchy() {
         .expect("create project");
     let project_id = project.id;
     let module = db
-        .create_module("M", "d", &project_id, None)
+        .create_modules(
+            vec!["M".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
     let task = db
         .create_task("T", "d", Some(&module_id), Some(&project_id))
@@ -1315,9 +1440,15 @@ async fn test_update_task_name() {
     let project_id = project.id;
 
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let task = db
@@ -1359,9 +1490,15 @@ async fn test_update_task_description() {
     let project_id = project.id;
 
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let task = db
@@ -1405,9 +1542,15 @@ async fn test_update_task_status() {
     let project_id = project.id;
 
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let task = db
@@ -1468,9 +1611,15 @@ async fn test_update_task_all_fields() {
     let project_id = project.id;
 
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let task = db
@@ -1516,9 +1665,15 @@ async fn test_update_task_empty_patch_returns_current() {
     let project_id = project.id;
 
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let task = db
@@ -1585,9 +1740,15 @@ async fn test_list_tasks_unfiltered() {
     let project_id = project.id;
 
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     db.create_task("Task 1", "First task", Some(&module_id), Some(&project_id))
@@ -1709,15 +1870,27 @@ async fn test_list_files_by_submodule() {
     let project_id = project.id;
 
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let submodule = db
-        .create_module("OAuth", "OAuth submodule", &project_id, Some(module_id))
+        .create_modules(
+            vec!["OAuth".to_string()],
+            vec!["OAuth submodule".to_string()],
+            &project_id,
+            vec![module_id],
+        )
         .await
         .expect("Failed to create submodule");
+    let submodule = submodule.into_iter().next().expect("module created");
     let submodule_id = submodule.id.expect("submodule id");
 
     let file1 = db
@@ -2039,9 +2212,15 @@ async fn test_user_story_task_linking() {
     let project_id = project.id;
 
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("id");
 
     let user_story = db
@@ -2102,9 +2281,15 @@ async fn test_user_story_module_linking() {
     let project_id = project.id;
 
     let module = db
-        .create_module("Core", "Core module", &project_id, None)
+        .create_modules(
+            vec!["Core".to_string()],
+            vec!["Core module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("id");
 
     let user_story = db
@@ -2255,9 +2440,15 @@ async fn test_epic_task_linking() {
     let project_id = project.id;
 
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("id");
 
     let epic = db
@@ -2372,9 +2563,15 @@ async fn test_get_task_context_with_files_and_linked_context() {
 
     // Create module with context (this should NOT appear in task context)
     let module = db
-        .create_module("Auth", "Auth module", &project_id, None)
+        .create_modules(
+            vec!["Auth".to_string()],
+            vec!["Auth module".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("Failed to create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
 
     let module_ctx = db
@@ -2551,16 +2748,28 @@ async fn test_list_submodules_by_project() {
 
     // Create module linked to project
     let module = db
-        .create_module("M", "d", &project_id, None)
+        .create_modules(
+            vec!["M".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("id");
 
     // Create submodule linked to module
     let submodule = db
-        .create_module("S", "d", &project_id, Some(module_id.clone()))
+        .create_modules(
+            vec!["S".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec![module_id.clone()],
+        )
         .await
         .expect("create submodule");
+    let submodule = submodule.into_iter().next().expect("module created");
     let submodule_id = submodule.id.expect("id");
 
     // List all modules (parent + child)
@@ -2603,16 +2812,28 @@ async fn test_list_files_by_project() {
 
     // Create module linked to project
     let module = db
-        .create_module("M", "d", &project_id, None)
+        .create_modules(
+            vec!["M".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("id");
 
     // Create submodule linked to module
     let submodule = db
-        .create_module("S", "d", &project_id, Some(module_id.clone()))
+        .create_modules(
+            vec!["S".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec![module_id.clone()],
+        )
         .await
         .expect("create submodule");
+    let submodule = submodule.into_iter().next().expect("module created");
     let submodule_id = submodule.id.expect("id");
 
     // Create file linked to module
@@ -2690,9 +2911,15 @@ async fn test_module_belongs_to_project_edge() {
 
     // Create module linked to project
     let module = db
-        .create_module("M", "d", &project_id, None)
+        .create_modules(
+            vec!["M".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("id");
 
     // Verify module can be found via belongs_to_project edge by querying the graph
@@ -2732,16 +2959,28 @@ async fn test_submodule_belongs_to_edges() {
 
     // Create module linked to project
     let module = db
-        .create_module("M", "d", &project_id, None)
+        .create_modules(
+            vec!["M".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("id");
 
     // Create submodule linked to module
     let submodule = db
-        .create_module("S", "d", &project_id, Some(module_id.clone()))
+        .create_modules(
+            vec!["S".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec![module_id.clone()],
+        )
         .await
         .expect("create submodule");
+    let submodule = submodule.into_iter().next().expect("module created");
     let submodule_id = submodule.id.expect("id");
 
     // Verify submodule has belongs_to_module edge
@@ -2798,9 +3037,15 @@ async fn test_file_belongs_to_edges() {
 
     // Create module linked to project
     let module = db
-        .create_module("M", "d", &project_id, None)
+        .create_modules(
+            vec!["M".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("id");
 
     // Create file linked to module
@@ -2871,16 +3116,28 @@ async fn test_file_belongs_to_edges_with_submodule() {
 
     // Create module linked to project
     let module = db
-        .create_module("M", "d", &project_id, None)
+        .create_modules(
+            vec!["M".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create module");
+    let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("id");
 
     // Create submodule linked to module
     let submodule = db
-        .create_module("S", "d", &project_id, Some(module_id.clone()))
+        .create_modules(
+            vec!["S".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec![module_id.clone()],
+        )
         .await
         .expect("create submodule");
+    let submodule = submodule.into_iter().next().expect("module created");
     let submodule_id = submodule.id.expect("id");
 
     // Create file linked to submodule
@@ -2982,7 +3239,16 @@ async fn test_context_inheritance_module() {
         .await
         .unwrap();
     let pid = p.id;
-    let m = db.create_module("m", "d", &pid, None).await.unwrap();
+    let m = db
+        .create_modules(
+            vec!["m".to_string()],
+            vec!["d".to_string()],
+            &pid,
+            vec!["".to_string()],
+        )
+        .await
+        .unwrap();
+    let m = m.into_iter().next().expect("module created");
     let mid = m.id.unwrap();
 
     let p_ctx = db
@@ -3033,12 +3299,27 @@ async fn test_context_inheritance_submodule() {
         .await
         .unwrap();
     let pid = p.id;
-    let m = db.create_module("m", "d", &pid, None).await.unwrap();
-    let mid = m.id.unwrap();
-    let s = db
-        .create_module("s", "d", &pid, Some(mid.clone()))
+    let m = db
+        .create_modules(
+            vec!["m".to_string()],
+            vec!["d".to_string()],
+            &pid,
+            vec!["".to_string()],
+        )
         .await
         .unwrap();
+    let m = m.into_iter().next().expect("module created");
+    let mid = m.id.unwrap();
+    let s = db
+        .create_modules(
+            vec!["s".to_string()],
+            vec!["d".to_string()],
+            &pid,
+            vec![mid.clone()],
+        )
+        .await
+        .unwrap();
+    let s = s.into_iter().next().expect("module created");
     let sid = s.id.unwrap();
 
     let p_ctx = db
@@ -3103,12 +3384,27 @@ async fn test_context_inheritance_task() {
         .await
         .unwrap();
     let pid = p.id;
-    let m = db.create_module("m", "d", &pid, None).await.unwrap();
-    let mid = m.id.unwrap();
-    let s = db
-        .create_module("s", "d", &pid, Some(mid.clone()))
+    let m = db
+        .create_modules(
+            vec!["m".to_string()],
+            vec!["d".to_string()],
+            &pid,
+            vec!["".to_string()],
+        )
         .await
         .unwrap();
+    let m = m.into_iter().next().expect("module created");
+    let mid = m.id.unwrap();
+    let s = db
+        .create_modules(
+            vec!["s".to_string()],
+            vec!["d".to_string()],
+            &pid,
+            vec![mid.clone()],
+        )
+        .await
+        .unwrap();
+    let s = s.into_iter().next().expect("module created");
     let sid = s.id.unwrap();
     let t = db
         .create_task("t", "d", Some(&sid), Some(&pid))
@@ -3207,7 +3503,16 @@ async fn test_context_inheritance_file() {
         .await
         .unwrap();
     let pid = p.id;
-    let m = db.create_module("m", "d", &pid, None).await.unwrap();
+    let m = db
+        .create_modules(
+            vec!["m".to_string()],
+            vec!["d".to_string()],
+            &pid,
+            vec!["".to_string()],
+        )
+        .await
+        .unwrap();
+    let m = m.into_iter().next().expect("module created");
     let mid = m.id.unwrap();
     let f = db
         .create_file("f", "src/f.rs", None, None, &pid, Some(&mid))
@@ -3336,7 +3641,16 @@ async fn test_task_ctx_full_includes_persona_workflow() {
         .await
         .unwrap();
     let pid = p.id;
-    let m = db.create_module("mod", "d", &pid, None).await.unwrap();
+    let m = db
+        .create_modules(
+            vec!["mod".to_string()],
+            vec!["d".to_string()],
+            &pid,
+            vec!["".to_string()],
+        )
+        .await
+        .unwrap();
+    let m = m.into_iter().next().expect("module created");
     let mid = m.id.unwrap();
     let t = db
         .create_task("task", "d", Some(&mid), Some(&pid))
@@ -3477,15 +3791,27 @@ async fn test_child_module_belongs_to_module_edge_and_graph() {
     let project_id = project.id;
 
     let parent = db
-        .create_module("Parent", "d", &project_id, None)
+        .create_modules(
+            vec!["Parent".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create parent module");
+    let parent = parent.into_iter().next().expect("module created");
     let parent_id = parent.id.expect("parent id");
 
     let child = db
-        .create_module("Child", "d", &project_id, Some(parent_id.clone()))
+        .create_modules(
+            vec!["Child".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec![parent_id.clone()],
+        )
         .await
         .expect("create child module");
+    let child = child.into_iter().next().expect("module created");
     let child_id = child.id.expect("child id");
 
     // Verify the belongs_to_module edge from child -> parent exists in the DB
@@ -3539,15 +3865,27 @@ async fn test_child_module_has_module_edge_and_graph() {
     let project_id = project.id;
 
     let parent = db
-        .create_module("Parent", "d", &project_id, None)
+        .create_modules(
+            vec!["Parent".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
         .await
         .expect("create parent module");
+    let parent = parent.into_iter().next().expect("module created");
     let parent_id = parent.id.expect("parent id");
 
     let child = db
-        .create_module("Child", "d", &project_id, Some(parent_id.clone()))
+        .create_modules(
+            vec!["Child".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec![parent_id.clone()],
+        )
         .await
         .expect("create child module");
+    let child = child.into_iter().next().expect("module created");
     let child_id = child.id.expect("child id");
 
     // Verify has_module edge: parent -> child
