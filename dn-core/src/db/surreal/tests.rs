@@ -717,8 +717,28 @@ async fn test_module_operations() {
     let fetched = db.get_module(&module_id).await.expect("get_module failed");
     assert!(fetched.is_some());
     assert_eq!(fetched.unwrap().name, "Auth");
+    let module_with_parent = db
+        .create_module(
+            "Auth2",
+            "Auth2 module",
+            &project_id,
+            Some(module_id.clone()),
+        )
+        .await
+        .expect("Failed to create module");
+    let module_with_parent_id = module_with_parent.id.expect("module id");
+    let fetched_with_parent = db
+        .get_module(&module_with_parent_id)
+        .await
+        .expect("get_module failed");
+    assert!(fetched_with_parent.is_some());
+    assert_eq!(fetched_with_parent.as_ref().unwrap().name, "Auth2");
+    assert_eq!(
+        fetched_with_parent.unwrap().parent_module_id,
+        Some(module_id)
+    );
     let modules = db.list_modules().await.expect("list_modules failed");
-    assert_eq!(modules.len(), 1);
+    assert_eq!(modules.len(), 2);
     let modules_by_project = db
         .list_modules_by_project(&project_id)
         .await

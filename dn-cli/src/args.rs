@@ -712,6 +712,77 @@ mod tests {
     }
 
     #[test]
+    fn module_add_multiple_modules() {
+        let args = Args::try_parse_from([
+            "dn",
+            "module",
+            "add",
+            "--project",
+            "My Project",
+            "--name",
+            "Auth",
+            "--desc",
+            "Auth module",
+            "--name",
+            "Auth2",
+            "--desc",
+            "Auth2 module",
+        ]);
+        assert!(args.is_ok(), "should parse --project with module create");
+        if let Commands::Module { command } = args.unwrap().command {
+            if let ModuleCommands::Add { project, name, .. } = command {
+                assert_eq!(project, Some("My Project".to_string()));
+                assert_eq!(name[0], "Auth");
+                assert_eq!(name[1], "Auth2");
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Module command");
+        }
+    }
+
+    #[test]
+    fn add_multiple_modules_with_parent_module() {
+        let args = Args::try_parse_from([
+            "dn",
+            "module",
+            "add",
+            "--project",
+            "My Project",
+            "--name",
+            "Auth",
+            "--desc",
+            "Auth module",
+            "--name",
+            "Auth2",
+            "--desc",
+            "Auth2 module",
+            "--pmid",
+            "module:abc",
+        ]);
+        assert!(args.is_ok(), "should parse --project with module create");
+        if let Commands::Module { command } = args.unwrap().command {
+            if let ModuleCommands::Add {
+                project,
+                name,
+                parent_module_id,
+                ..
+            } = command
+            {
+                assert_eq!(project, Some("My Project".to_string()));
+                assert_eq!(name[0], "Auth");
+                assert_eq!(name[1], "Auth2");
+                assert_eq!(parent_module_id[0], "module:abc");
+            } else {
+                panic!("expected Create command");
+            }
+        } else {
+            panic!("expected Module command");
+        }
+    }
+
+    #[test]
     fn user_story_create_accepts_project_name() {
         let args = Args::try_parse_from([
             "dn",
