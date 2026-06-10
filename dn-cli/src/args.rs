@@ -581,9 +581,11 @@ mod tests {
             "--pretty",
             "file",
             "add",
-            "--parent-ids",
+            "--parent-mod-id",
             "module:abc",
+            "--name",
             "main.rs",
+            "--path",
             "src/main.rs",
         ]);
         assert!(args.is_ok(), "should parse --pretty with file create");
@@ -594,10 +596,13 @@ mod tests {
             "--pretty",
             "file",
             "add",
-            "--parent-ids",
+            "--parent-mod-id",
             "module:abc",
+            "--name",
             "main.rs",
+            "--path",
             "src/main.rs",
+            "--description",
             "CLI entry point",
         ]);
         assert!(

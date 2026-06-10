@@ -30,12 +30,12 @@ pub(crate) async fn create_file(
 ) -> schema::ApiResult<serde_json::Value> {
     let created = state
         .db
-        .create_file(
-            &body.name,
-            &body.path,
-            body.description.as_deref(),
-            &body.project_id,
-            body.parent_id.as_deref(),
+        .create_files(
+            vec![body.name],
+            vec![body.path],
+            vec![body.description.unwrap_or_default()],
+            body.project_id,
+            vec![body.parent_id.unwrap_or_default()],
         )
         .await?;
     Ok(Json(serde_json::to_value(created)?))

@@ -548,15 +548,16 @@ mod tests {
 
         // File attached to the module (should NOT appear in task context)
         let module_file = db
-            .create_file(
-                "module.rs",
-                "src/module.rs",
-                None,
-                &project_id,
-                Some(&module_id),
+            .create_files(
+                vec!["module.rs".to_string()],
+                vec!["src/module.rs".to_string()],
+                vec!["".to_string()],
+                project_id.clone(),
+                vec![module_id.clone()],
             )
             .await
             .expect("create module file");
+        let module_file = module_file.into_iter().next().unwrap();
 
         let task = db
             .create_task("My Task", "desc", Some(&module_id), Some(&project_id))
@@ -566,9 +567,16 @@ mod tests {
 
         // File linked directly to the task
         let task_file = db
-            .create_file("task.rs", "src/task.rs", None, &project_id, None)
+            .create_files(
+                vec!["task.rs".to_string()],
+                vec!["src/task.rs".to_string()],
+                vec!["".to_string()],
+                project_id.clone(),
+                vec!["".to_string()],
+            )
             .await
             .expect("create task file");
+        let task_file = task_file.into_iter().next().unwrap();
         let task_file_id = task_file.id.as_ref().unwrap().clone();
         db.link(&task_file_id, "belongs_to_task", &task_id)
             .await
@@ -613,12 +621,12 @@ mod tests {
         let module_id = module.id.unwrap();
 
         // File attached to the module only
-        db.create_file(
-            "module.rs",
-            "src/module.rs",
-            None,
-            &project_id,
-            Some(&module_id),
+        db.create_files(
+            vec!["module.rs".to_string()],
+            vec!["src/module.rs".to_string()],
+            vec!["".to_string()],
+            project_id.clone(),
+            vec![module_id.clone()],
         )
         .await
         .expect("create module file");

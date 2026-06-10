@@ -29,16 +29,17 @@ pub enum FileCommands {
             value_name = "PARENT_ID",
             help = "Parent module ID(s) that contain this file. Repeatable."
         )]
-        parent_ids: Vec<String>,
-        #[arg(help = "Display name for the file.")]
-        name: String,
-        #[arg(help = "Relative path to the file (e.g. src/main.rs).")]
-        path: String,
+        parent_mod_id: Vec<String>,
+        #[arg(long, help = "Display name for the file.")]
+        name: Vec<String>,
+        #[arg(long, help = "Relative path to the file (e.g. src/main.rs).")]
+        path: Vec<String>,
         #[arg(
+            long,
             value_name = "DESCRIPTION",
             help = "Optional short description of the file's purpose."
         )]
-        description: Option<String>,
+        description: Vec<String>,
     },
     #[command(
         name = "list",
@@ -84,10 +85,10 @@ pub(crate) async fn handle_file_command(
         FileCommands::Add {
             project_id,
             project,
-            parent_ids,
-            name,
-            path,
-            description,
+            parent_mod_id: parent_mod_ids,
+            name: names,
+            path: paths,
+            description: descriptions,
         } => {
             if project_id.is_none() && project.is_none() {
                 anyhow::bail!("Either --project-id/--pid or --project/-p must be provided");
@@ -98,29 +99,17 @@ pub(crate) async fn handle_file_command(
                 None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
             };
 
-            let created = db
-                .create_file(
-                    &name,
-                    &path,
-                    description.as_deref(),
-                    &resolved_project_id,
-                    parent_ids.first().map(String::as_str),
+            let created_files = db
+                .create_files(
+                    names,
+                    paths,
+                    descriptions,
+                    resolved_project_id,
+                    parent_mod_ids,
                 )
                 .await?;
 
-            let file_id = match &created.id {
-                Some(id) => id.as_str(),
-                None => {
-                    print_json(serde_json::json!(created), pretty);
-                    return Ok(());
-                }
-            };
-
-            for pid in parent_ids.iter().skip(1) {
-                db.link(pid, "contains", file_id).await?;
-            }
-
-            print_json(serde_json::json!(created), pretty);
+            print_json(serde_json::json!(created_files), pretty);
         }
         FileCommands::List {
             project_id,

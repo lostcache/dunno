@@ -15,48 +15,87 @@ fn ensure_one_of_record_ids<'a>(tables: &[&'a str], id: &'a str) -> anyhow::Resu
 }
 
 impl DB {
-    /// Internal helper: creates a file record without any relationships.
-    pub(crate) async fn create_file_record(
-        &self,
-        file: &crate::models::File,
-    ) -> anyhow::Result<crate::models::File> {
-        let json = serde_json::to_value(file)?;
-        let value = json_to_surreal(json);
-        let created: Option<surrealdb::types::Value> =
-            self.client.create("file").content(value).await?;
-        let val = created.ok_or_else(|| anyhow::anyhow!("Failed to create file"))?;
-        let result: crate::models::File = serde_json::from_value(surreal_to_json(val))?;
-        Ok(result)
-    }
-
     /// Creates a file, links it to a project (required), and optionally RELATEs it to a parent module.
-    pub async fn create_file(
+    pub async fn create_files(
         &self,
-        name: &str,
-        path: &str,
-        description: Option<&str>,
-        project_id: &str,
-        parent_id: Option<&str>,
-    ) -> anyhow::Result<crate::models::File> {
-        ensure_one_of_record_ids(&["project"], project_id)?;
-        let file = crate::models::File {
-            id: None,
-            name: name.to_string(),
-            path: path.to_string(),
-            description: description.map(|s| s.to_string()),
-        };
-        let result = self.create_file_record(&file).await?;
-        let fid = result
-            .id
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("File created without ID"))?;
-        self.link(fid, "belongs_to_project", project_id).await?;
-        if let Some(pid) = parent_id {
-            ensure_one_of_record_ids(&["module"], pid)?;
-            self.link(pid, "has_file", fid).await?;
-            self.link(fid, "belongs_to_module", pid).await?;
+        names: Vec<String>,
+        paths: Vec<String>,
+        descriptions: Vec<String>,
+        project_id: String,
+        parent_mod_ids: Vec<String>,
+    ) -> anyhow::Result<Vec<crate::models::File>> {
+        let tx = self.client.clone().begin().await?;
+        let mut results: Vec<crate::models::File> = vec![];
+
+        for (n, (p, (d, pm))) in std::iter::zip(
+            names,
+            std::iter::zip(paths, std::iter::zip(descriptions, parent_mod_ids)),
+        ) {
+            let file_res = async {
+                let pid = surrealdb::types::RecordId::parse_simple(&project_id)?;
+                let file = crate::models::File {
+                    id: None,
+                    name: n,
+                    path: p,
+                    description: if !d.is_empty() { Some(d) } else { None },
+                };
+                let json = serde_json::to_value(&file)?;
+                let surreal_val = json_to_surreal(json);
+
+                let created_file_surreal_val_maybe = tx.create("file").content(surreal_val).await?;
+
+                match created_file_surreal_val_maybe {
+                    Some(created_file_surreal_val) => {
+                        let created_file: crate::models::File =
+                            serde_json::from_value(surreal_to_json(created_file_surreal_val))?;
+                        let fid = created_file
+                            .id
+                            .as_ref()
+                            .ok_or_else(|| anyhow::anyhow!("File created without ID"))?;
+
+                        let fid = surrealdb::types::RecordId::parse_simple(fid)?;
+
+                        tx.query("RELATE $from->belongs_to_project->$to")
+                            .bind(("from", fid.clone()))
+                            .bind(("to", pid.clone()))
+                            .await?;
+
+                        tx.query("RELATE $from->has_file->$to")
+                            .bind(("from", pid))
+                            .bind(("to", fid.clone()))
+                            .await?;
+
+                        if !pm.is_empty() {
+                            let pmid = surrealdb::types::RecordId::parse_simple(&pm)?;
+                            tx.query("RELATE $from->belongs_to_module->$to")
+                                .bind(("from", fid.clone()))
+                                .bind(("to", pmid.clone()))
+                                .await?;
+
+                            tx.query("RELATE $from->has_file->$to")
+                                .bind(("from", pmid))
+                                .bind(("to", fid))
+                                .await?;
+                        }
+
+                        Ok(created_file)
+                    }
+                    None => anyhow::bail!("couldn't create files/s"),
+                }
+            };
+
+            match file_res.await {
+                Ok(file) => results.push(file),
+                Err(e) => {
+                    tx.cancel().await?;
+                    anyhow::bail!("Failed to create file/s: {}", e)
+                }
+            }
         }
-        Ok(result)
+
+        tx.commit().await?;
+
+        Ok(results)
     }
 
     /// Fetches a file by record id.
@@ -281,15 +320,27 @@ mod tests {
         let task_id = task.id.unwrap();
 
         let f1 = db
-            .create_file("a.rs", "src/a.rs", None, &project_id, None)
+            .create_files(
+                vec!["a.rs".to_string()],
+                vec!["src/a.rs".to_string()],
+                vec!["".to_string()],
+                project_id.clone(),
+                vec!["".to_string()],
+            )
             .await
             .expect("create file a");
         let f2 = db
-            .create_file("b.rs", "src/b.rs", None, &project_id, None)
+            .create_files(
+                vec!["b.rs".to_string()],
+                vec!["src/b.rs".to_string()],
+                vec!["".to_string()],
+                project_id.clone(),
+                vec!["".to_string()],
+            )
             .await
             .expect("create file b");
-        let f1_id = f1.id.as_ref().unwrap().clone();
-        let f2_id = f2.id.as_ref().unwrap().clone();
+        let f1_id = f1[0].id.as_ref().unwrap().clone();
+        let f2_id = f2[0].id.as_ref().unwrap().clone();
 
         db.link(&f1_id, "belongs_to_task", &task_id)
             .await
@@ -330,9 +381,15 @@ mod tests {
         let task_id = task.id.unwrap();
 
         // Create a file but do NOT link it to the task
-        db.create_file("unlinked.rs", "src/unlinked.rs", None, &project_id, None)
-            .await
-            .expect("create file");
+        db.create_files(
+            vec!["unlinked.rs".to_string()],
+            vec!["src/unlinked.rs".to_string()],
+            vec!["".to_string()],
+            project_id,
+            vec!["".to_string()],
+        )
+        .await
+        .expect("create file");
 
         let files = db
             .list_files_by_task(&task_id)
@@ -356,10 +413,16 @@ mod tests {
             .expect("create project");
         let project_id = project.id;
         let file = db
-            .create_file("delete_me.rs", "path", None, &project_id, None)
+            .create_files(
+                vec!["delete_me.rs".to_string()],
+                vec!["path".to_string()],
+                vec!["".to_string()],
+                project_id,
+                vec!["".to_string()],
+            )
             .await
             .expect("create");
-        let id = file.id.unwrap();
+        let id = file[0].id.clone().unwrap();
 
         let deleted = db.delete_file(&id).await.expect("delete");
         assert!(deleted);

@@ -78,9 +78,16 @@ async fn test_link_context_all_levels() {
     let submodule_id = submodule.id.expect("id");
 
     let file = db
-        .create_file("f.rs", "src/f.rs", None, &project_id, Some(&submodule_id))
+        .create_files(
+            vec!["f.rs".to_string()],
+            vec!["src/f.rs".to_string()],
+            vec!["".to_string()],
+            project_id.clone(),
+            vec![submodule_id.clone()],
+        )
         .await
         .expect("create file");
+    let file = file.into_iter().next().unwrap();
     let file_id = file.id.expect("id");
 
     let project_ctx = db
@@ -892,15 +899,16 @@ async fn test_file_operations() {
     let module = module.into_iter().next().expect("module created");
     let module_id = module.id.expect("module id");
     let file = db
-        .create_file(
-            "main.rs",
-            "src/main.rs",
-            None,
-            &project_id,
-            Some(&module_id),
+        .create_files(
+            vec!["main.rs".to_string()],
+            vec!["src/main.rs".to_string()],
+            vec!["".to_string()],
+            project_id.clone(),
+            vec![module_id.clone()],
         )
         .await
         .expect("Failed to create file");
+    let file = file.into_iter().next().unwrap();
     let file_id = file.id.expect("file id");
     let fetched = db.get_file(&file_id).await.expect("get_file failed");
     assert!(fetched.is_some());
@@ -1154,9 +1162,16 @@ async fn test_freestanding_file() {
     let module_id = module.id.expect("module id");
 
     let file = db
-        .create_file("orphan.rs", "src/orphan.rs", None, &project_id, None)
+        .create_files(
+            vec!["orphan.rs".to_string()],
+            vec!["src/orphan.rs".to_string()],
+            vec!["".to_string()],
+            project_id.clone(),
+            vec!["".to_string()],
+        )
         .await
         .expect("create freestanding file");
+    let file = file.into_iter().next().unwrap();
     let file_id = file.id.expect("file id");
 
     assert!(db.get_file(&file_id).await.expect("get_file").is_some());
@@ -1886,27 +1901,29 @@ async fn test_list_files_by_submodule() {
     let submodule_id = submodule.id.expect("submodule id");
 
     let file1 = db
-        .create_file(
-            "oauth.rs",
-            "src/auth/oauth.rs",
-            None,
-            &project_id,
-            Some(&submodule_id),
+        .create_files(
+            vec!["oauth.rs".to_string()],
+            vec!["src/auth/oauth.rs".to_string()],
+            vec!["".to_string()],
+            project_id.clone(),
+            vec![submodule_id.clone()],
         )
         .await
         .expect("Failed to create file 1");
+    let file1 = file1.into_iter().next().unwrap();
     let file1_id = file1.id.expect("file id");
 
     let file2 = db
-        .create_file(
-            "jwt.rs",
-            "src/auth/jwt.rs",
-            None,
-            &project_id,
-            Some(&submodule_id),
+        .create_files(
+            vec!["jwt.rs".to_string()],
+            vec!["src/auth/jwt.rs".to_string()],
+            vec!["".to_string()],
+            project_id.clone(),
+            vec![submodule_id.clone()],
         )
         .await
         .expect("Failed to create file 2");
+    let file2 = file2.into_iter().next().unwrap();
     let _file2_id = file2.id.expect("file id");
 
     let files_by_submodule = db
@@ -2583,15 +2600,16 @@ async fn test_get_task_context_with_files_and_linked_context() {
 
     // Create file under module with context (this should NOT appear in task context)
     let file = db
-        .create_file(
-            "auth.rs",
-            "src/auth.rs",
-            Some("Auth implementation"),
-            &project_id,
-            Some(&module_id),
+        .create_files(
+            vec!["auth.rs".to_string()],
+            vec!["src/auth.rs".to_string()],
+            vec!["Auth implementation".to_string()],
+            project_id.clone(),
+            vec![module_id.clone()],
         )
         .await
         .expect("Failed to create file");
+    let file = file.into_iter().next().unwrap();
     let file_id = file.id.expect("file id");
 
     let file_ctx = db
@@ -2650,15 +2668,16 @@ async fn test_get_task_context_with_files_and_linked_context() {
 
     // Link a different file directly to the task
     let task_file = db
-        .create_file(
-            "task.rs",
-            "src/task.rs",
-            Some("Task-specific file"),
-            &project_id,
-            None,
+        .create_files(
+            vec!["task.rs".to_string()],
+            vec!["src/task.rs".to_string()],
+            vec!["Task-specific file".to_string()],
+            project_id.clone(),
+            vec!["".to_string()],
         )
         .await
         .expect("create task file");
+    let task_file = task_file.into_iter().next().unwrap();
     let task_file_id = task_file.id.as_ref().unwrap().clone();
     db.link(&task_file_id, "belongs_to_task", &task_id)
         .await
@@ -2826,28 +2845,30 @@ async fn test_list_files_by_project() {
 
     // Create file linked to module
     let file1 = db
-        .create_file(
-            "f1.rs",
-            "src/f1.rs",
-            Some("d"),
-            &project_id,
-            Some(&module_id),
+        .create_files(
+            vec!["f1.rs".to_string()],
+            vec!["src/f1.rs".to_string()],
+            vec!["d".to_string()],
+            project_id.clone(),
+            vec![module_id.clone()],
         )
         .await
         .expect("create file 1");
+    let file1 = file1.into_iter().next().unwrap();
     let file1_id = file1.id.expect("id");
 
     // Create file linked to submodule
     let file2 = db
-        .create_file(
-            "f2.rs",
-            "src/f2.rs",
-            Some("d"),
-            &project_id,
-            Some(&submodule_id),
+        .create_files(
+            vec!["f2.rs".to_string()],
+            vec!["src/f2.rs".to_string()],
+            vec!["d".to_string()],
+            project_id.clone(),
+            vec![submodule_id.clone()],
         )
         .await
         .expect("create file 2");
+    let file2 = file2.into_iter().next().unwrap();
     let file2_id = file2.id.expect("id");
 
     // List all files (should include both)
@@ -3036,15 +3057,16 @@ async fn test_file_belongs_to_edges() {
 
     // Create file linked to module
     let file = db
-        .create_file(
-            "test.rs",
-            "src/test.rs",
-            Some("d"),
-            &project_id,
-            Some(&module_id),
+        .create_files(
+            vec!["test.rs".to_string()],
+            vec!["src/test.rs".to_string()],
+            vec!["d".to_string()],
+            project_id.clone(),
+            vec![module_id.clone()],
         )
         .await
         .expect("create file");
+    let file = file.into_iter().next().unwrap();
     let file_id = file.id.expect("id");
 
     // Verify file has belongs_to_module edge
@@ -3127,15 +3149,16 @@ async fn test_file_belongs_to_edges_with_submodule() {
 
     // Create file linked to submodule
     let file = db
-        .create_file(
-            "test.rs",
-            "src/test.rs",
-            Some("d"),
-            &project_id,
-            Some(&submodule_id),
+        .create_files(
+            vec!["test.rs".to_string()],
+            vec!["src/test.rs".to_string()],
+            vec!["d".to_string()],
+            project_id.clone(),
+            vec![submodule_id.clone()],
         )
         .await
         .expect("create file");
+    let file = file.into_iter().next().unwrap();
     let file_id = file.id.expect("id");
 
     // Verify file has belongs_to_module edge (direct link to child module)
@@ -3499,9 +3522,16 @@ async fn test_context_inheritance_file() {
     let m = m.into_iter().next().expect("module created");
     let mid = m.id.unwrap();
     let f = db
-        .create_file("f", "src/f.rs", None, &pid, Some(&mid))
+        .create_files(
+            vec!["f".to_string()],
+            vec!["src/f.rs".to_string()],
+            vec!["".to_string()],
+            pid.clone(),
+            vec![mid.clone()],
+        )
         .await
         .unwrap();
+    let f = f.into_iter().next().unwrap();
     let fid = f.id.unwrap();
 
     let p_ctx = db
@@ -3695,9 +3725,16 @@ async fn test_file_ctx_full_includes_persona_workflow() {
         .unwrap();
     let pid = p.id;
     let f = db
-        .create_file("f", "src/f.rs", None, &pid, None)
+        .create_files(
+            vec!["f".to_string()],
+            vec!["src/f.rs".to_string()],
+            vec!["".to_string()],
+            pid.clone(),
+            vec!["".to_string()],
+        )
         .await
         .unwrap();
+    let f = f.into_iter().next().unwrap();
     let fid = f.id.unwrap();
 
     db.create_persona("P1", "persona content", &pid)
