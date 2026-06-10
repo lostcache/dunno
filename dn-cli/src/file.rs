@@ -39,12 +39,6 @@ pub enum FileCommands {
             help = "Optional short description of the file's purpose."
         )]
         description: Option<String>,
-        #[arg(
-            long,
-            value_name = "NOTES",
-            help = "Additional notes attached to this file."
-        )]
-        notes: Option<String>,
     },
     #[command(
         name = "list",
@@ -94,7 +88,6 @@ pub(crate) async fn handle_file_command(
             name,
             path,
             description,
-            notes,
         } => {
             if project_id.is_none() && project.is_none() {
                 anyhow::bail!("Either --project-id/--pid or --project/-p must be provided");
@@ -110,7 +103,6 @@ pub(crate) async fn handle_file_command(
                     &name,
                     &path,
                     description.as_deref(),
-                    notes.as_deref(),
                     &resolved_project_id,
                     parent_ids.first().map(String::as_str),
                 )

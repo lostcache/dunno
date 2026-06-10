@@ -34,7 +34,6 @@ pub(crate) async fn create_file(
             &body.name,
             &body.path,
             body.description.as_deref(),
-            body.notes.as_deref(),
             &body.project_id,
             body.parent_id.as_deref(),
         )
@@ -49,7 +48,7 @@ pub(crate) async fn update_file(
 ) -> schema::ApiResult<serde_json::Value> {
     let updated = state
         .db
-        .update_file(&id, body.name, body.path, body.description, body.notes)
+        .update_file(&id, body.name, body.path, body.description)
         .await?;
     Ok(Json(serde_json::to_value(updated)?))
 }

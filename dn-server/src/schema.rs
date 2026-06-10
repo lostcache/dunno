@@ -44,7 +44,6 @@ pub(crate) struct CreateFileBody {
     pub(crate) name: String,
     pub(crate) path: String,
     pub(crate) description: Option<String>,
-    pub(crate) notes: Option<String>,
     pub(crate) project_id: String,
     pub(crate) parent_id: Option<String>,
 }
@@ -122,7 +121,6 @@ pub(crate) struct UpdateFileBody {
     pub(crate) name: Option<String>,
     pub(crate) path: Option<String>,
     pub(crate) description: Option<String>,
-    pub(crate) notes: Option<String>,
 }
 
 #[derive(Deserialize)]

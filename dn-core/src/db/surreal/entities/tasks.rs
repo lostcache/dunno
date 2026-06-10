@@ -552,7 +552,6 @@ mod tests {
                 "module.rs",
                 "src/module.rs",
                 None,
-                None,
                 &project_id,
                 Some(&module_id),
             )
@@ -567,7 +566,7 @@ mod tests {
 
         // File linked directly to the task
         let task_file = db
-            .create_file("task.rs", "src/task.rs", None, None, &project_id, None)
+            .create_file("task.rs", "src/task.rs", None, &project_id, None)
             .await
             .expect("create task file");
         let task_file_id = task_file.id.as_ref().unwrap().clone();
@@ -617,7 +616,6 @@ mod tests {
         db.create_file(
             "module.rs",
             "src/module.rs",
-            None,
             None,
             &project_id,
             Some(&module_id),

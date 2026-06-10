@@ -35,7 +35,6 @@ impl DB {
         name: &str,
         path: &str,
         description: Option<&str>,
-        notes: Option<&str>,
         project_id: &str,
         parent_id: Option<&str>,
     ) -> anyhow::Result<crate::models::File> {
@@ -45,7 +44,6 @@ impl DB {
             name: name.to_string(),
             path: path.to_string(),
             description: description.map(|s| s.to_string()),
-            notes: notes.map(|s| s.to_string()),
         };
         let result = self.create_file_record(&file).await?;
         let fid = result
@@ -190,7 +188,6 @@ impl DB {
         name: Option<String>,
         path: Option<String>,
         description: Option<String>,
-        notes: Option<String>,
     ) -> anyhow::Result<Option<crate::models::File>> {
         let key = file_id
             .split_once(':')
@@ -210,10 +207,6 @@ impl DB {
                 serde_json::Value::String(description),
             );
         }
-        if let Some(notes) = notes {
-            patch.insert("notes".to_string(), serde_json::Value::String(notes));
-        }
-
         if patch.is_empty() {
             return self.get_file(file_id).await;
         }
@@ -288,11 +281,11 @@ mod tests {
         let task_id = task.id.unwrap();
 
         let f1 = db
-            .create_file("a.rs", "src/a.rs", None, None, &project_id, None)
+            .create_file("a.rs", "src/a.rs", None, &project_id, None)
             .await
             .expect("create file a");
         let f2 = db
-            .create_file("b.rs", "src/b.rs", None, None, &project_id, None)
+            .create_file("b.rs", "src/b.rs", None, &project_id, None)
             .await
             .expect("create file b");
         let f1_id = f1.id.as_ref().unwrap().clone();
@@ -337,16 +330,9 @@ mod tests {
         let task_id = task.id.unwrap();
 
         // Create a file but do NOT link it to the task
-        db.create_file(
-            "unlinked.rs",
-            "src/unlinked.rs",
-            None,
-            None,
-            &project_id,
-            None,
-        )
-        .await
-        .expect("create file");
+        db.create_file("unlinked.rs", "src/unlinked.rs", None, &project_id, None)
+            .await
+            .expect("create file");
 
         let files = db
             .list_files_by_task(&task_id)
@@ -370,7 +356,7 @@ mod tests {
             .expect("create project");
         let project_id = project.id;
         let file = db
-            .create_file("delete_me.rs", "path", None, None, &project_id, None)
+            .create_file("delete_me.rs", "path", None, &project_id, None)
             .await
             .expect("create");
         let id = file.id.unwrap();

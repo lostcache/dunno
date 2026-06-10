@@ -78,14 +78,7 @@ async fn test_link_context_all_levels() {
     let submodule_id = submodule.id.expect("id");
 
     let file = db
-        .create_file(
-            "f.rs",
-            "src/f.rs",
-            None,
-            None,
-            &project_id,
-            Some(&submodule_id),
-        )
+        .create_file("f.rs", "src/f.rs", None, &project_id, Some(&submodule_id))
         .await
         .expect("create file");
     let file_id = file.id.expect("id");
@@ -903,7 +896,6 @@ async fn test_file_operations() {
             "main.rs",
             "src/main.rs",
             None,
-            None,
             &project_id,
             Some(&module_id),
         )
@@ -1162,7 +1154,7 @@ async fn test_freestanding_file() {
     let module_id = module.id.expect("module id");
 
     let file = db
-        .create_file("orphan.rs", "src/orphan.rs", None, None, &project_id, None)
+        .create_file("orphan.rs", "src/orphan.rs", None, &project_id, None)
         .await
         .expect("create freestanding file");
     let file_id = file.id.expect("file id");
@@ -1898,7 +1890,6 @@ async fn test_list_files_by_submodule() {
             "oauth.rs",
             "src/auth/oauth.rs",
             None,
-            None,
             &project_id,
             Some(&submodule_id),
         )
@@ -1910,7 +1901,6 @@ async fn test_list_files_by_submodule() {
         .create_file(
             "jwt.rs",
             "src/auth/jwt.rs",
-            None,
             None,
             &project_id,
             Some(&submodule_id),
@@ -2597,7 +2587,6 @@ async fn test_get_task_context_with_files_and_linked_context() {
             "auth.rs",
             "src/auth.rs",
             Some("Auth implementation"),
-            None,
             &project_id,
             Some(&module_id),
         )
@@ -2665,7 +2654,6 @@ async fn test_get_task_context_with_files_and_linked_context() {
             "task.rs",
             "src/task.rs",
             Some("Task-specific file"),
-            None,
             &project_id,
             None,
         )
@@ -2842,7 +2830,6 @@ async fn test_list_files_by_project() {
             "f1.rs",
             "src/f1.rs",
             Some("d"),
-            None,
             &project_id,
             Some(&module_id),
         )
@@ -2856,7 +2843,6 @@ async fn test_list_files_by_project() {
             "f2.rs",
             "src/f2.rs",
             Some("d"),
-            None,
             &project_id,
             Some(&submodule_id),
         )
@@ -3054,7 +3040,6 @@ async fn test_file_belongs_to_edges() {
             "test.rs",
             "src/test.rs",
             Some("d"),
-            None,
             &project_id,
             Some(&module_id),
         )
@@ -3146,7 +3131,6 @@ async fn test_file_belongs_to_edges_with_submodule() {
             "test.rs",
             "src/test.rs",
             Some("d"),
-            None,
             &project_id,
             Some(&submodule_id),
         )
@@ -3515,7 +3499,7 @@ async fn test_context_inheritance_file() {
     let m = m.into_iter().next().expect("module created");
     let mid = m.id.unwrap();
     let f = db
-        .create_file("f", "src/f.rs", None, None, &pid, Some(&mid))
+        .create_file("f", "src/f.rs", None, &pid, Some(&mid))
         .await
         .unwrap();
     let fid = f.id.unwrap();
@@ -3711,7 +3695,7 @@ async fn test_file_ctx_full_includes_persona_workflow() {
         .unwrap();
     let pid = p.id;
     let f = db
-        .create_file("f", "src/f.rs", None, None, &pid, None)
+        .create_file("f", "src/f.rs", None, &pid, None)
         .await
         .unwrap();
     let fid = f.id.unwrap();

@@ -77,8 +77,6 @@ pub struct File {
     pub path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub notes: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -310,7 +308,6 @@ mod tests {
             name: "lexer.rs".to_string(),
             path: "src/lexer.rs".to_string(),
             description: Some("Lexer implementation for tokenizing input".to_string()),
-            notes: None,
         };
         let json = to_string(&file).expect("Failed to serialize File");
         assert!(json.contains("lexer.rs"));
@@ -493,7 +490,6 @@ mod tests {
                 name: "main.rs".to_string(),
                 path: "src/main.rs".to_string(),
                 description: None,
-                notes: None,
             },
             contexts: vec![],
         };
