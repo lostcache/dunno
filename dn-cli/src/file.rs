@@ -94,6 +94,18 @@ pub(crate) async fn handle_file_command(
                 anyhow::bail!("Either --project-id/--pid or --project/-p must be provided");
             }
 
+            let num_files = names.len();
+            if num_files == 0
+                || paths.len() != num_files
+                || descriptions.len() != num_files
+                || parent_mod_ids.len() != num_files
+            {
+                anyhow::bail!(
+                    "Must provide --name, --path, --description and --parent-mod-id for every file; \
+                     pass an empty --parent-mod-id for a file with no module"
+                )
+            }
+
             let resolved_project_id = match project_id {
                 Some(id) => id,
                 None => resolve_project_id(db, project.unwrap(), ignore_case).await?,
