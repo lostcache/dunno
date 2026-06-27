@@ -3796,6 +3796,387 @@ async fn test_epic_ctx_full_includes_persona_workflow() {
 }
 
 #[tokio::test]
+async fn test_create_multiple_modules_single_call() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    let project = db
+        .create_project(&crate::models::Project {
+            id: String::new(),
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id;
+
+    let modules = db
+        .create_modules(
+            vec!["A".to_string(), "B".to_string()],
+            vec!["da".to_string(), "db".to_string()],
+            &project_id,
+            vec!["".to_string(), "".to_string()],
+        )
+        .await
+        .expect("create modules");
+    assert_eq!(modules.len(), 2);
+    let a_id = modules[0].id.as_ref().expect("A id");
+    let b_id = modules[1].id.as_ref().expect("B id");
+
+    // Both fetchable
+    assert!(db.get_module(a_id).await.expect("get A").is_some());
+    assert!(db.get_module(b_id).await.expect("get B").is_some());
+
+    // Both listed under project (top-level)
+    let by_project = db
+        .list_modules_by_project(&project_id)
+        .await
+        .expect("list_modules_by_project");
+    assert_eq!(by_project.len(), 2);
+    let ids: Vec<&str> = by_project
+        .iter()
+        .filter_map(|m| m.id.as_deref())
+        .collect();
+    assert!(ids.contains(&a_id.as_str()));
+    assert!(ids.contains(&b_id.as_str()));
+
+    // Both have belongs_to_project edge
+    for mid in [a_id.as_str(), b_id.as_str()] {
+        let mut response = db
+            .client
+            .query("SELECT ->belongs_to_project->project.id AS pid FROM ONLY type::record($mid)")
+            .bind(("mid", mid.to_string()))
+            .await
+            .expect("query");
+        let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
+        let json = crate::db::surreal::util::surreal_to_json(record.expect("record"));
+        let pid = json
+            .get("pid")
+            .and_then(|p| p.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|v| v.as_str())
+            .expect("project id");
+        assert_eq!(pid, project_id);
+    }
+}
+
+#[tokio::test]
+async fn test_create_multiple_modules_mixed_parentage() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    let project = db
+        .create_project(&crate::models::Project {
+            id: String::new(),
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id;
+
+    // Two parents
+    let parents = db
+        .create_modules(
+            vec!["ParentA".to_string(), "ParentB".to_string()],
+            vec!["da".to_string(), "db".to_string()],
+            &project_id,
+            vec!["".to_string(), "".to_string()],
+        )
+        .await
+        .expect("create parents");
+    let parent_a = parents[0].id.as_ref().expect("A id").clone();
+    let parent_b = parents[1].id.as_ref().expect("B id").clone();
+
+    // Batch of 3 with mixed parentage: top-level, child of A, child of B
+    let children = db
+        .create_modules(
+            vec!["Top".to_string(), "ChildA".to_string(), "ChildB".to_string()],
+            vec!["d1".to_string(), "d2".to_string(), "d3".to_string()],
+            &project_id,
+            vec!["".to_string(), parent_a.clone(), parent_b.clone()],
+        )
+        .await
+        .expect("create children batch");
+    assert_eq!(children.len(), 3);
+
+    // Per-index parent_module_id
+    assert_eq!(children[0].parent_module_id, None);
+    assert_eq!(children[1].parent_module_id, Some(parent_a.clone()));
+    assert_eq!(children[2].parent_module_id, Some(parent_b.clone()));
+
+    let top_id = children[0].id.as_ref().expect("top id").clone();
+    let child_a_id = children[1].id.as_ref().expect("childA id").clone();
+    let child_b_id = children[2].id.as_ref().expect("childB id").clone();
+
+    // Top-level listed under project; ChildA/ChildB NOT directly under project
+    let by_project = db
+        .list_modules_by_project(&project_id)
+        .await
+        .expect("list_modules_by_project");
+    let top_level_ids: Vec<&str> = by_project
+        .iter()
+        .filter_map(|m| m.id.as_deref())
+        .collect();
+    assert!(top_level_ids.contains(&top_id.as_str()));
+    assert!(!top_level_ids.contains(&child_a_id.as_str()));
+    assert!(!top_level_ids.contains(&child_b_id.as_str()));
+
+    // ChildA under ParentA via has_module
+    let children_of_a = db
+        .list_modules_by_module(&parent_a)
+        .await
+        .expect("list by parent A");
+    assert_eq!(children_of_a.len(), 1);
+    assert_eq!(children_of_a[0].id.as_deref(), Some(child_a_id.as_str()));
+
+    // ChildB under ParentB via has_module
+    let children_of_b = db
+        .list_modules_by_module(&parent_b)
+        .await
+        .expect("list by parent B");
+    assert_eq!(children_of_b.len(), 1);
+    assert_eq!(children_of_b[0].id.as_deref(), Some(child_b_id.as_str()));
+
+    // belongs_to_module edge from child -> parent
+    for (child_id, parent_id) in [
+        (child_a_id.as_str(), parent_a.as_str()),
+        (child_b_id.as_str(), parent_b.as_str()),
+    ] {
+        let mut response = db
+            .client
+            .query("SELECT ->belongs_to_module->module.id AS mid FROM ONLY type::record($cid)")
+            .bind(("cid", child_id.to_string()))
+            .await
+            .expect("query");
+        let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
+        let json = crate::db::surreal::util::surreal_to_json(record.expect("record"));
+        let mid = json
+            .get("mid")
+            .and_then(|m| m.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|v| v.as_str())
+            .expect("parent module id");
+        assert_eq!(mid, parent_id);
+    }
+}
+
+#[tokio::test]
+async fn test_create_multiple_files_single_call() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    let project = db
+        .create_project(&crate::models::Project {
+            id: String::new(),
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id;
+
+    let module = db
+        .create_modules(
+            vec!["M".to_string()],
+            vec!["d".to_string()],
+            &project_id,
+            vec!["".to_string()],
+        )
+        .await
+        .expect("create module");
+    let module_id = module.into_iter().next().expect("module").id.expect("id");
+
+    // 2 files in one call: one under module, one freestanding (empty parent_mod_id)
+    let files = db
+        .create_files(
+            vec!["linked.rs".to_string(), "free.rs".to_string()],
+            vec!["src/linked.rs".to_string(), "src/free.rs".to_string()],
+            vec!["".to_string(), "".to_string()],
+            project_id.clone(),
+            vec![module_id.clone(), "".to_string()],
+        )
+        .await
+        .expect("create files batch");
+    assert_eq!(files.len(), 2);
+    let linked_id = files[0].id.as_ref().expect("linked id").clone();
+    let free_id = files[1].id.as_ref().expect("free id").clone();
+
+    // Both under project via belongs_to_project
+    let by_project = db
+        .list_files_by_project(&project_id)
+        .await
+        .expect("list_files_by_project");
+    assert_eq!(by_project.len(), 2);
+    let ids: Vec<&str> = by_project.iter().filter_map(|f| f.id.as_deref()).collect();
+    assert!(ids.contains(&linked_id.as_str()));
+    assert!(ids.contains(&free_id.as_str()));
+
+    // Only linked file under module
+    let by_module = db
+        .list_files_by_module(&module_id)
+        .await
+        .expect("list_files_by_module");
+    assert_eq!(by_module.len(), 1);
+    assert_eq!(by_module[0].id.as_deref(), Some(linked_id.as_str()));
+}
+
+#[tokio::test]
+async fn test_create_multiple_files_mixed_parents() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    let project = db
+        .create_project(&crate::models::Project {
+            id: String::new(),
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id;
+
+    // Two modules to use as parents
+    let modules = db
+        .create_modules(
+            vec!["MA".to_string(), "MB".to_string()],
+            vec!["da".to_string(), "db".to_string()],
+            &project_id,
+            vec!["".to_string(), "".to_string()],
+        )
+        .await
+        .expect("create modules");
+    let ma_id = modules[0].id.as_ref().expect("MA id").clone();
+    let mb_id = modules[1].id.as_ref().expect("MB id").clone();
+
+    // 3 files: under MA, under MB, freestanding
+    let files = db
+        .create_files(
+            vec!["fa.rs".to_string(), "fb.rs".to_string(), "fc.rs".to_string()],
+            vec!["a.rs".to_string(), "b.rs".to_string(), "c.rs".to_string()],
+            vec!["".to_string(), "".to_string(), "".to_string()],
+            project_id.clone(),
+            vec![ma_id.clone(), mb_id.clone(), "".to_string()],
+        )
+        .await
+        .expect("create files batch");
+    assert_eq!(files.len(), 3);
+    let fa_id = files[0].id.as_ref().expect("fa id").clone();
+    let fb_id = files[1].id.as_ref().expect("fb id").clone();
+    let fc_id = files[2].id.as_ref().expect("fc id").clone();
+
+    // Per-index: fa under MA, fb under MB, fc under no module
+    let ma_files = db
+        .list_files_by_module(&ma_id)
+        .await
+        .expect("list under MA");
+    assert_eq!(ma_files.len(), 1);
+    assert_eq!(ma_files[0].id.as_deref(), Some(fa_id.as_str()));
+
+    let mb_files = db
+        .list_files_by_module(&mb_id)
+        .await
+        .expect("list under MB");
+    assert_eq!(mb_files.len(), 1);
+    assert_eq!(mb_files[0].id.as_deref(), Some(fb_id.as_str()));
+
+    // fc has no belongs_to_module edge; verify by querying raw graph
+    let mut response = db
+        .client
+        .query("SELECT ->belongs_to_module->module.id AS mid FROM ONLY type::record($fid)")
+        .bind(("fid", fc_id.clone()))
+        .await
+        .expect("query");
+    let record: Option<surrealdb::types::Value> = response.take(0).expect("take");
+    let json = crate::db::surreal::util::surreal_to_json(record.expect("record"));
+    let mids = json
+        .get("mid")
+        .and_then(|m| m.as_array())
+        .map(|arr| arr.is_empty())
+        .unwrap_or(true);
+    assert!(mids, "freestanding file must have no belongs_to_module edge");
+
+    // All three under project
+    let by_project = db
+        .list_files_by_project(&project_id)
+        .await
+        .expect("list_files_by_project");
+    assert_eq!(by_project.len(), 3);
+}
+
+#[tokio::test]
+async fn test_create_modules_transaction_rollback() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    let project = db
+        .create_project(&crate::models::Project {
+            id: String::new(),
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id;
+
+    let before = db.list_modules().await.expect("list_modules before");
+
+    // 2 modules: first valid, second with a malformed --pmid that fails RecordId::parse_simple
+    let result = db
+        .create_modules(
+            vec!["Good".to_string(), "Bad".to_string()],
+            vec!["d1".to_string(), "d2".to_string()],
+            &project_id,
+            vec!["".to_string(), "not_a_record_id".to_string()],
+        )
+        .await;
+    assert!(result.is_err(), "batch with malformed parent id should error");
+
+    // Nothing from the batch persisted — count unchanged
+    let after = db.list_modules().await.expect("list_modules after");
+    assert_eq!(
+        after.len(),
+        before.len(),
+        "transaction must roll back both modules on failure"
+    );
+    // Specifically, the \"Good\" entry must not exist
+    assert!(
+        !after.iter().any(|m| m.name == "Good"),
+        "rolled-back module must not be persisted"
+    );
+}
+
+#[tokio::test]
+async fn test_create_files_transaction_rollback() {
+    let db = DB::new("mem://").await.expect("Failed to init DB");
+    let project = db
+        .create_project(&crate::models::Project {
+            id: String::new(),
+            name: "P".to_string(),
+            description: "d".to_string(),
+        })
+        .await
+        .expect("create project");
+    let project_id = project.id;
+
+    let before = db.list_files().await.expect("list_files before");
+
+    // 2 files: first valid (freestanding), second with malformed parent_mod_id
+    let result = db
+        .create_files(
+            vec!["good.rs".to_string(), "bad.rs".to_string()],
+            vec!["g.rs".to_string(), "b.rs".to_string()],
+            vec!["".to_string(), "".to_string()],
+            project_id.clone(),
+            vec!["".to_string(), "not_a_record_id".to_string()],
+        )
+        .await;
+    assert!(result.is_err(), "batch with malformed parent id should error");
+
+    // Nothing from the batch persisted
+    let after = db.list_files().await.expect("list_files after");
+    assert_eq!(
+        after.len(),
+        before.len(),
+        "transaction must roll back both files on failure"
+    );
+    assert!(
+        !after.iter().any(|f| f.name == "good.rs"),
+        "rolled-back file must not be persisted"
+    );
+}
+
+#[tokio::test]
 async fn test_child_module_belongs_to_module_edge_and_graph() {
     let db = DB::new("mem://").await.expect("init db");
 

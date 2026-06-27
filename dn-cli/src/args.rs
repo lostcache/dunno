@@ -765,6 +765,8 @@ mod tests {
             "Auth2 module",
             "--pmid",
             "module:abc",
+            "--pmid",
+            "module:abc",
         ]);
         assert!(args.is_ok(), "should parse --project with module create");
         if let Commands::Module { command } = args.unwrap().command {
@@ -779,11 +781,150 @@ mod tests {
                 assert_eq!(name[0], "Auth");
                 assert_eq!(name[1], "Auth2");
                 assert_eq!(parent_module_id[0], "module:abc");
+                assert_eq!(parent_module_id[1], "module:abc");
             } else {
                 panic!("expected Create command");
             }
         } else {
             panic!("expected Module command");
+        }
+    }
+
+    #[test]
+    fn module_add_multiple_modules_mixed_parents() {
+        let args = Args::try_parse_from([
+            "dn",
+            "module",
+            "add",
+            "--project",
+            "My Project",
+            "--name",
+            "Top",
+            "--desc",
+            "top",
+            "--name",
+            "Child",
+            "--desc",
+            "child",
+            "--pmid",
+            "",
+            "--pmid",
+            "module:abc",
+        ]);
+        assert!(args.is_ok(), "should parse mixed top-level and child");
+        if let Commands::Module { command } = args.unwrap().command {
+            if let ModuleCommands::Add {
+                name,
+                parent_module_id,
+                ..
+            } = command
+            {
+                assert_eq!(name.len(), 2);
+                assert_eq!(parent_module_id.len(), 2);
+                assert_eq!(parent_module_id[0], "");
+                assert_eq!(parent_module_id[1], "module:abc");
+            } else {
+                panic!("expected Add command");
+            }
+        } else {
+            panic!("expected Module command");
+        }
+    }
+
+    #[test]
+    fn file_add_multiple_files() {
+        let args = Args::try_parse_from([
+            "dn",
+            "file",
+            "add",
+            "--project",
+            "My Project",
+            "--name",
+            "a.rs",
+            "--path",
+            "src/a.rs",
+            "--description",
+            "first",
+            "--parent-mod-id",
+            "module:abc",
+            "--name",
+            "b.rs",
+            "--path",
+            "src/b.rs",
+            "--description",
+            "second",
+            "--parent-mod-id",
+            "module:def",
+        ]);
+        assert!(args.is_ok(), "should parse multiple files in one add");
+        if let Commands::File { command } = args.unwrap().command {
+            if let FileCommands::Add {
+                name,
+                path,
+                description,
+                parent_mod_id,
+                ..
+            } = command
+            {
+                assert_eq!(name.len(), 2);
+                assert_eq!(path.len(), 2);
+                assert_eq!(description.len(), 2);
+                assert_eq!(parent_mod_id.len(), 2);
+                assert_eq!(name[0], "a.rs");
+                assert_eq!(path[0], "src/a.rs");
+                assert_eq!(description[0], "first");
+                assert_eq!(parent_mod_id[0], "module:abc");
+                assert_eq!(name[1], "b.rs");
+                assert_eq!(path[1], "src/b.rs");
+                assert_eq!(description[1], "second");
+                assert_eq!(parent_mod_id[1], "module:def");
+            } else {
+                panic!("expected Add command");
+            }
+        } else {
+            panic!("expected File command");
+        }
+    }
+
+    #[test]
+    fn file_add_mixed_parent_and_freestanding() {
+        let args = Args::try_parse_from([
+            "dn",
+            "file",
+            "add",
+            "--project",
+            "My Project",
+            "--name",
+            "linked.rs",
+            "--path",
+            "src/linked.rs",
+            "--description",
+            "d1",
+            "--parent-mod-id",
+            "module:abc",
+            "--name",
+            "free.rs",
+            "--path",
+            "src/free.rs",
+            "--description",
+            "d2",
+            "--parent-mod-id",
+            "",
+        ]);
+        assert!(args.is_ok(), "should parse linked + freestanding files");
+        if let Commands::File { command } = args.unwrap().command {
+            if let FileCommands::Add {
+                parent_mod_id, ..
+            } = command
+            {
+                assert_eq!(parent_mod_id.len(), 2);
+                assert_eq!(parent_mod_id[0], "module:abc");
+                assert_eq!(parent_mod_id[1], "");
+            } else {
+                panic!("expected Add command");
+            }
+        } else {
+            panic!("expected File command");
         }
     }
 
