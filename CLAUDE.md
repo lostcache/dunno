@@ -71,18 +71,23 @@ Knowledge can be attached to any structural node:
 1. Create a new project
    - `dn project create "ProjectName" "Description"`
 2. Set up initial modules and directories as needed
-   - `dn module create --project-ids <project_id> "ModuleName" "Description"`
+   - `dn module add --project-id <project_id> --name "ModuleName" --desc "Description" --pmid ""`
+   - Repeat `--name`/`--desc`/`--pmid` to create multiple modules in one command.
 
 ### Initializing for existing project
 
 1. Create a new project
    - `dn project create "ProjectName" "Description"`
 2. Read the codebase for all the modules and nested modules, create them and link to the respective project and parent module.
-   - `dn module add --project-ids <project_id> "ModuleName" "Description"`
-   - `dn module add --project-ids <project_id> --parent-module-id <parent_module_id> "ChildModuleName" "Description"`
+   - `dn module add --project-id <project_id> --name "ModuleName" --desc "Description" --pmid ""`
+   - `dn module add --project-id <project_id> --name "Child" --desc "Description" --pmid <parent_module_id>`
+   - To create several modules in one call, repeat `--name`/`--desc`/`--pmid` together; counts must match (pass `--pmid ""` for top-level modules).
 3. Create the file nodes with description and link to the respective project (required) and module (optional).
-   - `dn file add --project-ids <project_id> --parent-ids <module_id> "FileName" "Path" "Description"`
-   - `dn file add --project-ids <project_id> "FileName" "Path" "Description"` (no module)
+   - `dn file add --project-id <project_id> --name "FileName" --path "Path" --description "Description" --parent-mod-id <module_id>`
+   - `dn file add --project-id <project_id> --name "FileName" --path "Path" --description "Description" --parent-mod-id ""` (no module)
+   - To create several files in one call, repeat `--name`/`--path`/`--description`/`--parent-mod-id` together; counts must match (pass `--parent-mod-id ""` for freestanding files).
+
+> **Repeatable flags:** `module add` and `file add` create one entity per group of repeated flags, all in a single transaction. All repeatable flag counts must be equal (enforced by the handler). A single `--project-id` (or `-p`/`--project` name) applies to every entity in the batch.
 
 ## Initializing a task
 
