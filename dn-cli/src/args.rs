@@ -913,10 +913,7 @@ mod tests {
         ]);
         assert!(args.is_ok(), "should parse linked + freestanding files");
         if let Commands::File { command } = args.unwrap().command {
-            if let FileCommands::Add {
-                parent_mod_id, ..
-            } = command
-            {
+            if let FileCommands::Add { parent_mod_id, .. } = command {
                 assert_eq!(parent_mod_id.len(), 2);
                 assert_eq!(parent_mod_id[0], "module:abc");
                 assert_eq!(parent_mod_id[1], "");

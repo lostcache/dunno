@@ -3831,10 +3831,7 @@ async fn test_create_multiple_modules_single_call() {
         .await
         .expect("list_modules_by_project");
     assert_eq!(by_project.len(), 2);
-    let ids: Vec<&str> = by_project
-        .iter()
-        .filter_map(|m| m.id.as_deref())
-        .collect();
+    let ids: Vec<&str> = by_project.iter().filter_map(|m| m.id.as_deref()).collect();
     assert!(ids.contains(&a_id.as_str()));
     assert!(ids.contains(&b_id.as_str()));
 
@@ -3887,7 +3884,11 @@ async fn test_create_multiple_modules_mixed_parentage() {
     // Batch of 3 with mixed parentage: top-level, child of A, child of B
     let children = db
         .create_modules(
-            vec!["Top".to_string(), "ChildA".to_string(), "ChildB".to_string()],
+            vec![
+                "Top".to_string(),
+                "ChildA".to_string(),
+                "ChildB".to_string(),
+            ],
             vec!["d1".to_string(), "d2".to_string(), "d3".to_string()],
             &project_id,
             vec!["".to_string(), parent_a.clone(), parent_b.clone()],
@@ -3910,10 +3911,7 @@ async fn test_create_multiple_modules_mixed_parentage() {
         .list_modules_by_project(&project_id)
         .await
         .expect("list_modules_by_project");
-    let top_level_ids: Vec<&str> = by_project
-        .iter()
-        .filter_map(|m| m.id.as_deref())
-        .collect();
+    let top_level_ids: Vec<&str> = by_project.iter().filter_map(|m| m.id.as_deref()).collect();
     assert!(top_level_ids.contains(&top_id.as_str()));
     assert!(!top_level_ids.contains(&child_a_id.as_str()));
     assert!(!top_level_ids.contains(&child_b_id.as_str()));
@@ -4044,7 +4042,11 @@ async fn test_create_multiple_files_mixed_parents() {
     // 3 files: under MA, under MB, freestanding
     let files = db
         .create_files(
-            vec!["fa.rs".to_string(), "fb.rs".to_string(), "fc.rs".to_string()],
+            vec![
+                "fa.rs".to_string(),
+                "fb.rs".to_string(),
+                "fc.rs".to_string(),
+            ],
             vec!["a.rs".to_string(), "b.rs".to_string(), "c.rs".to_string()],
             vec!["".to_string(), "".to_string(), "".to_string()],
             project_id.clone(),
@@ -4086,7 +4088,10 @@ async fn test_create_multiple_files_mixed_parents() {
         .and_then(|m| m.as_array())
         .map(|arr| arr.is_empty())
         .unwrap_or(true);
-    assert!(mids, "freestanding file must have no belongs_to_module edge");
+    assert!(
+        mids,
+        "freestanding file must have no belongs_to_module edge"
+    );
 
     // All three under project
     let by_project = db
@@ -4120,7 +4125,10 @@ async fn test_create_modules_transaction_rollback() {
             vec!["".to_string(), "not_a_record_id".to_string()],
         )
         .await;
-    assert!(result.is_err(), "batch with malformed parent id should error");
+    assert!(
+        result.is_err(),
+        "batch with malformed parent id should error"
+    );
 
     // Nothing from the batch persisted — count unchanged
     let after = db.list_modules().await.expect("list_modules after");
@@ -4161,7 +4169,10 @@ async fn test_create_files_transaction_rollback() {
             vec!["".to_string(), "not_a_record_id".to_string()],
         )
         .await;
-    assert!(result.is_err(), "batch with malformed parent id should error");
+    assert!(
+        result.is_err(),
+        "batch with malformed parent id should error"
+    );
 
     // Nothing from the batch persisted
     let after = db.list_files().await.expect("list_files after");
