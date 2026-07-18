@@ -69,7 +69,7 @@ Knowledge can be attached to any structural node:
 ### Initializing for new project
 
 1. Create a new project
-   - `dn project create "ProjectName" "Description"`
+   - `dn project add "ProjectName" "Description"`
 2. Set up initial modules and directories as needed
    - `dn module add --project-id <project_id> --name "ModuleName" --desc "Description" --pmid ""`
    - Repeat `--name`/`--desc`/`--pmid` to create multiple modules in one command.
